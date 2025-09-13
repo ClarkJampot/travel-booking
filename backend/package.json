@@ -4,7 +4,10 @@
   "main": "server.js",
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "dev": "nodemon server.js",
+    "db:init": "cross-env-shell \"mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME < ../database/schema.sql\"",
+    "db:reset": "cross-env-shell \"mysql -u $DB_USER -p$DB_PASSWORD -e \\\"DROP DATABASE IF EXISTS $DB_NAME; CREATE DATABASE $DB_NAME;\\\" && mysql -u $DB_USER -p$DB_PASSWORD $DB_NAME < ../database/schema.sql\""
   },
   "dependencies": {
     "dotenv": "^17.2.2",
@@ -12,6 +15,7 @@
     "mysql2": "^3.14.5"
   },
   "devDependencies": {
+    "cross-env": "^10.0.0",
     "prettier": "3.6.2"
   }
 }
