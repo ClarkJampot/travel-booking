@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hotels - Travel Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+  <style>
+    body { font-family: system-ui, Arial, sans-serif; margin: 24px; }
+    header { margin-bottom: 16px; }
+    .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: 12px; }
+    .card { border: 1px solid #ddd; border-radius: 8px; padding: 12px; }
+    .muted { color: #666; font-size: 12px; }
+  </style>
+  <script>
+    async function loadHotels() {
+      const list = document.getElementById('list');
+      const status = document.getElementById('status');
+      status.textContent = 'Loading...';
+      try {
+        const res = await fetch('/api/hotels');
+        const data = await res.json();
+        status.textContent = '';
+        (Array.isArray(data) ? data : data.results || []).forEach(h => {
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `<strong>${h.name}</strong><div class="muted">${h.city}, ${h.country}</div><div>₱${Number(h.price_per_night).toFixed(2)} / night</div>`;
+          list.appendChild(div);
+        });
+        if (!list.children.length) status.textContent = 'No hotels found.';
+      } catch (e) {
+        status.textContent = 'Failed to load hotels.';
+        console.error(e);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', loadHotels);
+  </script>
+  </head>
+<body>
+  <header>
+    <a href="/">← Home</a>
+    <h1>Hotels</h1>
+    <p class="muted">Sample page fetching from <code>/api/hotels</code></p>
+  </header>
+  <div id="status" class="muted"></div>
+  <div id="list" class="grid"></div>
+</body>
+</html>
+
+
+
+
