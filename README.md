@@ -15,12 +15,27 @@ Includes role-based access (Customer, Owner, Admin) and a basic admin panel.
 ---
 
 ## 📂 Project Structure
-travel-booking/  
-├── backend/ # Node.js + Express + MySQL  
-├── public/ # Frontend (HTML, CSS, JS)  
-├── database/ # Schema and seed data  
-├── docs/ # Documentation  
-└── .env.example # Environment variables template  
+```
+travel-booking/
+├─ backend/                 # Express server, routes, DB access
+│  ├─ models/
+│  │  └─ db.js
+│  ├─ routes/
+│  │  ├─ index.js
+│  │  └─ hotels.js
+│  ├─ scripts/
+│  │  └─ db.js
+│  ├─ package.json
+│  └─ server.js
+├─ public/                  # Static frontend assets
+│  ├─ index.html
+│  └─ js/
+│     └─ main.js
+├─ docs/
+│  └─ PROJECT_INDEX.md
+├─ LICENSE
+└─ README.md
+```
 
 
 ---
@@ -38,3 +53,13 @@ Clone the repository:
 git clone https://github.com/ClarkJampot/travel-booking.git
 cd travel-booking/backend
 npm install
+```
+
+Run the server:
+```bash
+npm start
+```
+
+Open `http://localhost:3000` in your browser. API base is `http://localhost:3000/api`.
+
+For a full overview, see the project index: `docs/PROJECT_INDEX.md`.
