@@ -6,8 +6,10 @@
   "scripts": {
     "start": "node server.js",
     "dev": "nodemon server.js",
-    "db:init": "dotenv -e .env -- node scripts/db.js --init",
-    "db:reset": "dotenv -e .env -- node scripts/db.js"
+    "db:init": "node scripts/db.js init",
+    "db:seed": "node scripts/db.js seed",
+    "db:reset": "node scripts/db.js reset",
+    "db:reset:seed": "node scripts/db.js reset:seed"
   },
   "dependencies": {
     "dotenv": "^17.2.2",
