@@ -45,6 +45,29 @@ router.get("/", async (req, res) => {
   }
 });
 
+// POST /api/activities
+router.post("/", async (req, res) => {
+  try {
+    const { title, city, date, price, created_by } = req.body || {};
+    if (!title || !city || !date || price == null) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const amount = Number(price);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return res.status(400).json({ error: "Invalid price" });
+    }
+    const result = await query(
+      "INSERT INTO activities (title, city, date, price, created_by) VALUES (?, ?, ?, ?, ?)",
+      [title, city, date, amount, created_by || null],
+    );
+    const rows = await query("SELECT * FROM activities WHERE id = ?", [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error("Error creating activity:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
 
 

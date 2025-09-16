@@ -49,6 +49,29 @@ router.get("/", async (req, res) => {
   }
 });
 
+// POST /api/flights
+router.post("/", async (req, res) => {
+  try {
+    const { airline, origin, destination, depart_date, price, created_by } = req.body || {};
+    if (!airline || !origin || !destination || !depart_date || price == null) {
+      return res.status(400).json({ error: "Missing required fields" });
+    }
+    const amount = Number(price);
+    if (!Number.isFinite(amount) || amount < 0) {
+      return res.status(400).json({ error: "Invalid price" });
+    }
+    const result = await query(
+      "INSERT INTO flights (airline, origin, destination, depart_date, price, created_by) VALUES (?, ?, ?, ?, ?, ?)",
+      [airline, origin, destination, depart_date, amount, created_by || null],
+    );
+    const rows = await query("SELECT * FROM flights WHERE id = ?", [result.insertId]);
+    res.status(201).json(rows[0]);
+  } catch (err) {
+    console.error("Error creating flight:", err);
+    res.status(500).json({ error: "Internal server error" });
+  }
+});
+
 export default router;
 
 
