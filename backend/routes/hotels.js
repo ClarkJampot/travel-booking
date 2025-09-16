@@ -7,8 +7,25 @@ const router = express.Router();
 
 router.get("/", async (req, res) => {
   try {
-    const hotels = await query("SELECT * FROM hotels");
-    res.json(hotels);
+    const { city, country, minPrice, maxPrice, ratingMin } = req.query;
+    const page = parseInt(req.query.page || "1", 10);
+    const limit = Math.min(parseInt(req.query.limit || "10", 10), 50);
+    const offset = (page - 1) * limit;
+
+    const filters = [];
+    const params = [];
+    if (city) { filters.push("city = ?"); params.push(city); }
+    if (country) { filters.push("country = ?"); params.push(country); }
+    if (minPrice) { filters.push("price_per_night >= ?"); params.push(Number(minPrice)); }
+    if (maxPrice) { filters.push("price_per_night <= ?"); params.push(Number(maxPrice)); }
+    if (ratingMin) { filters.push("rating >= ?"); params.push(Number(ratingMin)); }
+
+    const where = filters.length ? `WHERE ${filters.join(" AND ")}` : "";
+    const rows = await query(
+      `SELECT * FROM hotels ${where} ORDER BY rating DESC, price_per_night ASC, id ASC LIMIT ${limit} OFFSET ${offset}`,
+      params,
+    );
+    res.json({ page, limit, results: rows });
   } catch (err) {
     console.error("Error fetching hotels: ", err);
     res.status(500).json({ error: "Internal server error" });
