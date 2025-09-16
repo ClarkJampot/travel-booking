@@ -1,6 +1,7 @@
 import express from "express";
 import { query } from "../models/db.js";
 import { requireFields, numberField } from "./_validate.js";
+import { requireAuth, requireRole } from "./_auth.js";
 
 const router = express.Router();
 
@@ -15,7 +16,7 @@ router.get("/", async (req, res) => {
 });
 
 // POST /api/hotels
-router.post("/", requireFields(["name", "city", "country", "price_per_night"]), numberField("price_per_night", { min: 0 }), async (req, res) => {
+router.post("/", requireAuth, requireRole(["owner", "admin"]), requireFields(["name", "city", "country", "price_per_night"]), numberField("price_per_night", { min: 0 }), async (req, res) => {
   try {
     const { name, city, country, price_per_night, rating, created_by } = req.body || {};
     if (!name || !city || !country || price_per_night == null) {

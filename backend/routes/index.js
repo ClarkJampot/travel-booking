@@ -5,6 +5,7 @@ import activities from "./activities.js";
 import transfers from "./transfers.js";
 import bookings from "./bookings.js";
 import ads from "./ads.js";
+import auth from "./auth.js";
 
 const router = express.Router();
 
@@ -14,6 +15,7 @@ router.use("/activities", activities);
 router.use("/transfers", transfers);
 router.use("/bookings", bookings);
 router.use("/ads", ads);
+router.use("/auth", auth);
 
 // test endpoint
 // router.get("/ping", (req, res) => {
