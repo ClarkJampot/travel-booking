@@ -1,0 +1,64 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Auth - Travel Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <a href="/">← Home</a>
+    <nav>
+      <a href="/hotels.html">Hotels</a>
+      <a href="/flights.html">Flights</a>
+      <a href="/activities.html">Activities</a>
+      <a href="/transfers.html">Transfers</a>
+      <a href="/bookings.html">Bookings</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Auth</h1>
+    <section class="card">
+      <h3>Login (email only for demo)</h3>
+      <div class="row">
+        <label>Email <input id="email" placeholder="admin@example.com"></label>
+        <button onclick="login()">Login</button>
+        <button onclick="logout()">Logout</button>
+        <button onclick="me()">Me</button>
+      </div>
+      <div id="authStatus" class="muted"></div>
+    </section>
+  </main>
+  <script>
+    async function login() {
+      const email = document.getElementById('email').value.trim();
+      const status = document.getElementById('authStatus');
+      status.textContent = 'Logging in...';
+      try {
+        const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        const data = await res.json();
+        status.textContent = res.ok ? 'Logged in as ' + (data.user?.email || '') : 'Error: ' + (data.error || 'Failed');
+      } catch (e) { status.textContent = 'Error: ' + e.message; }
+    }
+    async function logout() {
+      const status = document.getElementById('authStatus');
+      status.textContent = 'Logging out...';
+      try {
+        const res = await fetch('/api/auth/logout', { method: 'POST' });
+        status.textContent = res.ok ? 'Logged out' : 'Logout failed';
+      } catch (e) { status.textContent = 'Error: ' + e.message; }
+    }
+    async function me() {
+      const status = document.getElementById('authStatus');
+      status.textContent = 'Checking session...';
+      try {
+        const res = await fetch('/api/auth/me');
+        const data = await res.json();
+        status.textContent = data.user ? `Session: ${data.user.email} (${data.user.role})` : 'No session';
+      } catch (e) { status.textContent = 'Error: ' + e.message; }
+    }
+  </script>
+</body>
+</html>
+
+

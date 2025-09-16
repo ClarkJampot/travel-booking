@@ -1,0 +1,63 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Transfers - Travel Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <a href="/">← Home</a>
+    <nav>
+      <a href="/hotels.html">Hotels</a>
+      <a href="/flights.html">Flights</a>
+      <a href="/activities.html">Activities</a>
+      <a href="/transfers.html">Transfers</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Transfers</h1>
+    <div class="row">
+      <label>Origin <input id="origin" placeholder="MNL Airport"></label>
+      <label>Destination <input id="destination" placeholder="Makati"></label>
+      <label>Date <input id="date" type="date"></label>
+      <button onclick="loadTransfers()">Search</button>
+    </div>
+    <div id="status" class="muted"></div>
+    <div id="list" class="grid"></div>
+  </main>
+  <script>
+    async function loadTransfers() {
+      const list = document.getElementById('list');
+      const status = document.getElementById('status');
+      list.innerHTML = '';
+      status.textContent = 'Loading...';
+      const q = new URLSearchParams();
+      const origin = document.getElementById('origin').value.trim();
+      const destination = document.getElementById('destination').value.trim();
+      const date = document.getElementById('date').value;
+      if (origin) q.set('origin', origin);
+      if (destination) q.set('destination', destination);
+      if (date) q.set('date', date);
+      try {
+        const res = await fetch('/api/transfers?' + q.toString());
+        const data = await res.json();
+        status.textContent = '';
+        (data.results || []).forEach(t => {
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `<strong>${t.service}</strong><div class=\"muted\">${t.origin} → ${t.destination}</div><div>${t.date} · ₱${Number(t.price).toFixed(2)}</div>`;
+          list.appendChild(div);
+        });
+        if (!list.children.length) status.textContent = 'No transfers found.';
+      } catch (e) {
+        status.textContent = 'Failed to load transfers.';
+        console.error(e);
+      }
+    }
+    window.addEventListener('DOMContentLoaded', loadTransfers);
+  </script>
+</body>
+</html>
+
+
