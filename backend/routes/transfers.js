@@ -1,5 +1,6 @@
 import express from "express";
 import { query } from "../models/db.js";
+import { requireFields, numberField } from "./_validate.js";
 
 const router = express.Router();
 
@@ -50,7 +51,7 @@ router.get("/", async (req, res) => {
 });
 
 // POST /api/transfers
-router.post("/", async (req, res) => {
+router.post("/", requireFields(["service", "origin", "destination", "date", "price"]), numberField("price", { min: 0 }), async (req, res) => {
   try {
     const { service, origin, destination, date, price, created_by } = req.body || {};
     if (!service || !origin || !destination || !date || price == null) {
