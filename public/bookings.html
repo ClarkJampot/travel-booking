@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Bookings - Travel Booking</title>
+  <link rel="stylesheet" href="/css/style.css">
+</head>
+<body>
+  <header>
+    <a href="/">← Home</a>
+    <nav>
+      <a href="/hotels.html">Hotels</a>
+      <a href="/flights.html">Flights</a>
+      <a href="/activities.html">Activities</a>
+      <a href="/transfers.html">Transfers</a>
+      <a href="/bookings.html">Bookings</a>
+    </nav>
+  </header>
+  <main>
+    <h1>Bookings</h1>
+    <section class="card">
+      <h3>Create Booking</h3>
+      <div class="row">
+        <label>User ID <input id="userId" type="number" placeholder="1"></label>
+        <label>Type
+          <select id="itemType">
+            <option value="hotel">hotel</option>
+            <option value="flight">flight</option>
+            <option value="activity">activity</option>
+            <option value="transfer">transfer</option>
+          </select>
+        </label>
+        <label>Item ID <input id="itemId" type="number" placeholder="1"></label>
+        <label>Total Price <input id="totalPrice" type="number" placeholder="100"></label>
+        <button onclick="createBooking()">Book</button>
+      </div>
+      <div id="createStatus" class="muted"></div>
+    </section>
+    <h3>Recent</h3>
+    <div id="status" class="muted"></div>
+    <div id="list" class="grid"></div>
+  </main>
+  <script>
+    async function loadBookings() {
+      const list = document.getElementById('list');
+      const status = document.getElementById('status');
+      list.innerHTML = '';
+      status.textContent = 'Loading...';
+      try {
+        const res = await fetch('/api/bookings');
+        const data = await res.json();
+        status.textContent = '';
+        (data.results || []).forEach(b => {
+          const div = document.createElement('div');
+          div.className = 'card';
+          div.innerHTML = `<strong>#${b.id}</strong><div class="muted">${b.item_type} · item ${b.item_id}</div><div>${b.booked_at} · ₱${Number(b.total_price).toFixed(2)}</div>`;
+          list.appendChild(div);
+        });
+        if (!list.children.length) status.textContent = 'No bookings yet.';
+      } catch (e) {
+        status.textContent = 'Failed to load bookings.';
+        console.error(e);
+      }
+    }
+    async function createBooking() {
+      const createStatus = document.getElementById('createStatus');
+      createStatus.textContent = 'Submitting...';
+      try {
+        const body = {
+          userId: Number(document.getElementById('userId').value),
+          itemType: document.getElementById('itemType').value,
+          itemId: Number(document.getElementById('itemId').value),
+          totalPrice: Number(document.getElementById('totalPrice').value),
+        };
+        const res = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed');
+        createStatus.textContent = 'Created #' + data.id;
+        loadBookings();
+      } catch (e) {
+        createStatus.textContent = 'Error: ' + e.message + ' (Are you logged in?)';
+      }
+    }
+    window.addEventListener('DOMContentLoaded', loadBookings);
+  </script>
+</body>
+</html>
+
+
