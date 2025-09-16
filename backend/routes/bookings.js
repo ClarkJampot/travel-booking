@@ -1,5 +1,6 @@
 import express from "express";
 import { query } from "../models/db.js";
+import { requireAuth } from "./_auth.js";
 
 const router = express.Router();
 
@@ -51,7 +52,7 @@ router.get("/:id", async (req, res) => {
 
 // POST /api/bookings
 // Body: { userId, itemType: 'hotel'|'flight'|'activity'|'transfer', itemId, totalPrice }
-router.post("/", async (req, res) => {
+router.post("/", requireAuth, async (req, res) => {
   try {
     const { userId, itemType, itemId, totalPrice } = req.body || {};
     const validTypes = ["hotel", "flight", "activity", "transfer"];
