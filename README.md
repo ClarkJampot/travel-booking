@@ -105,4 +105,3 @@ JSON responses; errors: `{ "error": "message" }` with proper status codes.
 
 ## Notes
 - Framework-free for clarity; not production-hardened
-- Previous Node/Express code will be removed as we port features to PHP
