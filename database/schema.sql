@@ -1,107 +1,109 @@
--- Database schema for travel-booking (MySQL/MariaDB)
-
--- Drop existing tables (respect FK order)
-SET FOREIGN_KEY_CHECKS = 0;
-DROP TABLE IF EXISTS bookings;
-DROP TABLE IF EXISTS ads;
-DROP TABLE IF EXISTS transfers;
-DROP TABLE IF EXISTS activities;
-DROP TABLE IF EXISTS flights;
-DROP TABLE IF EXISTS hotels;
-DROP TABLE IF EXISTS users;
-DROP TABLE IF EXISTS roles;
-SET FOREIGN_KEY_CHECKS = 1;
+-- SQL Server schema for booking-system
+-- Idempotent drop
+IF OBJECT_ID('dbo.bookings', 'U') IS NOT NULL DROP TABLE dbo.bookings;
+IF OBJECT_ID('dbo.ads', 'U') IS NOT NULL DROP TABLE dbo.ads;
+IF OBJECT_ID('dbo.transfers', 'U') IS NOT NULL DROP TABLE dbo.transfers;
+IF OBJECT_ID('dbo.activities', 'U') IS NOT NULL DROP TABLE dbo.activities;
+IF OBJECT_ID('dbo.flights', 'U') IS NOT NULL DROP TABLE dbo.flights;
+IF OBJECT_ID('dbo.hotels', 'U') IS NOT NULL DROP TABLE dbo.hotels;
+IF OBJECT_ID('dbo.users', 'U') IS NOT NULL DROP TABLE dbo.users;
+IF OBJECT_ID('dbo.roles', 'U') IS NOT NULL DROP TABLE dbo.roles;
 
 -- Roles
-CREATE TABLE roles (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(50) NOT NULL UNIQUE
+CREATE TABLE dbo.roles (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  name NVARCHAR(50) NOT NULL UNIQUE
 );
 
 -- Users
-CREATE TABLE users (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  email VARCHAR(255) NOT NULL UNIQUE,
-  password_hash VARCHAR(255) NOT NULL,
-  full_name VARCHAR(255) NOT NULL,
+CREATE TABLE dbo.users (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  email NVARCHAR(255) NOT NULL UNIQUE,
+  password_hash NVARCHAR(255) NOT NULL,
+  full_name NVARCHAR(255) NOT NULL,
   role_id INT NOT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (role_id) REFERENCES roles(id)
+  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_users_roles FOREIGN KEY (role_id) REFERENCES dbo.roles(id)
 );
 
 -- Hotels
-CREATE TABLE hotels (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  name VARCHAR(255) NOT NULL,
-  city VARCHAR(100) NOT NULL,
-  country VARCHAR(100) NOT NULL,
+CREATE TABLE dbo.hotels (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  name NVARCHAR(255) NOT NULL,
+  city NVARCHAR(100) NOT NULL,
+  country NVARCHAR(100) NOT NULL,
   price_per_night DECIMAL(10,2) NOT NULL,
   rating DECIMAL(3,2) DEFAULT 0,
   created_by INT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES users(id)
+  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_hotels_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
 );
 
 -- Flights
-CREATE TABLE flights (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  airline VARCHAR(100) NOT NULL,
-  origin VARCHAR(100) NOT NULL,
-  destination VARCHAR(100) NOT NULL,
+CREATE TABLE dbo.flights (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  airline NVARCHAR(100) NOT NULL,
+  origin NVARCHAR(100) NOT NULL,
+  destination NVARCHAR(100) NOT NULL,
   depart_date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   created_by INT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES users(id)
+  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_flights_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
 );
 
 -- Activities
-CREATE TABLE activities (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  title VARCHAR(255) NOT NULL,
-  city VARCHAR(100) NOT NULL,
+CREATE TABLE dbo.activities (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  title NVARCHAR(255) NOT NULL,
+  city NVARCHAR(100) NOT NULL,
   date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   created_by INT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES users(id)
+  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_activities_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
 );
 
--- Transfers (land)
-CREATE TABLE transfers (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  service VARCHAR(255) NOT NULL,
-  origin VARCHAR(100) NOT NULL,
-  destination VARCHAR(100) NOT NULL,
+-- Transfers
+CREATE TABLE dbo.transfers (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  service NVARCHAR(255) NOT NULL,
+  origin NVARCHAR(100) NOT NULL,
+  destination NVARCHAR(100) NOT NULL,
   date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   created_by INT NULL,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-  FOREIGN KEY (created_by) REFERENCES users(id)
+  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  CONSTRAINT FK_transfers_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
 );
 
--- Bookings (polymorphic item reference via type+id for simplicity)
-CREATE TABLE bookings (
-  id INT AUTO_INCREMENT PRIMARY KEY,
+-- Bookings
+CREATE TABLE dbo.bookings (
+  id INT IDENTITY(1,1) PRIMARY KEY,
   user_id INT NOT NULL,
-  item_type ENUM('hotel','flight','activity','transfer') NOT NULL,
+  item_type NVARCHAR(16) NOT NULL CHECK (item_type IN ('hotel','flight','activity','transfer')),
   item_id INT NOT NULL,
-  booked_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+  booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   total_price DECIMAL(10,2) NOT NULL,
-  FOREIGN KEY (user_id) REFERENCES users(id)
+  CONSTRAINT FK_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id)
 );
 
--- Basic Ads
-CREATE TABLE ads (
-  id INT AUTO_INCREMENT PRIMARY KEY,
-  placement ENUM('home','listing','sidebar') NOT NULL,
-  title VARCHAR(255) NOT NULL,
-  image_url VARCHAR(500) NULL,
-  link_url VARCHAR(500) NULL,
-  active TINYINT(1) DEFAULT 1,
-  created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+-- Ads
+CREATE TABLE dbo.ads (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  placement NVARCHAR(16) NOT NULL CHECK (placement IN ('home','listing','sidebar')),
+  title NVARCHAR(255) NOT NULL,
+  image_url NVARCHAR(500) NULL,
+  link_url NVARCHAR(500) NULL,
+  active BIT DEFAULT 1,
+  created_at DATETIME2 DEFAULT SYSUTCDATETIME()
 );
 
-
-
-
+-- Indexes
+CREATE INDEX IX_hotels_city ON dbo.hotels(city);
+CREATE INDEX IX_hotels_country ON dbo.hotels(country);
+CREATE INDEX IX_hotels_price ON dbo.hotels(price_per_night);
+CREATE INDEX IX_hotels_rating ON dbo.hotels(rating);
+CREATE INDEX IX_flights_depart ON dbo.flights(depart_date);
+CREATE INDEX IX_activities_date ON dbo.activities(date);
+CREATE INDEX IX_transfers_date ON dbo.transfers(date);
