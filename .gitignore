@@ -1,3 +1,30 @@
+# OS / editor
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# Node leftovers (if any)
+node_modules/
+
+# PHP/XAMPP
+vendor/
+composer.lock
+
+# Environment / secrets
+api/config.php
+api/db.php
+.env
+
+# Temporary / cache
+*.cache
+*.tmp
+*.swp
+
+# SQL backups
+database/*.bak
+database/*.sql.bak
 # Node.js dependencies
 node_modules/
 
