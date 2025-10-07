@@ -1,7 +1,7 @@
 DirectoryIndex index.html
 Options -Indexes
 
-# Handle API routes
+# Handle API routes - rewrite to the actual API directory
 RewriteEngine On
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d

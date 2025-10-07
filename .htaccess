@@ -1,8 +1,7 @@
 # Redirect root to public directory
 RewriteEngine On
 
-# Don't rewrite API calls
-RewriteCond %{REQUEST_URI} !^/api/
+# Don't rewrite API calls - let them pass through
 RewriteCond %{REQUEST_URI} !^/travel-booking/api/
 
 # Redirect root to public directory
