@@ -8,9 +8,45 @@ if ($_SERVER['REQUEST_URI'] === '/travel-booking/api/' || $_SERVER['REQUEST_URI'
   exit;
 }
 
+// Route: /api/auth/*
+if (preg_match('#/api/auth/#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/auth.php';
+  exit;
+}
+
 // Route: /api/hotels
 if (preg_match('#/api/hotels/?$#', $_SERVER['REQUEST_URI'])) {
   require __DIR__ . '/controllers/hotels.php';
+  exit;
+}
+
+// Route: /api/flights
+if (preg_match('#/api/flights/?$#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/flights.php';
+  exit;
+}
+
+// Route: /api/activities
+if (preg_match('#/api/activities/?$#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/activities.php';
+  exit;
+}
+
+// Route: /api/transfers
+if (preg_match('#/api/transfers/?$#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/transfers.php';
+  exit;
+}
+
+// Route: /api/bookings
+if (preg_match('#/api/bookings/#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/bookings.php';
+  exit;
+}
+
+// Route: /api/ads
+if (preg_match('#/api/ads/?$#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/ads.php';
   exit;
 }
 
