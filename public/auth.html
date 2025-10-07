@@ -7,13 +7,14 @@
 </head>
 <body>
   <header>
-    <a href="/">← Home</a>
+    <a href="index.html">← Home</a>
     <nav>
-      <a href="/hotels.html">Hotels</a>
-      <a href="/flights.html">Flights</a>
-      <a href="/activities.html">Activities</a>
-      <a href="/transfers.html">Transfers</a>
-      <a href="/bookings.html">Bookings</a>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">Bookings</a>
+      <a href="auth.html">Auth</a>
     </nav>
   </header>
   <main>
@@ -55,7 +56,7 @@
       const status = document.getElementById('authStatus');
       status.textContent = 'Logging in...';
       try {
-        const res = await fetch('/api/auth/login', { 
+        const res = await fetch('api/auth/login', { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify({ email, password }) 
@@ -73,7 +74,7 @@
       const status = document.getElementById('authStatus');
       status.textContent = 'Registering...';
       try {
-        const res = await fetch('/api/auth/register', { 
+        const res = await fetch('api/auth/register', { 
           method: 'POST', 
           headers: { 'Content-Type': 'application/json' }, 
           body: JSON.stringify({ email, password, full_name, role }) 
@@ -87,7 +88,7 @@
       const status = document.getElementById('authStatus');
       status.textContent = 'Logging out...';
       try {
-        const res = await fetch('/api/auth/logout', { method: 'POST' });
+        const res = await fetch('api/auth/logout', { method: 'POST' });
         status.textContent = res.ok ? 'Logged out' : 'Logout failed';
       } catch (e) { status.textContent = 'Error: ' + e.message; }
     }
@@ -96,7 +97,7 @@
       const status = document.getElementById('authStatus');
       status.textContent = 'Checking session...';
       try {
-        const res = await fetch('/api/auth/me');
+        const res = await fetch('api/auth/me');
         const data = await res.json();
         status.textContent = data.user ? `Session: ${data.user.email} (${data.user.role})` : 'No session';
       } catch (e) { status.textContent = 'Error: ' + e.message; }

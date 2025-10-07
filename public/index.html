@@ -9,12 +9,12 @@
   <header>
     <strong>Travel Booking</strong>
     <nav>
-      <a href="/hotels.html">Hotels</a>
-      <a href="/flights.html">Flights</a>
-      <a href="/activities.html">Activities</a>
-      <a href="/transfers.html">Transfers</a>
-      <a href="/bookings.html">Bookings</a>
-      <a href="/auth.html">Auth</a>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">Bookings</a>
+      <a href="auth.html">Auth</a>
     </nav>
   </header>
   <main>
@@ -29,10 +29,10 @@
   <script>
     async function loadAds() {
       try {
-        const r = await fetch('/api/ads?placement=home');
-        const ads = await r.json();
+        const r = await fetch('api/ads?placement=home');
+        const data = await r.json();
         const container = document.getElementById('ads');
-        ads.forEach(a => {
+        (data.results || []).forEach(a => {
           const card = document.createElement('div');
           card.className = 'card';
           card.innerHTML = `<strong>${a.title}</strong><div class="muted">${a.placement}</div>`;

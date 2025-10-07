@@ -7,13 +7,14 @@
 </head>
 <body>
   <header>
-    <a href="/">← Home</a>
+    <a href="index.html">← Home</a>
     <nav>
-      <a href="/hotels.html">Hotels</a>
-      <a href="/flights.html">Flights</a>
-      <a href="/activities.html">Activities</a>
-      <a href="/transfers.html">Transfers</a>
-      <a href="/bookings.html">Bookings</a>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">Bookings</a>
+      <a href="auth.html">Auth</a>
     </nav>
   </header>
   <main>
@@ -47,7 +48,7 @@
       list.innerHTML = '';
       status.textContent = 'Loading...';
       try {
-        const res = await fetch('/api/bookings');
+        const res = await fetch('api/bookings');
         const data = await res.json();
         status.textContent = '';
         (data.results || []).forEach(b => {
@@ -72,7 +73,7 @@
           itemId: Number(document.getElementById('itemId').value),
           totalPrice: Number(document.getElementById('totalPrice').value),
         };
-        const res = await fetch('/api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
+        const res = await fetch('api/bookings', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(body) });
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed');
         createStatus.textContent = 'Created #' + data.id;
