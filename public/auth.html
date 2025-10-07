@@ -18,28 +18,71 @@
   </header>
   <main>
     <h1>Auth</h1>
+    
     <section class="card">
-      <h3>Login (email only for demo)</h3>
+      <h3>Login</h3>
       <div class="row">
-        <label>Email <input id="email" placeholder="admin@example.com"></label>
+        <label>Email <input id="email" placeholder="test@example.com"></label>
+        <label>Password <input id="password" type="password" placeholder="••••••••"></label>
         <button onclick="login()">Login</button>
         <button onclick="logout()">Logout</button>
         <button onclick="me()">Me</button>
       </div>
       <div id="authStatus" class="muted"></div>
     </section>
+
+    <section class="card" style="margin-top:12px;">
+      <h3>Register</h3>
+      <div class="row">
+        <label>Email <input id="reg_email" placeholder="new@example.com"></label>
+        <label>Password <input id="reg_password" type="password" placeholder="••••••••"></label>
+        <label>Full name <input id="reg_name" placeholder="Your Name"></label>
+        <label>Role
+          <select id="reg_role">
+            <option value="customer">customer</option>
+            <option value="agency">agency</option>
+            <option value="owner">owner</option>
+          </select>
+        </label>
+        <button onclick="register()">Register</button>
+      </div>
+    </section>
   </main>
   <script>
     async function login() {
       const email = document.getElementById('email').value.trim();
+      const password = document.getElementById('password').value;
       const status = document.getElementById('authStatus');
       status.textContent = 'Logging in...';
       try {
-        const res = await fetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email }) });
+        const res = await fetch('/api/auth/login', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ email, password }) 
+        });
         const data = await res.json();
         status.textContent = res.ok ? 'Logged in as ' + (data.user?.email || '') : 'Error: ' + (data.error || 'Failed');
       } catch (e) { status.textContent = 'Error: ' + e.message; }
     }
+
+    async function register() {
+      const email = document.getElementById('reg_email').value.trim();
+      const password = document.getElementById('reg_password').value;
+      const full_name = document.getElementById('reg_name').value.trim();
+      const role = document.getElementById('reg_role').value;
+      const status = document.getElementById('authStatus');
+      status.textContent = 'Registering...';
+      try {
+        const res = await fetch('/api/auth/register', { 
+          method: 'POST', 
+          headers: { 'Content-Type': 'application/json' }, 
+          body: JSON.stringify({ email, password, full_name, role }) 
+        });
+        const data = await res.json();
+        status.textContent = res.ok ? 'Registered & logged in as ' + (data.user?.email || '') : 'Error: ' + (data.error || 'Failed');
+      } catch (e) { status.textContent = 'Error: ' + e.message; }
+    }
+
     async function logout() {
       const status = document.getElementById('authStatus');
       status.textContent = 'Logging out...';
@@ -48,6 +91,7 @@
         status.textContent = res.ok ? 'Logged out' : 'Logout failed';
       } catch (e) { status.textContent = 'Error: ' + e.message; }
     }
+
     async function me() {
       const status = document.getElementById('authStatus');
       status.textContent = 'Checking session...';
