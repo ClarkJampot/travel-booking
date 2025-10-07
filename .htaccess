@@ -1,0 +1,10 @@
+# Redirect root to public directory
+RewriteEngine On
+
+# Don't rewrite API calls
+RewriteCond %{REQUEST_URI} !^/api/
+RewriteCond %{REQUEST_URI} !^/travel-booking/api/
+
+# Redirect root to public directory
+RewriteRule ^$ public/ [L]
+RewriteRule ^(.*)$ public/$1 [L]

@@ -1,0 +1,8 @@
+DirectoryIndex index.html
+Options -Indexes
+
+# Handle API routes
+RewriteEngine On
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/(.*)$ ../api/index.php [QSA,L]
