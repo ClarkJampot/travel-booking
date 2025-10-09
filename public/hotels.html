@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <title>Hotels - Travel Booking</title>
-  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="css/style.css">
   <script>
     async function loadHotels() {
       const list = document.getElementById('list');
@@ -28,7 +28,14 @@
         (data.results || []).forEach(h => {
           const div = document.createElement('div');
           div.className = 'card';
-          div.innerHTML = `<strong>${h.name}</strong><div class="muted">${h.city}, ${h.country}</div><div>₱${Number(h.price_per_night).toFixed(2)} / night</div>`;
+          div.innerHTML = `
+            <div class="row" style="justify-content:space-between">
+              <strong>${h.name}</strong>
+              <span class="badge">${Number(h.rating).toFixed(1)} ★</span>
+            </div>
+            <div class="muted">${h.city}, ${h.country}</div>
+            <div class="price" style="margin-top:6px;">₱${Number(h.price_per_night).toFixed(2)} <span class="muted" style="font-weight:400">/ night</span></div>
+          `;
           list.appendChild(div);
         });
         if (!list.children.length) status.textContent = 'No hotels found.';
@@ -54,7 +61,7 @@
   </header>
   <main>
     <h1>Hotels</h1>
-    <div class="row">
+    <div class="toolbar">
       <label>City <input id="city" placeholder="Cebu"></label>
       <label>Country <input id="country" placeholder="Philippines"></label>
       <label>Min ₱ <input id="minPrice" type="number"></label>
@@ -62,7 +69,14 @@
       <label>Rating ≥ <input id="ratingMin" type="number" min="0" max="5" step="0.1"></label>
       <button onclick="loadHotels()">Search</button>
     </div>
-    <p class="muted">Fetching from <code>api/hotels</code></p>
+    <div class="row" style="justify-content:space-between; margin-bottom:8px;">
+      <span class="muted">Fetching from <code>api/hotels</code></span>
+      <div class="row">
+        <span class="badge">Free cancellation</span>
+        <span class="badge">Breakfast</span>
+        <span class="badge">Pay at hotel</span>
+      </div>
+    </div>
     <div id="status" class="muted"></div>
     <div id="list" class="grid"></div>
   </main>
