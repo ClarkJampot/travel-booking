@@ -1,11 +1,11 @@
-# Redirect root to index.html
+# Normalize index.html to root /
 DirectoryIndex index.html
 
 # Enable URL rewriting
 RewriteEngine On
 
-# Redirect root / to /index.html
-RewriteRule ^$ index.html [L]
+# Redirect /index.html to root /
+RewriteRule ^index\.html$ /travel-booking/ [R=301,L]
 
 # API routes
 RewriteRule ^api/(.*)$ api/index.php [L,QSA]

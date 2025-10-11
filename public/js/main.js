@@ -1,4 +1,5 @@
 // Main.js - Common JavaScript functions for travel booking app
+// Version: 2.0 - Fixed addEventListener error
 
 // Utility function to show loading state
 function showLoading(elementId) {
