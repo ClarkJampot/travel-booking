@@ -22,6 +22,7 @@ CREATE TABLE dbo.users (
   password_hash NVARCHAR(255) NOT NULL,
   full_name NVARCHAR(255) NOT NULL,
   role_id INT NOT NULL,
+  user_profile_image NVARCHAR(500) NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   CONSTRAINT FK_users_roles FOREIGN KEY (role_id) REFERENCES dbo.roles(id)
 );
@@ -34,6 +35,9 @@ CREATE TABLE dbo.hotels (
   country NVARCHAR(100) NOT NULL,
   price_per_night DECIMAL(10,2) NOT NULL,
   rating DECIMAL(3,2) DEFAULT 0,
+  description NVARCHAR(MAX) NULL,
+  image_url NVARCHAR(500) NULL,
+  booking_count INT DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   CONSTRAINT FK_hotels_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
@@ -47,6 +51,9 @@ CREATE TABLE dbo.flights (
   destination NVARCHAR(100) NOT NULL,
   depart_date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
+  description NVARCHAR(MAX) NULL,
+  image_url NVARCHAR(500) NULL,
+  booking_count INT DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   CONSTRAINT FK_flights_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
@@ -59,6 +66,9 @@ CREATE TABLE dbo.activities (
   city NVARCHAR(100) NOT NULL,
   date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
+  description NVARCHAR(MAX) NULL,
+  image_url NVARCHAR(500) NULL,
+  booking_count INT DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   CONSTRAINT FK_activities_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
@@ -72,6 +82,9 @@ CREATE TABLE dbo.transfers (
   destination NVARCHAR(100) NOT NULL,
   date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
+  description NVARCHAR(MAX) NULL,
+  image_url NVARCHAR(500) NULL,
+  booking_count INT DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   CONSTRAINT FK_transfers_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
