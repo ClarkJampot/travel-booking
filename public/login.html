@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
-  <title>Auth - Travel Booking</title>
+  <title>Login - Travel Booking</title>
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
@@ -14,38 +14,25 @@
       <a href="activities.html">Activities</a>
       <a href="transfers.html">Transfers</a>
       <a href="bookings.html">Bookings</a>
-      <a href="auth.html">Auth</a>
+      <a href="login.html">Login</a>
     </nav>
   </header>
   <main>
-    <h1>Auth</h1>
+    <h1>Login</h1>
     
     <section class="card">
-      <h3>Login</h3>
+      <h3>Sign In</h3>
       <div class="row">
         <label>Email <input id="email" placeholder="test@example.com"></label>
         <label>Password <input id="password" type="password" placeholder="••••••••"></label>
         <button onclick="login()">Login</button>
         <button onclick="logout()">Logout</button>
-        <button onclick="me()">Me</button>
+        <button onclick="me()">Check Session</button>
       </div>
       <div id="authStatus" class="muted"></div>
-    </section>
-
-    <section class="card" style="margin-top:12px;">
-      <h3>Register</h3>
-      <div class="row">
-        <label>Email <input id="reg_email" placeholder="new@example.com"></label>
-        <label>Password <input id="reg_password" type="password" placeholder="••••••••"></label>
-        <label>Full name <input id="reg_name" placeholder="Your Name"></label>
-        <label>Role
-          <select id="reg_role">
-            <option value="customer">customer</option>
-            <option value="agency">agency</option>
-            <option value="owner">owner</option>
-          </select>
-        </label>
-        <button onclick="register()">Register</button>
+      <div style="margin-top: 12px;">
+        <p>Don't have an account? <a href="register.html">Register here</a></p>
+        <p><a href="#" onclick="alert('Forgot password feature coming soon!')">Forgot password?</a></p>
       </div>
     </section>
   </main>
@@ -66,23 +53,6 @@
       } catch (e) { status.textContent = 'Error: ' + e.message; }
     }
 
-    async function register() {
-      const email = document.getElementById('reg_email').value.trim();
-      const password = document.getElementById('reg_password').value;
-      const full_name = document.getElementById('reg_name').value.trim();
-      const role = document.getElementById('reg_role').value;
-      const status = document.getElementById('authStatus');
-      status.textContent = 'Registering...';
-      try {
-        const res = await fetch('api/auth/register', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ email, password, full_name, role }) 
-        });
-        const data = await res.json();
-        status.textContent = res.ok ? 'Registered & logged in as ' + (data.user?.email || '') : 'Error: ' + (data.error || 'Failed');
-      } catch (e) { status.textContent = 'Error: ' + e.message; }
-    }
 
     async function logout() {
       const status = document.getElementById('authStatus');
