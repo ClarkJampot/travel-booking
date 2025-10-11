@@ -23,6 +23,10 @@ CREATE TABLE dbo.users (
   full_name NVARCHAR(255) NOT NULL,
   role_id INT NOT NULL,
   user_profile_image NVARCHAR(500) NULL,
+  phone NVARCHAR(50) NULL,
+  address NVARCHAR(500) NULL,
+  bio NVARCHAR(1000) NULL,
+  onboarding_completed BIT DEFAULT 0,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   CONSTRAINT FK_users_roles FOREIGN KEY (role_id) REFERENCES dbo.roles(id)
 );
