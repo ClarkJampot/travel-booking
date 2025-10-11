@@ -13,34 +13,239 @@
       <a href="flights.html">Flights</a>
       <a href="activities.html">Activities</a>
       <a href="transfers.html">Transfers</a>
-      <a href="bookings.html">Bookings</a>
-      <a href="login.html">Login</a>
+      <a href="bookings.html">My Bookings</a>
+      <a href="login.html" id="loginLink">Login</a>
+      <a href="dashboard.html" id="dashboardLink" style="display:none;">Dashboard</a>
+      <a href="profile.html" id="profileLink" style="display:none;">Profile</a>
+      <a href="#" onclick="logout()" id="logoutLink" style="display:none;">Logout</a>
     </nav>
   </header>
   <main>
-    <h1>Welcome</h1>
-    <p class="muted">Browse and book hotels, flights, activities, and transfers.</p>
+    <section class="hero">
+      <h1>Discover Amazing Travel Experiences</h1>
+      <p class="muted">Find the best hotels, flights, activities, and transfers for your next adventure.</p>
+      <div class="row" style="margin-top:20px;">
+        <a href="hotels.html" class="button">Browse Hotels</a>
+        <a href="flights.html" class="button">Find Flights</a>
+        <a href="activities.html" class="button">Explore Activities</a>
+      </div>
+    </section>
+
+    <h2>Top Hotels Right Now</h2>
+    <div id="topHotels" class="grid"></div>
+    <div id="topHotelsStatus" class="muted"></div>
+
+    <h2>Popular Flights</h2>
+    <div id="topFlights" class="grid"></div>
+    <div id="topFlightsStatus" class="muted"></div>
+
+    <h2>Trending Activities</h2>
+    <div id="topActivities" class="grid"></div>
+    <div id="topActivitiesStatus" class="muted"></div>
 
     <h2>Featured Ads</h2>
     <div id="ads" class="grid"></div>
+    <div id="adsStatus" class="muted"></div>
   </main>
 
   <script src="js/main.js"></script>
   <script>
-    async function loadAds() {
+    let currentUser = null;
+
+    async function checkAuth() {
       try {
-        const r = await fetch('api/ads?placement=home');
-        const data = await r.json();
-        const container = document.getElementById('ads');
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        if (data.user) {
+          currentUser = data.user;
+          updateNavigation();
+        }
+      } catch (e) {
+        // Ignore auth errors on homepage
+      }
+    }
+
+    function updateNavigation() {
+      const loginLink = document.getElementById('loginLink');
+      const dashboardLink = document.getElementById('dashboardLink');
+      const profileLink = document.getElementById('profileLink');
+      const logoutLink = document.getElementById('logoutLink');
+      
+      if (currentUser) {
+        loginLink.style.display = 'none';
+        dashboardLink.style.display = 'inline';
+        profileLink.style.display = 'inline';
+        logoutLink.style.display = 'inline';
+      } else {
+        loginLink.style.display = 'inline';
+        dashboardLink.style.display = 'none';
+        profileLink.style.display = 'none';
+        logoutLink.style.display = 'none';
+      }
+    }
+
+    async function logout() {
+      try {
+        await fetch('api/auth/logout', { method: 'POST' });
+        window.location.reload();
+      } catch (e) {
+        console.error('Logout failed:', e);
+      }
+    }
+
+    async function loadTopHotels() {
+      const container = document.getElementById('topHotels');
+      const status = document.getElementById('topHotelsStatus');
+      
+      try {
+        const res = await fetch('api/top/hotels?limit=4');
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Failed to load hotels');
+        
+        status.textContent = '';
+        container.innerHTML = '';
+        
+        (data.results || []).forEach(h => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.onclick = () => window.location.href = `hotel-details.html?id=${h.id}`;
+          const imgSrc = h.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
+          card.innerHTML = `
+            <img src="${imgSrc}" alt="${h.name}" class="card-image">
+            <div class="row" style="justify-content:space-between">
+              <strong>${h.name}</strong>
+              <span class="badge">${Number(h.rating).toFixed(1)} ★</span>
+            </div>
+            <div class="muted">${h.city}, ${h.country}</div>
+            <div class="price" style="margin-top:6px;">₱${Number(h.price_per_night).toFixed(2)} <span class="muted" style="font-weight:400">/ night</span></div>
+          `;
+          container.appendChild(card);
+        });
+        
+        if (!container.children.length) {
+          status.textContent = 'No hotels available.';
+        }
+      } catch (e) {
+        status.textContent = 'Failed to load hotels: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    async function loadTopFlights() {
+      const container = document.getElementById('topFlights');
+      const status = document.getElementById('topFlightsStatus');
+      
+      try {
+        const res = await fetch('api/top/flights?limit=4');
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Failed to load flights');
+        
+        status.textContent = '';
+        container.innerHTML = '';
+        
+        (data.results || []).forEach(f => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          card.onclick = () => window.location.href = `flight-details.html?id=${f.id}`;
+          const imgSrc = f.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
+          card.innerHTML = `
+            <img src="${imgSrc}" alt="${f.airline}" class="card-image">
+            <strong>${f.airline}</strong>
+            <div class="muted">${f.origin} → ${f.destination}</div>
+            <div>${f.depart_date} · ₱${Number(f.price).toFixed(2)}</div>
+          `;
+          container.appendChild(card);
+        });
+        
+        if (!container.children.length) {
+          status.textContent = 'No flights available.';
+        }
+      } catch (e) {
+        status.textContent = 'Failed to load flights: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    async function loadTopActivities() {
+      const container = document.getElementById('topActivities');
+      const status = document.getElementById('topActivitiesStatus');
+      
+      try {
+        const res = await fetch('api/top/activities?limit=4');
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Failed to load activities');
+        
+        status.textContent = '';
+        container.innerHTML = '';
+        
         (data.results || []).forEach(a => {
           const card = document.createElement('div');
           card.className = 'card';
-          card.innerHTML = `<strong>${a.title}</strong><div class="muted">${a.placement}</div>`;
+          card.onclick = () => window.location.href = `activity-details.html?id=${a.id}`;
+          const imgSrc = a.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
+          card.innerHTML = `
+            <img src="${imgSrc}" alt="${a.title}" class="card-image">
+            <strong>${a.title}</strong>
+            <div class="muted">${a.city}</div>
+            <div>${a.date} · ₱${Number(a.price).toFixed(2)}</div>
+          `;
           container.appendChild(card);
         });
-      } catch (e) { console.error(e); }
+        
+        if (!container.children.length) {
+          status.textContent = 'No activities available.';
+        }
+      } catch (e) {
+        status.textContent = 'Failed to load activities: ' + e.message;
+        console.error(e);
+      }
     }
-    loadAds();
+
+    async function loadAds() {
+      const container = document.getElementById('ads');
+      const status = document.getElementById('adsStatus');
+      
+      try {
+        const res = await fetch('api/ads?placement=home');
+        const data = await res.json();
+        
+        if (!res.ok) throw new Error(data.error || 'Failed to load ads');
+        
+        status.textContent = '';
+        container.innerHTML = '';
+        
+        (data.results || []).forEach(a => {
+          const card = document.createElement('div');
+          card.className = 'card';
+          const imgSrc = a.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
+          card.innerHTML = `
+            <img src="${imgSrc}" alt="${a.title}" class="card-image">
+            <strong>${a.title}</strong>
+            <div class="muted">${a.placement}</div>
+          `;
+          container.appendChild(card);
+        });
+        
+        if (!container.children.length) {
+          status.textContent = 'No ads available.';
+        }
+      } catch (e) {
+        status.textContent = 'Failed to load ads: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    // Load all content
+    window.addEventListener('DOMContentLoaded', () => {
+      checkAuth();
+      loadTopHotels();
+      loadTopFlights();
+      loadTopActivities();
+      loadAds();
+    });
   </script>
 </body>
 </html>

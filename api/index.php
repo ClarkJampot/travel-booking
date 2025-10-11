@@ -70,6 +70,12 @@ if (preg_match('#/api/ads/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
   exit;
 }
 
+// Route: /api/top/*
+if (preg_match('#/api/top/#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/top.php';
+  exit;
+}
+
 // 404
 json_error('Not found', 404);
 
