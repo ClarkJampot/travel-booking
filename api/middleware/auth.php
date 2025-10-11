@@ -8,6 +8,15 @@ function requireAuth(): void {
   }
 }
 
+function requireOnboarding(): void {
+  requireAuth();
+  $onboardingCompleted = $_SESSION['user']['onboarding_completed'] ?? false;
+  if (!$onboardingCompleted) {
+    json_error('Onboarding required', 403, ['redirect' => 'onboarding.html']);
+    exit;
+  }
+}
+
 function requireRole(array $allowedRoles): void {
   requireAuth();
   $userRole = $_SESSION['user']['role'] ?? '';

@@ -23,10 +23,14 @@ function json_ok($data, int $code = 200): void {
   echo json_encode($data, JSON_UNESCAPED_UNICODE);
 }
 
-function json_error(string $message, int $code = 400): void {
+function json_error(string $message, int $code = 400, array $data = []): void {
   http_response_code($code);
   header('Content-Type: application/json');
-  echo json_encode(['error' => $message], JSON_UNESCAPED_UNICODE);
+  $response = ['error' => $message];
+  if (!empty($data)) {
+    $response = array_merge($response, $data);
+  }
+  echo json_encode($response, JSON_UNESCAPED_UNICODE);
 }
 
 
