@@ -49,7 +49,19 @@
           body: JSON.stringify({ email, password }) 
         });
         const data = await res.json();
-        status.textContent = res.ok ? 'Logged in as ' + (data.user?.email || '') : 'Error: ' + (data.error || 'Failed');
+        if (res.ok) {
+          status.textContent = 'Logged in as ' + (data.user?.email || '');
+          // Check if onboarding is completed
+          if (!data.user?.onboarding_completed) {
+            status.textContent += ' - Redirecting to onboarding...';
+            setTimeout(() => window.location.href = 'onboarding.html', 1000);
+          } else {
+            status.textContent += ' - Redirecting...';
+            setTimeout(() => window.location.href = 'dashboard.html', 1000);
+          }
+        } else {
+          status.textContent = 'Error: ' + (data.error || 'Failed');
+        }
       } catch (e) { status.textContent = 'Error: ' + e.message; }
     }
 

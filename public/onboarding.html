@@ -1,0 +1,75 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Complete Your Profile - Travel Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <main style="max-width: 600px; margin: 50px auto; padding: 20px;">
+    <h1>Welcome! Let's Complete Your Profile</h1>
+    <p class="muted">Please provide some additional information to get started.</p>
+    
+    <section class="card">
+      <h3>Profile Information</h3>
+      <div class="row">
+        <label>Phone Number <input id="phone" type="tel" placeholder="+63 912 345 6789"></label>
+        <label>Address <textarea id="address" rows="3" placeholder="Your address"></textarea></label>
+        <label>Bio / Description <textarea id="bio" rows="4" placeholder="Tell us about yourself..."></textarea></label>
+        <button onclick="submitOnboarding()">Complete Profile</button>
+      </div>
+      <div id="status" class="muted"></div>
+    </section>
+  </main>
+  <script>
+    async function submitOnboarding() {
+      const phone = document.getElementById('phone').value.trim();
+      const address = document.getElementById('address').value.trim();
+      const bio = document.getElementById('bio').value.trim();
+      const status = document.getElementById('status');
+      
+      if (!phone || !address) {
+        status.textContent = 'Phone and address are required';
+        return;
+      }
+      
+      status.textContent = 'Saving...';
+      try {
+        const res = await fetch('api/auth/onboarding', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ phone, address, bio })
+        });
+        const data = await res.json();
+        
+        if (res.ok) {
+          status.textContent = 'Profile completed! Redirecting...';
+          setTimeout(() => {
+            window.location.href = 'dashboard.html';
+          }, 1500);
+        } else {
+          status.textContent = 'Error: ' + (data.error || 'Failed to update profile');
+        }
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+      }
+    }
+    
+    // Check if already logged in
+    async function checkAuth() {
+      try {
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        if (!data.user) {
+          window.location.href = 'login.html';
+        }
+      } catch (e) {
+        window.location.href = 'login.html';
+      }
+    }
+    
+    checkAuth();
+  </script>
+</body>
+</html>
+
