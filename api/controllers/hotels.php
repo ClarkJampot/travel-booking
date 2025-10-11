@@ -22,6 +22,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   $minPrice = isset($_GET['minPrice']) ? (float)$_GET['minPrice'] : null;
   $maxPrice = isset($_GET['maxPrice']) ? (float)$_GET['maxPrice'] : null;
   $ratingMin = isset($_GET['ratingMin']) ? (float)$_GET['ratingMin'] : null;
+  $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
   $offset = ($page - 1) * $limit;
@@ -33,6 +34,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   if ($minPrice !== null) { $where[] = 'price_per_night >= :minPrice'; $params[':minPrice'] = $minPrice; }
   if ($maxPrice !== null) { $where[] = 'price_per_night <= :maxPrice'; $params[':maxPrice'] = $maxPrice; }
   if ($ratingMin !== null) { $where[] = 'rating >= :ratingMin'; $params[':ratingMin'] = $ratingMin; }
+  if ($createdBy !== null) { $where[] = 'created_by = :createdBy'; $params[':createdBy'] = $createdBy; }
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
   $sql = "SELECT * FROM hotels $whereSql ORDER BY rating DESC, price_per_night ASC, id ASC OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";

@@ -20,6 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   $origin = $_GET['origin'] ?? null;
   $destination = $_GET['destination'] ?? null;
   $date = $_GET['date'] ?? null;
+  $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
   $offset = ($page - 1) * $limit;
@@ -29,6 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   if ($origin) { $where[] = 'origin = :origin'; $params[':origin'] = $origin; }
   if ($destination) { $where[] = 'destination = :destination'; $params[':destination'] = $destination; }
   if ($date) { $where[] = 'depart_date >= :date'; $params[':date'] = $date; }
+  if ($createdBy !== null) { $where[] = 'created_by = :createdBy'; $params[':createdBy'] = $createdBy; }
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
   $sql = "SELECT * FROM flights $whereSql ORDER BY depart_date ASC, price ASC, id ASC OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";

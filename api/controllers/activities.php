@@ -19,6 +19,7 @@ try {
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   $city = $_GET['city'] ?? null;
   $date = $_GET['date'] ?? null;
+  $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
   $offset = ($page - 1) * $limit;
@@ -27,6 +28,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET') {
   $params = [];
   if ($city) { $where[] = 'city = :city'; $params[':city'] = $city; }
   if ($date) { $where[] = 'date >= :date'; $params[':date'] = $date; }
+  if ($createdBy !== null) { $where[] = 'created_by = :createdBy'; $params[':createdBy'] = $createdBy; }
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
 
   $sql = "SELECT * FROM activities $whereSql ORDER BY date ASC, price ASC, id ASC OFFSET $offset ROWS FETCH NEXT $limit ROWS ONLY";
