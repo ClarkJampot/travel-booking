@@ -54,7 +54,7 @@
 
     async function checkAuth() {
       try {
-        const res = await fetch('api/auth/me');
+        const res = await fetch('/travel-booking/api/auth/me');
         const data = await res.json();
         if (data.user) {
           currentUser = data.user;
@@ -86,7 +86,7 @@
 
     async function logout() {
       try {
-        await fetch('api/auth/logout', { method: 'POST' });
+        await fetch('/travel-booking/api/auth/logout', { method: 'POST' });
         window.location.reload();
       } catch (e) {
         console.error('Logout failed:', e);
@@ -98,7 +98,7 @@
       const status = document.getElementById('topHotelsStatus');
       
       try {
-        const res = await fetch('api/top/hotels?limit=4');
+        const res = await fetch('/travel-booking/api/top/hotels?limit=4');
         const data = await res.json();
         
         if (!res.ok) throw new Error(data.error || 'Failed to load hotels');
@@ -137,7 +137,7 @@
       const status = document.getElementById('topFlightsStatus');
       
       try {
-        const res = await fetch('api/top/flights?limit=4');
+        const res = await fetch('/travel-booking/api/top/flights?limit=4');
         const data = await res.json();
         
         if (!res.ok) throw new Error(data.error || 'Failed to load flights');
@@ -173,7 +173,7 @@
       const status = document.getElementById('topActivitiesStatus');
       
       try {
-        const res = await fetch('api/top/activities?limit=4');
+        const res = await fetch('/travel-booking/api/top/activities?limit=4');
         const data = await res.json();
         
         if (!res.ok) throw new Error(data.error || 'Failed to load activities');
@@ -209,7 +209,7 @@
       const status = document.getElementById('adsStatus');
       
       try {
-        const res = await fetch('api/ads?placement=home');
+        const res = await fetch('/travel-booking/api/ads?placement=home');
         const data = await res.json();
         
         if (!res.ok) throw new Error(data.error || 'Failed to load ads');
