@@ -4,6 +4,11 @@
     Allow from all
 </FilesMatch>
 
+# Set MIME type for SVG
+<FilesMatch "\.svg$">
+    ForceType image/svg+xml
+</FilesMatch>
+
 # Deny PHP execution
 <FilesMatch "\.php$">
     Order Deny,Allow
