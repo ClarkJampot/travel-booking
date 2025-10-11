@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Transfer Details - Travel Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <a href="index.html">← Home</a>
+    <nav>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">Bookings</a>
+      <a href="login.html">Login</a>
+    </nav>
+  </header>
+  <main>
+    <div id="loading" class="muted">Loading transfer details...</div>
+    <div id="content" style="display: none;">
+      <div class="card">
+        <img id="transferImage" src="" alt="" class="card-image" style="height: 300px;">
+        <h1 id="transferService"></h1>
+        <div class="row" style="justify-content: space-between; margin: 12px 0;">
+          <div>
+            <div class="muted" id="transferRoute"></div>
+            <div class="muted" id="transferDate"></div>
+          </div>
+          <div class="price" id="transferPrice"></div>
+        </div>
+        <div id="transferDescription" style="margin: 16px 0;"></div>
+        <button onclick="bookTransfer()" style="width: 100%; padding: 12px; font-size: 16px;">Book Now</button>
+      </div>
+    </div>
+    <div id="error" class="muted" style="display: none;"></div>
+  </main>
+  <script>
+    let transferId = null;
+    let transferData = null;
+
+    async function loadTransferDetails() {
+      const urlParams = new URLSearchParams(window.location.search);
+      transferId = urlParams.get('id');
+      
+      if (!transferId) {
+        document.getElementById('error').textContent = 'No transfer ID provided';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch(`api/transfers?id=${transferId}`);
+        const data = await res.json();
+        
+        if (data.results && data.results.length > 0) {
+          transferData = data.results[0];
+          displayTransfer();
+        } else {
+          document.getElementById('error').textContent = 'Transfer not found';
+          document.getElementById('error').style.display = 'block';
+        }
+      } catch (e) {
+        document.getElementById('error').textContent = 'Failed to load transfer details';
+        document.getElementById('error').style.display = 'block';
+        console.error(e);
+      }
+    }
+
+    function displayTransfer() {
+      const imgSrc = transferData.image_url || '/uploads/placeholder.svg';
+      document.getElementById('transferImage').src = imgSrc;
+      document.getElementById('transferImage').alt = transferData.service;
+      document.getElementById('transferService').textContent = transferData.service;
+      document.getElementById('transferRoute').textContent = `${transferData.origin} → ${transferData.destination}`;
+      document.getElementById('transferDate').textContent = `Date: ${transferData.date}`;
+      document.getElementById('transferPrice').textContent = `₱${Number(transferData.price).toFixed(2)}`;
+      document.getElementById('transferDescription').textContent = transferData.description || 'No description available.';
+      
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    async function bookTransfer() {
+      // Check if user is logged in
+      try {
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        
+        if (!data.user) {
+          alert('Please login to make a booking');
+          window.location.href = 'login.html';
+          return;
+        }
+      } catch (e) {
+        alert('Please login to make a booking');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const res = await fetch('api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemType: 'transfer',
+            itemId: transferId,
+            totalPrice: transferData.price
+          })
+        });
+        
+        if (res.ok) {
+          alert('Booking created successfully!');
+          window.location.href = 'bookings.html';
+        } else {
+          const data = await res.json();
+          alert('Booking failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Booking failed: ' + e.message);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadTransferDetails);
+  </script>
+</body>
+</html>

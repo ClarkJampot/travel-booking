@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Hotel Details - Travel Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <a href="index.html">← Home</a>
+    <nav>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">Bookings</a>
+      <a href="login.html">Login</a>
+    </nav>
+  </header>
+  <main>
+    <div id="loading" class="muted">Loading hotel details...</div>
+    <div id="content" style="display: none;">
+      <div class="card">
+        <img id="hotelImage" src="" alt="" class="card-image" style="height: 300px;">
+        <h1 id="hotelName"></h1>
+        <div class="row" style="justify-content: space-between; margin: 12px 0;">
+          <div>
+            <div class="muted" id="hotelLocation"></div>
+            <div class="badge" id="hotelRating"></div>
+          </div>
+          <div class="price" id="hotelPrice"></div>
+        </div>
+        <div id="hotelDescription" style="margin: 16px 0;"></div>
+        <button onclick="bookHotel()" style="width: 100%; padding: 12px; font-size: 16px;">Book Now</button>
+      </div>
+    </div>
+    <div id="error" class="muted" style="display: none;"></div>
+  </main>
+  <script>
+    let hotelId = null;
+    let hotelData = null;
+
+    async function loadHotelDetails() {
+      const urlParams = new URLSearchParams(window.location.search);
+      hotelId = urlParams.get('id');
+      
+      if (!hotelId) {
+        document.getElementById('error').textContent = 'No hotel ID provided';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch(`api/hotels?id=${hotelId}`);
+        const data = await res.json();
+        
+        if (data.results && data.results.length > 0) {
+          hotelData = data.results[0];
+          displayHotel();
+        } else {
+          document.getElementById('error').textContent = 'Hotel not found';
+          document.getElementById('error').style.display = 'block';
+        }
+      } catch (e) {
+        document.getElementById('error').textContent = 'Failed to load hotel details';
+        document.getElementById('error').style.display = 'block';
+        console.error(e);
+      }
+    }
+
+    function displayHotel() {
+      const imgSrc = hotelData.image_url || '/uploads/placeholder.svg';
+      document.getElementById('hotelImage').src = imgSrc;
+      document.getElementById('hotelImage').alt = hotelData.name;
+      document.getElementById('hotelName').textContent = hotelData.name;
+      document.getElementById('hotelLocation').textContent = `${hotelData.city}, ${hotelData.country}`;
+      document.getElementById('hotelRating').textContent = `${Number(hotelData.rating).toFixed(1)} ★`;
+      document.getElementById('hotelPrice').textContent = `₱${Number(hotelData.price_per_night).toFixed(2)} / night`;
+      document.getElementById('hotelDescription').textContent = hotelData.description || 'No description available.';
+      
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    async function bookHotel() {
+      // Check if user is logged in
+      try {
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        
+        if (!data.user) {
+          alert('Please login to make a booking');
+          window.location.href = 'login.html';
+          return;
+        }
+      } catch (e) {
+        alert('Please login to make a booking');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const res = await fetch('api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemType: 'hotel',
+            itemId: hotelId,
+            totalPrice: hotelData.price_per_night
+          })
+        });
+        
+        if (res.ok) {
+          alert('Booking created successfully!');
+          window.location.href = 'bookings.html';
+        } else {
+          const data = await res.json();
+          alert('Booking failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Booking failed: ' + e.message);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadHotelDetails);
+  </script>
+</body>
+</html>

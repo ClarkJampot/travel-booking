@@ -17,6 +17,21 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+  // Check if requesting single item by ID
+  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+  if ($id) {
+    $stmt = $pdo->prepare('SELECT * FROM flights WHERE id = ?');
+    $stmt->execute([$id]);
+    $flight = $stmt->fetch();
+    if (!$flight) {
+      json_error('Flight not found', 404);
+      exit;
+    }
+    json_ok(['results' => [$flight]]);
+    exit;
+  }
+
+  // Otherwise, handle list query
   $origin = $_GET['origin'] ?? null;
   $destination = $_GET['destination'] ?? null;
   $date = $_GET['date'] ?? null;

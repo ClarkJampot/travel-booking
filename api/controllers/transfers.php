@@ -17,6 +17,21 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+  // Check if requesting single item by ID
+  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+  if ($id) {
+    $stmt = $pdo->prepare('SELECT * FROM transfers WHERE id = ?');
+    $stmt->execute([$id]);
+    $transfer = $stmt->fetch();
+    if (!$transfer) {
+      json_error('Transfer not found', 404);
+      exit;
+    }
+    json_ok(['results' => [$transfer]]);
+    exit;
+  }
+
+  // Otherwise, handle list query
   $origin = $_GET['origin'] ?? null;
   $destination = $_GET['destination'] ?? null;
   $date = $_GET['date'] ?? null;

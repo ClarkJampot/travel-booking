@@ -17,6 +17,21 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+  // Check if requesting single item by ID
+  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+  if ($id) {
+    $stmt = $pdo->prepare('SELECT * FROM activities WHERE id = ?');
+    $stmt->execute([$id]);
+    $activity = $stmt->fetch();
+    if (!$activity) {
+      json_error('Activity not found', 404);
+      exit;
+    }
+    json_ok(['results' => [$activity]]);
+    exit;
+  }
+
+  // Otherwise, handle list query
   $city = $_GET['city'] ?? null;
   $date = $_GET['date'] ?? null;
   $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;

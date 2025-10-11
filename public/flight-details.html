@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Flight Details - Travel Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <a href="index.html">← Home</a>
+    <nav>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">Bookings</a>
+      <a href="login.html">Login</a>
+    </nav>
+  </header>
+  <main>
+    <div id="loading" class="muted">Loading flight details...</div>
+    <div id="content" style="display: none;">
+      <div class="card">
+        <img id="flightImage" src="" alt="" class="card-image" style="height: 300px;">
+        <h1 id="flightAirline"></h1>
+        <div class="row" style="justify-content: space-between; margin: 12px 0;">
+          <div>
+            <div class="muted" id="flightRoute"></div>
+            <div class="muted" id="flightDate"></div>
+          </div>
+          <div class="price" id="flightPrice"></div>
+        </div>
+        <div id="flightDescription" style="margin: 16px 0;"></div>
+        <button onclick="bookFlight()" style="width: 100%; padding: 12px; font-size: 16px;">Book Now</button>
+      </div>
+    </div>
+    <div id="error" class="muted" style="display: none;"></div>
+  </main>
+  <script>
+    let flightId = null;
+    let flightData = null;
+
+    async function loadFlightDetails() {
+      const urlParams = new URLSearchParams(window.location.search);
+      flightId = urlParams.get('id');
+      
+      if (!flightId) {
+        document.getElementById('error').textContent = 'No flight ID provided';
+        document.getElementById('error').style.display = 'block';
+        return;
+      }
+
+      try {
+        const res = await fetch(`api/flights?id=${flightId}`);
+        const data = await res.json();
+        
+        if (data.results && data.results.length > 0) {
+          flightData = data.results[0];
+          displayFlight();
+        } else {
+          document.getElementById('error').textContent = 'Flight not found';
+          document.getElementById('error').style.display = 'block';
+        }
+      } catch (e) {
+        document.getElementById('error').textContent = 'Failed to load flight details';
+        document.getElementById('error').style.display = 'block';
+        console.error(e);
+      }
+    }
+
+    function displayFlight() {
+      const imgSrc = flightData.image_url || '/uploads/placeholder.svg';
+      document.getElementById('flightImage').src = imgSrc;
+      document.getElementById('flightImage').alt = flightData.airline;
+      document.getElementById('flightAirline').textContent = flightData.airline;
+      document.getElementById('flightRoute').textContent = `${flightData.origin} → ${flightData.destination}`;
+      document.getElementById('flightDate').textContent = `Departure: ${flightData.depart_date}`;
+      document.getElementById('flightPrice').textContent = `₱${Number(flightData.price).toFixed(2)}`;
+      document.getElementById('flightDescription').textContent = flightData.description || 'No description available.';
+      
+      document.getElementById('loading').style.display = 'none';
+      document.getElementById('content').style.display = 'block';
+    }
+
+    async function bookFlight() {
+      // Check if user is logged in
+      try {
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        
+        if (!data.user) {
+          alert('Please login to make a booking');
+          window.location.href = 'login.html';
+          return;
+        }
+      } catch (e) {
+        alert('Please login to make a booking');
+        window.location.href = 'login.html';
+        return;
+      }
+
+      try {
+        const res = await fetch('api/bookings', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            itemType: 'flight',
+            itemId: flightId,
+            totalPrice: flightData.price
+          })
+        });
+        
+        if (res.ok) {
+          alert('Booking created successfully!');
+          window.location.href = 'bookings.html';
+        } else {
+          const data = await res.json();
+          alert('Booking failed: ' + (data.error || 'Unknown error'));
+        }
+      } catch (e) {
+        alert('Booking failed: ' + e.message);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', loadFlightDetails);
+  </script>
+</body>
+</html>

@@ -17,6 +17,21 @@ try {
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+  // Check if requesting single item by ID
+  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+  if ($id) {
+    $stmt = $pdo->prepare('SELECT * FROM hotels WHERE id = ?');
+    $stmt->execute([$id]);
+    $hotel = $stmt->fetch();
+    if (!$hotel) {
+      json_error('Hotel not found', 404);
+      exit;
+    }
+    json_ok(['results' => [$hotel]]);
+    exit;
+  }
+
+  // Otherwise, handle list query
   $city = $_GET['city'] ?? null;
   $country = $_GET['country'] ?? null;
   $minPrice = isset($_GET['minPrice']) ? (float)$_GET['minPrice'] : null;
