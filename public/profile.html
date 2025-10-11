@@ -1,0 +1,265 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Profile - Travel Booking</title>
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <header>
+    <a href="index.html">← Home</a>
+    <nav>
+      <a href="hotels.html">Hotels</a>
+      <a href="flights.html">Flights</a>
+      <a href="activities.html">Activities</a>
+      <a href="transfers.html">Transfers</a>
+      <a href="bookings.html">My Bookings</a>
+      <a href="login.html" id="loginLink">Login</a>
+      <a href="dashboard.html" id="dashboardLink" style="display:none;">Dashboard</a>
+      <a href="profile.html" id="profileLink" style="display:none;">Profile</a>
+      <a href="#" onclick="logout()" id="logoutLink" style="display:none;">Logout</a>
+    </nav>
+  </header>
+  <main>
+    <h1>My Profile</h1>
+    <div id="authStatus" class="muted"></div>
+    
+    <section class="card">
+      <h3>Account Information</h3>
+      <div class="row" style="flex-direction:column; align-items:flex-start;">
+        <label style="width:100%;">Full Name <input id="fullName" placeholder="Your Name" style="width:100%;"></label>
+        <label style="width:100%;">Email <input id="email" type="email" readonly style="width:100%; background:#f5f5f0;"></label>
+        <label style="width:100%;">Phone <input id="phone" placeholder="+639123456789" style="width:100%;"></label>
+        <label style="width:100%;">Address <input id="address" placeholder="123 Main St, City, Country" style="width:100%;"></label>
+        <label style="width:100%;">Bio <textarea id="bio" placeholder="Tell us about yourself..." rows="3" style="width:100%;"></textarea></label>
+        <label style="width:100%;">Role <input id="role" readonly style="width:100%; background:#f5f5f0;"></label>
+        <button onclick="updateProfile()" style="margin-top:12px;">Update Profile</button>
+      </div>
+      <div id="updateStatus" class="muted" style="margin-top:12px;"></div>
+    </section>
+
+    <section class="card">
+      <h3>Change Password</h3>
+      <div class="row" style="flex-direction:column; align-items:flex-start;">
+        <label style="width:100%;">New Password <input id="newPassword" type="password" placeholder="••••••••" style="width:100%;"></label>
+        <label style="width:100%;">Confirm Password <input id="confirmPassword" type="password" placeholder="••••••••" style="width:100%;"></label>
+        <button onclick="changePassword()" style="margin-top:12px;">Change Password</button>
+      </div>
+      <div id="passwordStatus" class="muted" style="margin-top:12px;"></div>
+    </section>
+
+    <section class="card">
+      <h3>Profile Picture</h3>
+      <div class="row" style="flex-direction:column; align-items:flex-start;">
+        <div id="profileImageContainer" style="margin-bottom:12px;">
+          <img id="profileImage" src="" alt="Profile" style="width:100px; height:100px; border-radius:50%; object-fit:cover; border:2px solid var(--border);">
+        </div>
+        <input type="file" id="imageUpload" accept="image/*" style="margin-bottom:12px;">
+        <button onclick="uploadImage()">Upload Image</button>
+      </div>
+      <div id="imageStatus" class="muted" style="margin-top:12px;"></div>
+    </section>
+  </main>
+  <script>
+    let currentUser = null;
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        if (data.user) {
+          currentUser = data.user;
+          updateNavigation();
+          loadProfile();
+        } else {
+          redirectToLogin();
+        }
+      } catch (e) {
+        redirectToLogin();
+      }
+    }
+
+    function updateNavigation() {
+      const loginLink = document.getElementById('loginLink');
+      const dashboardLink = document.getElementById('dashboardLink');
+      const profileLink = document.getElementById('profileLink');
+      const logoutLink = document.getElementById('logoutLink');
+      
+      if (currentUser) {
+        loginLink.style.display = 'none';
+        dashboardLink.style.display = 'inline';
+        profileLink.style.display = 'inline';
+        logoutLink.style.display = 'inline';
+      } else {
+        loginLink.style.display = 'inline';
+        dashboardLink.style.display = 'none';
+        profileLink.style.display = 'none';
+        logoutLink.style.display = 'none';
+      }
+    }
+
+    function redirectToLogin() {
+      window.location.href = 'login.html';
+    }
+
+    async function logout() {
+      try {
+        await fetch('api/auth/logout', { method: 'POST' });
+        window.location.href = 'login.html';
+      } catch (e) {
+        console.error('Logout failed:', e);
+      }
+    }
+
+    function loadProfile() {
+      const authStatus = document.getElementById('authStatus');
+      authStatus.textContent = `Welcome, ${currentUser.name}!`;
+      
+      // Populate form fields
+      document.getElementById('fullName').value = currentUser.name || '';
+      document.getElementById('email').value = currentUser.email || '';
+      document.getElementById('phone').value = currentUser.phone || '';
+      document.getElementById('address').value = currentUser.address || '';
+      document.getElementById('bio').value = currentUser.bio || '';
+      document.getElementById('role').value = currentUser.role || '';
+      
+      // Load profile image
+      const profileImage = document.getElementById('profileImage');
+      if (currentUser.user_profile_image) {
+        profileImage.src = currentUser.user_profile_image;
+      } else {
+        profileImage.src = 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iMTAwIiBoZWlnaHQ9IjEwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjE0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIFVzZXIKICA8L3RleHQ+Cjwvc3ZnPg==';
+      }
+    }
+
+    async function updateProfile() {
+      const status = document.getElementById('updateStatus');
+      status.textContent = 'Updating...';
+      
+      try {
+        const body = {
+          full_name: document.getElementById('fullName').value.trim(),
+          phone: document.getElementById('phone').value.trim(),
+          address: document.getElementById('address').value.trim(),
+          bio: document.getElementById('bio').value.trim()
+        };
+        
+        const res = await fetch('api/auth/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+          status.textContent = 'Profile updated successfully!';
+          currentUser = data.user;
+          loadProfile();
+        } else {
+          status.textContent = 'Error: ' + (data.error || 'Failed to update profile');
+        }
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    async function changePassword() {
+      const status = document.getElementById('passwordStatus');
+      const newPassword = document.getElementById('newPassword').value;
+      const confirmPassword = document.getElementById('confirmPassword').value;
+      
+      if (!newPassword || !confirmPassword) {
+        status.textContent = 'Please fill in both password fields.';
+        return;
+      }
+      
+      if (newPassword !== confirmPassword) {
+        status.textContent = 'Passwords do not match.';
+        return;
+      }
+      
+      if (newPassword.length < 6) {
+        status.textContent = 'Password must be at least 6 characters.';
+        return;
+      }
+      
+      status.textContent = 'Changing password...';
+      
+      try {
+        const body = { password: newPassword };
+        
+        const res = await fetch('api/auth/profile', {
+          method: 'PUT',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(body)
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+          status.textContent = 'Password changed successfully!';
+          document.getElementById('newPassword').value = '';
+          document.getElementById('confirmPassword').value = '';
+        } else {
+          status.textContent = 'Error: ' + (data.error || 'Failed to change password');
+        }
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    async function uploadImage() {
+      const fileInput = document.getElementById('imageUpload');
+      const status = document.getElementById('imageStatus');
+      
+      if (!fileInput.files[0]) {
+        status.textContent = 'Please select an image file.';
+        return;
+      }
+      
+      status.textContent = 'Uploading...';
+      
+      try {
+        const formData = new FormData();
+        formData.append('image', fileInput.files[0]);
+        formData.append('category', 'profiles');
+        
+        const res = await fetch('api/upload', {
+          method: 'POST',
+          body: formData
+        });
+        
+        const data = await res.json();
+        if (res.ok) {
+          // Update profile with new image URL
+          const body = { user_profile_image: data.url };
+          
+          const updateRes = await fetch('api/auth/profile', {
+            method: 'PUT',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify(body)
+          });
+          
+          const updateData = await updateRes.json();
+          if (updateRes.ok) {
+            status.textContent = 'Image uploaded successfully!';
+            currentUser = updateData.user;
+            loadProfile();
+            fileInput.value = '';
+          } else {
+            status.textContent = 'Error updating profile: ' + (updateData.error || 'Failed');
+          }
+        } else {
+          status.textContent = 'Error: ' + (data.error || 'Failed to upload image');
+        }
+      } catch (e) {
+        status.textContent = 'Error: ' + e.message;
+        console.error(e);
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', checkAuth);
+  </script>
+</body>
+</html>
