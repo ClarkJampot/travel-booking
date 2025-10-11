@@ -58,6 +58,12 @@ if (preg_match('#/api/bookings/#', $_SERVER['REQUEST_URI'])) {
   exit;
 }
 
+// Route: /api/upload
+if (preg_match('#/api/upload/?$#', $_SERVER['REQUEST_URI'])) {
+  require __DIR__ . '/controllers/upload.php';
+  exit;
+}
+
 // Route: /api/ads
 if (preg_match('#/api/ads/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
   require __DIR__ . '/controllers/ads.php';
