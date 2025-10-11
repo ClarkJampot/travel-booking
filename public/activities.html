@@ -45,7 +45,14 @@
         (data.results || []).forEach(a => {
           const div = document.createElement('div');
           div.className = 'card';
-          div.innerHTML = `<strong>${a.title}</strong><div class="muted">${a.city}</div><div>${a.date} · ₱${Number(a.price).toFixed(2)}</div>`;
+          div.onclick = () => window.location.href = `activity-details.html?id=${a.id}`;
+          const imgSrc = a.image_url || '/uploads/placeholder.svg';
+          div.innerHTML = `
+            <img src="${imgSrc}" alt="${a.title}" class="card-image" onerror="this.src='/uploads/placeholder.svg'">
+            <strong>${a.title}</strong>
+            <div class="muted">${a.city}</div>
+            <div>${a.date} · ₱${Number(a.price).toFixed(2)}</div>
+          `;
           list.appendChild(div);
         });
         if (!list.children.length) status.textContent = 'No activities found.';

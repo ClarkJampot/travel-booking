@@ -28,7 +28,10 @@
         (data.results || []).forEach(h => {
           const div = document.createElement('div');
           div.className = 'card';
+          div.onclick = () => window.location.href = `hotel-details.html?id=${h.id}`;
+          const imgSrc = h.image_url || '/uploads/placeholder.svg';
           div.innerHTML = `
+            <img src="${imgSrc}" alt="${h.name}" class="card-image" onerror="this.src='/uploads/placeholder.svg'">
             <div class="row" style="justify-content:space-between">
               <strong>${h.name}</strong>
               <span class="badge">${Number(h.rating).toFixed(1)} ★</span>

@@ -48,7 +48,14 @@
         (data.results || []).forEach(f => {
           const div = document.createElement('div');
           div.className = 'card';
-          div.innerHTML = `<strong>${f.airline}</strong><div class="muted">${f.origin} → ${f.destination}</div><div>${f.depart_date} · ₱${Number(f.price).toFixed(2)}</div>`;
+          div.onclick = () => window.location.href = `flight-details.html?id=${f.id}`;
+          const imgSrc = f.image_url || '/uploads/placeholder.svg';
+          div.innerHTML = `
+            <img src="${imgSrc}" alt="${f.airline}" class="card-image" onerror="this.src='/uploads/placeholder.svg'">
+            <strong>${f.airline}</strong>
+            <div class="muted">${f.origin} → ${f.destination}</div>
+            <div>${f.depart_date} · ₱${Number(f.price).toFixed(2)}</div>
+          `;
           list.appendChild(div);
         });
         if (!list.children.length) status.textContent = 'No flights found.';
