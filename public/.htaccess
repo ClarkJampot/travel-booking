@@ -1,8 +1,11 @@
+# Redirect root to index.html
 DirectoryIndex index.html
-Options -Indexes
 
-# Handle API routes - rewrite to the actual API directory
+# Enable URL rewriting
 RewriteEngine On
-RewriteCond %{REQUEST_FILENAME} !-f
-RewriteCond %{REQUEST_FILENAME} !-d
-RewriteRule ^api/(.*)$ ../api/index.php [QSA,L]
+
+# Redirect root / to /index.html
+RewriteRule ^$ index.html [L]
+
+# API routes
+RewriteRule ^api/(.*)$ api/index.php [L,QSA]

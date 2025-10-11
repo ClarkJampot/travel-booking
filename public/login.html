@@ -13,8 +13,11 @@
       <a href="flights.html">Flights</a>
       <a href="activities.html">Activities</a>
       <a href="transfers.html">Transfers</a>
-      <a href="bookings.html">Bookings</a>
-      <a href="login.html">Login</a>
+      <a href="bookings.html">My Bookings</a>
+      <a href="login.html" id="loginLink">Login</a>
+      <a href="dashboard.html" id="dashboardLink" style="display:none;">Dashboard</a>
+      <a href="profile.html" id="profileLink" style="display:none;">Profile</a>
+      <a href="#" onclick="logout()" id="logoutLink" style="display:none;">Logout</a>
     </nav>
   </header>
   <main>
@@ -84,6 +87,42 @@
         status.textContent = data.user ? `Session: ${data.user.email} (${data.user.role})` : 'No session';
       } catch (e) { status.textContent = 'Error: ' + e.message; }
     }
+
+    function updateNavigation() {
+      const loginLink = document.getElementById('loginLink');
+      const dashboardLink = document.getElementById('dashboardLink');
+      const profileLink = document.getElementById('profileLink');
+      const logoutLink = document.getElementById('logoutLink');
+      
+      if (currentUser) {
+        loginLink.style.display = 'none';
+        dashboardLink.style.display = 'inline';
+        profileLink.style.display = 'inline';
+        logoutLink.style.display = 'inline';
+      } else {
+        loginLink.style.display = 'inline';
+        dashboardLink.style.display = 'none';
+        profileLink.style.display = 'none';
+        logoutLink.style.display = 'none';
+      }
+    }
+
+    let currentUser = null;
+
+    async function checkAuth() {
+      try {
+        const res = await fetch('api/auth/me');
+        const data = await res.json();
+        if (data.user) {
+          currentUser = data.user;
+          updateNavigation();
+        }
+      } catch (e) {
+        // Ignore auth errors
+      }
+    }
+
+    window.addEventListener('DOMContentLoaded', checkAuth);
   </script>
 </body>
 </html>

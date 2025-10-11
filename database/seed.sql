@@ -5,25 +5,25 @@ INSERT INTO dbo.roles(name) VALUES (N'customer'), (N'agency'), (N'owner'), (N'ad
 
 -- Users (dummy hashes, not used yet in PHP)
 INSERT INTO dbo.users(email, password_hash, full_name, role_id, user_profile_image) VALUES
-(N'alice@example.com', N'$2b$10$hashalice', N'Alice Customer', 1, N'/uploads/profiles/alice.jpg'),
-(N'beta.agency@example.com', N'$2b$10$hashagency', N'Beta Agency', 2, N'/uploads/profiles/beta.jpg'),
-(N'hotel.owner@example.com', N'$2b$10$hashowner', N'Hotel Owner', 3, N'/uploads/profiles/owner.jpg'),
-(N'admin@example.com', N'$2b$10$hashadmin', N'Admin User', 4, N'/uploads/profiles/admin.jpg');
+(N'alice@example.com', N'$2b$10$hashalice', N'Alice Customer', 1, N'/travel-booking/uploads/profiles/alice.jpg'),
+(N'beta.agency@example.com', N'$2b$10$hashagency', N'Beta Agency', 2, N'/travel-booking/uploads/profiles/beta.jpg'),
+(N'hotel.owner@example.com', N'$2b$10$hashowner', N'Hotel Owner', 3, N'/travel-booking/uploads/profiles/owner.jpg'),
+(N'admin@example.com', N'$2b$10$hashadmin', N'Admin User', 4, N'/travel-booking/uploads/profiles/admin.jpg');
 
 -- Hotels
 INSERT INTO dbo.hotels(name, city, country, price_per_night, rating, description, image_url, booking_count, created_by) VALUES
-(N'Seaside Inn', N'Cebu', N'Philippines', 45.00, 4.2, N'Beautiful beachfront hotel with stunning ocean views and modern amenities.', N'/uploads/hotels/seaside-inn.jpg', 12, 3),
-(N'Mountain View Lodge', N'Baguio', N'Philippines', 55.00, 4.5, N'Cozy mountain retreat with panoramic views and cool climate.', N'/uploads/hotels/mountain-view.jpg', 8, 3),
-(N'City Center Hotel', N'Manila', N'Philippines', 75.00, 4.0, N'Luxury hotel in the heart of Manila with business facilities.', N'/uploads/hotels/city-center.jpg', 15, 3),
-(N'Boracay Paradise Resort', N'Boracay', N'Philippines', 120.00, 4.8, N'Premium beach resort with white sand beaches and water activities.', N'/uploads/hotels/boracay-paradise.jpg', 25, 3),
-(N'Palawan Eco Lodge', N'Palawan', N'Philippines', 65.00, 4.6, N'Eco-friendly accommodation surrounded by pristine nature.', N'/uploads/hotels/palawan-eco.jpg', 18, 3),
-(N'Davao Business Hotel', N'Davao', N'Philippines', 50.00, 4.1, N'Modern business hotel with conference facilities.', N'/uploads/hotels/davao-business.jpg', 9, 3),
-(N'Iloilo Heritage Inn', N'Iloilo', N'Philippines', 40.00, 4.3, N'Historic hotel showcasing local architecture and culture.', N'/uploads/hotels/iloilo-heritage.jpg', 6, 3),
-(N'Bohol Beach Resort', N'Bohol', N'Philippines', 80.00, 4.4, N'Family-friendly resort with beach access and island tours.', N'/uploads/hotels/bohol-beach.jpg', 20, 3),
-(N'Cagayan de Oro City Hotel', N'Cagayan de Oro', N'Philippines', 45.00, 4.0, N'Comfortable city hotel with river views.', N'/uploads/hotels/cdo-city.jpg', 7, 3),
-(N'Zamboanga Boutique Hotel', N'Zamboanga', N'Philippines', 60.00, 4.2, N'Unique boutique hotel with local charm.', N'/uploads/hotels/zamboanga-boutique.jpg', 11, 3),
-(N'Baguio Garden Hotel', N'Baguio', N'Philippines', 35.00, 3.8, N'Budget-friendly hotel with garden views.', N'/uploads/hotels/baguio-garden.jpg', 4, 3),
-(N'Cebu Business Center', N'Cebu', N'Philippines', 90.00, 4.3, N'Modern business hotel in Cebu IT Park.', N'/uploads/hotels/cebu-business.jpg', 14, 3);
+(N'Seaside Inn', N'Cebu', N'Philippines', 45.00, 4.2, N'Beautiful beachfront hotel with stunning ocean views and modern amenities.', N'/travel-booking/uploads/hotels/seaside-inn.jpg', 12, 3),
+(N'Mountain View Lodge', N'Baguio', N'Philippines', 55.00, 4.5, N'Cozy mountain retreat with panoramic views and cool climate.', N'/travel-booking/uploads/hotels/mountain-view.jpg', 8, 3),
+(N'City Center Hotel', N'Manila', N'Philippines', 75.00, 4.0, N'Luxury hotel in the heart of Manila with business facilities.', N'/travel-booking/uploads/hotels/city-center.jpg', 15, 3),
+(N'Boracay Paradise Resort', N'Boracay', N'Philippines', 120.00, 4.8, N'Premium beach resort with white sand beaches and water activities.', N'/travel-booking/uploads/hotels/boracay-paradise.jpg', 25, 3),
+(N'Palawan Eco Lodge', N'Palawan', N'Philippines', 65.00, 4.6, N'Eco-friendly accommodation surrounded by pristine nature.', N'/travel-booking/uploads/hotels/palawan-eco.jpg', 18, 3),
+(N'Davao Business Hotel', N'Davao', N'Philippines', 50.00, 4.1, N'Modern business hotel with conference facilities.', N'/travel-booking/uploads/hotels/davao-business.jpg', 9, 3),
+(N'Iloilo Heritage Inn', N'Iloilo', N'Philippines', 40.00, 4.3, N'Historic hotel showcasing local architecture and culture.', N'/travel-booking/uploads/hotels/iloilo-heritage.jpg', 6, 3),
+(N'Bohol Beach Resort', N'Bohol', N'Philippines', 80.00, 4.4, N'Family-friendly resort with beach access and island tours.', N'/travel-booking/uploads/hotels/bohol-beach.jpg', 20, 3),
+(N'Cagayan de Oro City Hotel', N'Cagayan de Oro', N'Philippines', 45.00, 4.0, N'Comfortable city hotel with river views.', N'/travel-booking/uploads/hotels/cdo-city.jpg', 7, 3),
+(N'Zamboanga Boutique Hotel', N'Zamboanga', N'Philippines', 60.00, 4.2, N'Unique boutique hotel with local charm.', N'/travel-booking/uploads/hotels/zamboanga-boutique.jpg', 11, 3),
+(N'Baguio Garden Hotel', N'Baguio', N'Philippines', 35.00, 3.8, N'Budget-friendly hotel with garden views.', N'/travel-booking/uploads/hotels/baguio-garden.jpg', 4, 3),
+(N'Cebu Business Center', N'Cebu', N'Philippines', 90.00, 4.3, N'Modern business hotel in Cebu IT Park.', N'/travel-booking/uploads/hotels/cebu-business.jpg', 14, 3);
 
 -- Flights
 INSERT INTO dbo.flights(airline, origin, destination, depart_date, price, description, image_url, booking_count, created_by) VALUES
@@ -79,6 +79,6 @@ INSERT INTO dbo.bookings(user_id, item_type, item_id, total_price) VALUES
 
 -- Ads
 INSERT INTO dbo.ads(placement, title, image_url, link_url, active) VALUES
-(N'home', N'Cebu Deals', N'/uploads/ads/cebu-deals.jpg', N'hotels.html?city=Cebu', 1),
-(N'listing', N'Island Hopping Promo', N'/uploads/ads/island-promo.jpg', N'activities.html?city=Cebu', 1),
-(N'sidebar', N'Hotel Discount', N'/uploads/ads/hotel-discount.jpg', N'hotels.html', 1);
+(N'home', N'Cebu Deals', N'/travel-booking/uploads/ads/cebu-deals.jpg', N'hotels.html?city=Cebu', 1),
+(N'listing', N'Island Hopping Promo', N'/travel-booking/uploads/ads/island-promo.jpg', N'activities.html?city=Cebu', 1),
+(N'sidebar', N'Hotel Discount', N'/travel-booking/uploads/ads/hotel-discount.jpg', N'hotels.html', 1);
