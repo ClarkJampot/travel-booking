@@ -130,4 +130,126 @@ function updateNavigation() {
 // Initialize navigation on page load
 document.addEventListener('DOMContentLoaded', function() {
   updateNavigation();
+  initScrollAnimations();
+  initStickyNav();
+  initLazyLoading();
 });
+
+// Scroll-triggered animations using Intersection Observer
+function initScrollAnimations() {
+  const observerOptions = {
+    threshold: 0.1,
+    rootMargin: '0px 0px -50px 0px'
+  };
+
+  const observer = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('active');
+        observer.unobserve(entry.target);
+      }
+    });
+  }, observerOptions);
+
+  // Observe all reveal elements
+  document.querySelectorAll('.reveal').forEach(el => {
+    observer.observe(el);
+  });
+
+  // Observe cards for staggered animation
+  document.querySelectorAll('.card').forEach((card, index) => {
+    card.classList.add('reveal');
+    card.style.animationDelay = `${index * 0.1}s`;
+    observer.observe(card);
+  });
+}
+
+// Sticky navigation with scroll effect
+function initStickyNav() {
+  const navbar = document.querySelector('.navbar');
+  if (!navbar) return;
+
+  let lastScroll = 0;
+  window.addEventListener('scroll', () => {
+    const currentScroll = window.pageYOffset;
+    
+    if (currentScroll > 50) {
+      navbar.classList.add('scrolled');
+    } else {
+      navbar.classList.remove('scrolled');
+    }
+    
+    lastScroll = currentScroll;
+  });
+}
+
+// Lazy loading for images
+function initLazyLoading() {
+  const imageObserver = new IntersectionObserver((entries, observer) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        const img = entry.target;
+        if (img.dataset.src) {
+          img.src = img.dataset.src;
+          img.classList.add('fade-in');
+          img.removeAttribute('data-src');
+          observer.unobserve(img);
+        }
+      }
+    });
+  });
+
+  document.querySelectorAll('img[data-src]').forEach(img => {
+    imageObserver.observe(img);
+  });
+}
+
+// Toast notification system
+function showToast(message, type = 'info', duration = 3000) {
+  const toast = document.createElement('div');
+  toast.className = `toast toast-${type} slide-in-down`;
+  toast.innerHTML = `
+    <div class="toast-content">
+      <span class="toast-message">${message}</span>
+      <button class="toast-close" onclick="this.parentElement.parentElement.remove()">&times;</button>
+    </div>
+  `;
+  
+  document.body.appendChild(toast);
+  
+  setTimeout(() => {
+    toast.classList.add('fade-out');
+    setTimeout(() => toast.remove(), 300);
+  }, duration);
+}
+
+// Enhanced showSuccess with toast
+function showSuccessToast(message) {
+  showToast(message, 'success', 3000);
+}
+
+// Enhanced showError with toast
+function showErrorToast(message) {
+  showToast(message, 'error', 4000);
+}
+
+// Smooth scroll to element
+function smoothScrollTo(elementId) {
+  const element = document.getElementById(elementId);
+  if (element) {
+    element.scrollIntoView({ behavior: 'smooth', block: 'start' });
+  }
+}
+
+// Debounce function for search/filter
+function debounce(func, wait) {
+  let timeout;
+  return function executedFunction(...args) {
+    const later = () => {
+      clearTimeout(timeout);
+      func(...args);
+    };
+    clearTimeout(timeout);
+    timeout = setTimeout(later, wait);
+  };
+}

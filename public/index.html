@@ -20,7 +20,7 @@
     </div>
 
     <!-- Featured Destinations -->
-    <section class="mb-5">
+    <section class="mb-5 reveal">
       <h2 class="mb-4">Featured Destinations</h2>
       <div id="featuredDestinations" class="row g-4">
         <!-- Loaded dynamically -->
@@ -28,7 +28,7 @@
     </section>
 
     <!-- Top Hotels -->
-    <section class="mb-5">
+    <section class="mb-5 reveal">
       <h2 class="mb-4">Top Hotels</h2>
       <div id="topHotels" class="row g-4">
         <!-- Loaded dynamically -->
@@ -36,7 +36,7 @@
     </section>
 
     <!-- Top Flights -->
-    <section class="mb-5">
+    <section class="mb-5 reveal">
       <h2 class="mb-4">Popular Flights</h2>
       <div id="topFlights" class="row g-4">
         <!-- Loaded dynamically -->
@@ -44,7 +44,7 @@
     </section>
 
     <!-- Top Activities -->
-    <section class="mb-5">
+    <section class="mb-5 reveal">
       <h2 class="mb-4">Popular Activities</h2>
       <div id="topActivities" class="row g-4">
         <!-- Loaded dynamically -->
@@ -81,14 +81,19 @@
           return;
         }
         
-        container.innerHTML = data.results.map(dest => `
-          <div class="col-md-3">
+        container.innerHTML = data.results.map((dest, index) => `
+          <div class="col-md-3 reveal stagger-${index + 1}">
             <div class="card h-100">
-              <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}">
+              <div class="card-img-wrapper">
+                <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="destination-details.html?id=${dest.id}" class="btn btn-light btn-sm">View Details</a>
+                </div>
+              </div>
               <div class="card-body">
                 <h5 class="card-title">${dest.name}</h5>
                 <p class="card-text text-muted">${dest.country}</p>
-                <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-sm">View Details</a>
+                <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-sm">Explore</a>
               </div>
             </div>
           </div>
@@ -109,16 +114,22 @@
           return;
         }
         
-        container.innerHTML = data.results.map(hotel => `
-          <div class="col-md-3">
+        container.innerHTML = data.results.map((hotel, index) => `
+          <div class="col-md-3 reveal stagger-${index + 1}">
             <div class="card h-100">
-              <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}">
+              <div class="card-img-wrapper">
+                <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-light btn-sm">Quick View</a>
+                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm">Book Now</a>
+                </div>
+              </div>
               <div class="card-body">
                 <h5 class="card-title">${hotel.name}</h5>
                 <p class="card-text text-muted">${hotel.city}, ${hotel.country}</p>
                 <p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span></p>
                 <p class="rating">★ ${hotel.rating || 0}</p>
-                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm">View Details</a>
+                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm w-100">View Details</a>
               </div>
             </div>
           </div>
@@ -139,16 +150,22 @@
           return;
         }
         
-        container.innerHTML = data.results.map(flight => `
-          <div class="col-md-3">
+        container.innerHTML = data.results.map((flight, index) => `
+          <div class="col-md-3 reveal stagger-${index + 1}">
             <div class="card h-100">
-              <img src="${flight.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${flight.airline}">
+              <div class="card-img-wrapper">
+                <img src="${flight.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${flight.airline}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="flight-details.html?id=${flight.id}" class="btn btn-light btn-sm">Quick View</a>
+                  <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-sm">Book Now</a>
+                </div>
+              </div>
               <div class="card-body">
                 <h5 class="card-title">${flight.airline}</h5>
                 <p class="card-text">${flight.origin} → ${flight.destination}</p>
                 <p class="text-muted">${formatDate(flight.depart_date)}</p>
                 <p class="price">${formatPrice(flight.price)}</p>
-                <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-sm">View Details</a>
+                <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-sm w-100">View Details</a>
               </div>
             </div>
           </div>
@@ -169,16 +186,22 @@
           return;
         }
         
-        container.innerHTML = data.results.map(activity => `
-          <div class="col-md-3">
+        container.innerHTML = data.results.map((activity, index) => `
+          <div class="col-md-3 reveal stagger-${index + 1}">
             <div class="card h-100">
-              <img src="${activity.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${activity.title}">
+              <div class="card-img-wrapper">
+                <img src="${activity.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${activity.title}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="activity-details.html?id=${activity.id}" class="btn btn-light btn-sm">Quick View</a>
+                  <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-sm">Book Now</a>
+                </div>
+              </div>
               <div class="card-body">
                 <h5 class="card-title">${activity.title}</h5>
                 <p class="card-text text-muted">${activity.city}</p>
                 <p class="text-muted">${formatDate(activity.date)}</p>
                 <p class="price">${formatPrice(activity.price)}</p>
-                <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-sm">View Details</a>
+                <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-sm w-100">View Details</a>
               </div>
             </div>
           </div>

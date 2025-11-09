@@ -40,7 +40,7 @@
 
     <!-- Results -->
     <div id="status"></div>
-    <div id="hotels" class="row g-4">
+    <div id="hotels" class="row g-4 reveal">
       <!-- Loaded dynamically -->
     </div>
   </div>
@@ -84,16 +84,22 @@
           return;
         }
         
-        container.innerHTML = data.results.map(hotel => `
-          <div class="col-md-4">
+        container.innerHTML = data.results.map((hotel, index) => `
+          <div class="col-md-4 reveal stagger-${(index % 5) + 1}">
             <div class="card h-100">
-              <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}">
+              <div class="card-img-wrapper">
+                <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-light btn-sm">Quick View</a>
+                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm">Book Now</a>
+                </div>
+              </div>
               <div class="card-body">
                 <h5 class="card-title">${hotel.name}</h5>
                 <p class="card-text text-muted">${hotel.city}, ${hotel.country}</p>
                 <p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span></p>
                 <p class="rating">★ ${hotel.rating || 0}</p>
-                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary">View Details</a>
+                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary w-100">View Details</a>
               </div>
             </div>
           </div>
