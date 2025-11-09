@@ -2,127 +2,73 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Login - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header>
-    <a href="index.html">← Home</a>
-    <nav>
-      <a href="hotels.html">Hotels</a>
-      <a href="flights.html">Flights</a>
-      <a href="activities.html">Activities</a>
-      <a href="transfers.html">Transfers</a>
-      <a href="bookings.html">My Bookings</a>
-      <a href="login.html" id="loginLink">Login</a>
-      <a href="dashboard.html" id="dashboardLink" style="display:none;">Dashboard</a>
-      <a href="profile.html" id="profileLink" style="display:none;">Profile</a>
-      <a href="#" onclick="logout()" id="logoutLink" style="display:none;">Logout</a>
-    </nav>
-  </header>
-  <main>
-    <h1>Login</h1>
-    
-    <section class="card">
-      <h3>Sign In</h3>
-      <div class="row">
-        <label>Email <input id="email" placeholder="test@example.com"></label>
-        <label>Password <input id="password" type="password" placeholder="••••••••"></label>
-        <button onclick="login()">Login</button>
-        <button onclick="logout()">Logout</button>
-        <button onclick="me()">Check Session</button>
+  <div id="header"></div>
+
+  <div class="container mt-5">
+    <div class="row justify-content-center">
+      <div class="col-md-6">
+        <div class="card">
+          <div class="card-body">
+            <h2 class="card-title text-center mb-4">Login</h2>
+            <form id="loginForm">
+              <div class="mb-3">
+                <label for="email" class="form-label">Email</label>
+                <input type="email" class="form-control" id="email" name="email" required>
+              </div>
+              <div class="mb-3">
+                <label for="password" class="form-label">Password</label>
+                <input type="password" class="form-control" id="password" name="password" required>
+              </div>
+              <div id="status"></div>
+              <button type="submit" class="btn btn-primary w-100">Login</button>
+            </form>
+            <p class="text-center mt-3">
+              Don't have an account? <a href="register.html">Register here</a>
+            </p>
+          </div>
+        </div>
       </div>
-      <div id="authStatus" class="muted"></div>
-      <div style="margin-top: 12px;">
-        <p>Don't have an account? <a href="register.html">Register here</a></p>
-        <p><a href="#" onclick="alert('Forgot password feature coming soon!')">Forgot password?</a></p>
-      </div>
-    </section>
-  </main>
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
   <script>
-    async function login() {
-      const email = document.getElementById('email').value.trim();
-      const password = document.getElementById('password').value;
-      const status = document.getElementById('authStatus');
-      status.textContent = 'Logging in...';
-      try {
-        const res = await fetch('api/auth/login', { 
-          method: 'POST', 
-          headers: { 'Content-Type': 'application/json' }, 
-          body: JSON.stringify({ email, password }) 
-        });
-        const data = await res.json();
-        if (res.ok) {
-          status.textContent = 'Logged in as ' + (data.user?.email || '');
-          // Check if onboarding is completed
-          if (!data.user?.onboarding_completed) {
-            status.textContent += ' - Redirecting to onboarding...';
-            setTimeout(() => window.location.href = 'onboarding.html', 1000);
-          } else {
-            status.textContent += ' - Redirecting...';
-            setTimeout(() => window.location.href = 'dashboard.html', 1000);
-          }
-        } else {
-          status.textContent = 'Error: ' + (data.error || 'Failed');
-        }
-      } catch (e) { status.textContent = 'Error: ' + e.message; }
-    }
+    fetch('includes/header.html')
+      .then(response => response.text())
+      .then(data => document.getElementById('header').innerHTML = data);
+    
+    fetch('includes/footer.html')
+      .then(response => response.text())
+      .then(data => document.getElementById('footer').innerHTML = data)
+      .then(() => updateNavigation());
 
-
-    async function logout() {
-      const status = document.getElementById('authStatus');
-      status.textContent = 'Logging out...';
-      try {
-        const res = await fetch('api/auth/logout', { method: 'POST' });
-        status.textContent = res.ok ? 'Logged out' : 'Logout failed';
-      } catch (e) { status.textContent = 'Error: ' + e.message; }
-    }
-
-    async function me() {
-      const status = document.getElementById('authStatus');
-      status.textContent = 'Checking session...';
-      try {
-        const res = await fetch('api/auth/me');
-        const data = await res.json();
-        status.textContent = data.user ? `Session: ${data.user.email} (${data.user.role})` : 'No session';
-      } catch (e) { status.textContent = 'Error: ' + e.message; }
-    }
-
-    function updateNavigation() {
-      const loginLink = document.getElementById('loginLink');
-      const dashboardLink = document.getElementById('dashboardLink');
-      const profileLink = document.getElementById('profileLink');
-      const logoutLink = document.getElementById('logoutLink');
+    document.getElementById('loginForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      clearStatus('status');
       
-      if (currentUser) {
-        loginLink.style.display = 'none';
-        dashboardLink.style.display = 'inline';
-        profileLink.style.display = 'inline';
-        logoutLink.style.display = 'inline';
-      } else {
-        loginLink.style.display = 'inline';
-        dashboardLink.style.display = 'none';
-        profileLink.style.display = 'none';
-        logoutLink.style.display = 'none';
-      }
-    }
-
-    let currentUser = null;
-
-    async function checkAuth() {
+      const email = document.getElementById('email').value;
+      const password = document.getElementById('password').value;
+      
       try {
-        const res = await fetch('api/auth/me');
-        const data = await res.json();
-        if (data.user) {
-          currentUser = data.user;
-          updateNavigation();
-        }
-      } catch (e) {
-        // Ignore auth errors
+        await login(email, password);
+        showSuccess('status', 'Login successful! Redirecting...');
+        setTimeout(() => {
+          window.location.href = 'index.html';
+        }, 1000);
+      } catch (error) {
+        showError('status', error.message || 'Login failed');
       }
-    }
-
-    window.addEventListener('DOMContentLoaded', checkAuth);
+    });
   </script>
 </body>
 </html>

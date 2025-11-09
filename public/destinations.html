@@ -1,0 +1,120 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Destinations - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="container mt-4">
+    <h1 class="mb-4">Destinations</h1>
+    
+    <!-- Filters -->
+    <div class="filter-section">
+      <div class="row">
+        <div class="col-md-4">
+          <label for="countryFilter" class="form-label">Country</label>
+          <select class="form-select" id="countryFilter">
+            <option value="">All Countries</option>
+            <option value="Philippines">Philippines</option>
+          </select>
+        </div>
+        <div class="col-md-4">
+          <label for="searchInput" class="form-label">Search</label>
+          <input type="text" class="form-control" id="searchInput" placeholder="Search destinations...">
+        </div>
+        <div class="col-md-4 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="loadDestinations()">Filter</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Results -->
+    <div id="status"></div>
+    <div id="destinations" class="row g-4">
+      <!-- Loaded dynamically -->
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    fetch('includes/header.html')
+      .then(response => response.text())
+      .then(data => document.getElementById('header').innerHTML = data);
+    
+    fetch('includes/footer.html')
+      .then(response => response.text())
+      .then(data => document.getElementById('footer').innerHTML = data)
+      .then(() => updateNavigation());
+
+    async function loadDestinations() {
+      showLoading('destinations');
+      clearStatus('status');
+      
+      const country = document.getElementById('countryFilter').value;
+      const search = document.getElementById('searchInput').value;
+      
+      try {
+        let url = '/destinations?limit=20';
+        if (country) url += `&country=${encodeURIComponent(country)}`;
+        
+        const data = await apiCall(url);
+        const container = document.getElementById('destinations');
+        
+        if (data.results.length === 0) {
+          container.innerHTML = '<p class="text-muted">No destinations found.</p>';
+          return;
+        }
+        
+        // Filter by search term if provided
+        let results = data.results;
+        if (search) {
+          const searchLower = search.toLowerCase();
+          results = results.filter(dest => 
+            dest.name.toLowerCase().includes(searchLower) ||
+            dest.country.toLowerCase().includes(searchLower) ||
+            (dest.description && dest.description.toLowerCase().includes(searchLower))
+          );
+        }
+        
+        container.innerHTML = results.map(dest => `
+          <div class="col-md-4">
+            <div class="card h-100">
+              <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}">
+              <div class="card-body">
+                <h5 class="card-title">${dest.name}</h5>
+                <p class="card-text text-muted">${dest.country}</p>
+                <p class="card-text">${dest.description ? dest.description.substring(0, 100) + '...' : ''}</p>
+                <a href="destination-details.html?id=${dest.id}" class="btn btn-primary">View Details</a>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        showError('status', error.message || 'Failed to load destinations');
+        document.getElementById('destinations').innerHTML = '';
+      }
+    }
+
+    document.getElementById('searchInput').addEventListener('keypress', function(e) {
+      if (e.key === 'Enter') {
+        loadDestinations();
+      }
+    });
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadDestinations();
+    });
+  </script>
+</body>
+</html>
+
+

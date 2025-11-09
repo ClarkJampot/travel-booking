@@ -2,69 +2,51 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Transfers - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header>
-    <a href="index.html">← Home</a>
-    <nav>
-      <a href="hotels.html">Hotels</a>
-      <a href="flights.html">Flights</a>
-      <a href="activities.html">Activities</a>
-      <a href="transfers.html">Transfers</a>
-      <a href="bookings.html">Bookings</a>
-      <a href="login.html">Login</a>
-    </nav>
-  </header>
-  <main>
-    <h1>Transfers</h1>
-    <div class="row">
-      <label>Origin <input id="origin" placeholder="MNL Airport"></label>
-      <label>Destination <input id="destination" placeholder="Makati"></label>
-      <label>Date <input id="date" type="date"></label>
-      <button onclick="loadTransfers()">Search</button>
+  <div id="header"></div>
+  <div class="container mt-4">
+    <h1 class="mb-4">Transfers</h1>
+    <div class="filter-section">
+      <div class="row">
+        <div class="col-md-3"><label class="form-label">Origin</label><input type="text" class="form-control" id="originFilter"></div>
+        <div class="col-md-3"><label class="form-label">Destination</label><input type="text" class="form-control" id="destinationFilter"></div>
+        <div class="col-md-3"><label class="form-label">Date</label><input type="date" class="form-control" id="dateFilter"></div>
+        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="loadTransfers()">Filter</button></div>
+      </div>
     </div>
-    <div id="status" class="muted"></div>
-    <div id="list" class="grid"></div>
-  </main>
+    <div id="status"></div>
+    <div id="transfers" class="row g-4"></div>
+  </div>
+  <div id="footer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
   <script>
+    fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
+    fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
     async function loadTransfers() {
-      const list = document.getElementById('list');
-      const status = document.getElementById('status');
-      list.innerHTML = '';
-      status.textContent = 'Loading...';
-      const q = new URLSearchParams();
-      const origin = document.getElementById('origin').value.trim();
-      const destination = document.getElementById('destination').value.trim();
-      const date = document.getElementById('date').value;
-      if (origin) q.set('origin', origin);
-      if (destination) q.set('destination', destination);
-      if (date) q.set('date', date);
+      showLoading('transfers');
       try {
-        const res = await fetch('api/transfers?' + q.toString());
-        const data = await res.json();
-        status.textContent = '';
-        (data.results || []).forEach(t => {
-          const div = document.createElement('div');
-          div.className = 'card';
-          div.onclick = () => window.location.href = `transfer-details.html?id=${t.id}`;
-          const imgSrc = t.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
-          div.innerHTML = `
-            <img src="${imgSrc}" alt="${t.service}" class="card-image">
-            <strong>${t.service}</strong>
-            <div class="muted">${t.origin} → ${t.destination}</div>
-            <div>${t.date} · ₱${Number(t.price).toFixed(2)}</div>
-          `;
-          list.appendChild(div);
-        });
-        if (!list.children.length) status.textContent = 'No transfers found.';
-      } catch (e) {
-        status.textContent = 'Failed to load transfers.';
-        console.error(e);
+        let url = '/transfers?limit=20';
+        if (document.getElementById('originFilter').value) url += `&origin=${encodeURIComponent(document.getElementById('originFilter').value)}`;
+        if (document.getElementById('destinationFilter').value) url += `&destination=${encodeURIComponent(document.getElementById('destinationFilter').value)}`;
+        if (document.getElementById('dateFilter').value) url += `&date=${document.getElementById('dateFilter').value}`;
+        const data = await apiCall(url);
+        document.getElementById('transfers').innerHTML = data.results.length === 0 ? '<p class="text-muted">No transfers found.</p>' : data.results.map(t => `
+          <div class="col-md-4"><div class="card h-100"><img src="${t.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${t.service}">
+          <div class="card-body"><h5 class="card-title">${t.service}</h5><p>${t.origin} → ${t.destination}</p><p class="text-muted">${formatDate(t.date)}</p><p class="price">${formatPrice(t.price)}</p>
+          <a href="transfer-details.html?id=${t.id}" class="btn btn-primary">View Details</a></div></div></div>`).join('');
+      } catch (error) {
+        showError('status', error.message || 'Failed to load transfers');
+        document.getElementById('transfers').innerHTML = '';
       }
     }
-    window.addEventListener('DOMContentLoaded', loadTransfers);
+    document.addEventListener('DOMContentLoaded', loadTransfers);
   </script>
 </body>
 </html>

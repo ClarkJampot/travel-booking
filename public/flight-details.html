@@ -2,127 +2,92 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Flight Details - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
 <body>
-  <header>
-    <a href="index.html">← Home</a>
-    <nav>
-      <a href="hotels.html">Hotels</a>
-      <a href="flights.html">Flights</a>
-      <a href="activities.html">Activities</a>
-      <a href="transfers.html">Transfers</a>
-      <a href="bookings.html">Bookings</a>
-      <a href="login.html">Login</a>
-    </nav>
-  </header>
-  <main>
-    <div id="loading" class="muted">Loading flight details...</div>
-    <div id="content" style="display: none;">
-      <div class="card">
-        <img id="flightImage" src="" alt="" class="card-image" style="height: 300px;">
-        <h1 id="flightAirline"></h1>
-        <div class="row" style="justify-content: space-between; margin: 12px 0;">
-          <div>
-            <div class="muted" id="flightRoute"></div>
-            <div class="muted" id="flightDate"></div>
+  <div id="header"></div>
+  <div class="container mt-4">
+    <div id="flightDetails"></div>
+    <div class="row mt-4">
+      <div class="col-md-8">
+        <div class="card">
+          <div class="card-body">
+            <h3 id="flightAirline"></h3>
+            <p id="flightRoute"></p>
+            <p class="text-muted" id="flightDate"></p>
+            <p class="price" id="flightPrice"></p>
+            <p id="flightDescription"></p>
           </div>
-          <div class="price" id="flightPrice"></div>
         </div>
-        <div id="flightDescription" style="margin: 16px 0;"></div>
-        <button onclick="bookFlight()" style="width: 100%; padding: 12px; font-size: 16px;">Book Now</button>
+      </div>
+      <div class="col-md-4">
+        <div class="card">
+          <div class="card-body">
+            <h5>Book Now</h5>
+            <form id="bookingForm">
+              <p class="price" id="totalPrice"></p>
+              <div id="status"></div>
+              <button type="submit" class="btn btn-primary w-100">Book Now</button>
+            </form>
+          </div>
+        </div>
       </div>
     </div>
-    <div id="error" class="muted" style="display: none;"></div>
-  </main>
+  </div>
+  <div id="footer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
   <script>
-    let flightId = null;
-    let flightData = null;
-
-    async function loadFlightDetails() {
-      const urlParams = new URLSearchParams(window.location.search);
-      flightId = urlParams.get('id');
-      
-      if (!flightId) {
-        document.getElementById('error').textContent = 'No flight ID provided';
-        document.getElementById('error').style.display = 'block';
-        return;
-      }
-
+    fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
+    fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
+    const urlParams = new URLSearchParams(window.location.search);
+    const flightId = urlParams.get('id');
+    let flight = null;
+    async function loadFlight() {
       try {
-        const res = await fetch(`api/flights?id=${flightId}`);
-        const data = await res.json();
-        
-        if (data.results && data.results.length > 0) {
-          flightData = data.results[0];
-          displayFlight();
-        } else {
-          document.getElementById('error').textContent = 'Flight not found';
-          document.getElementById('error').style.display = 'block';
-        }
-      } catch (e) {
-        document.getElementById('error').textContent = 'Failed to load flight details';
-        document.getElementById('error').style.display = 'block';
-        console.error(e);
+        const data = await apiCall(`/flights?id=${flightId}`);
+        flight = data.flight;
+        document.getElementById('flightAirline').textContent = flight.airline;
+        document.getElementById('flightRoute').textContent = `${flight.origin} → ${flight.destination}`;
+        document.getElementById('flightDate').textContent = formatDate(flight.depart_date);
+        document.getElementById('flightPrice').textContent = formatPrice(flight.price);
+        document.getElementById('totalPrice').textContent = `Total: ${formatPrice(flight.price)}`;
+        document.getElementById('flightDescription').textContent = flight.description || '';
+        document.getElementById('flightDetails').innerHTML = `<img src="${flight.image_url || 'uploads/placeholder.svg'}" class="img-fluid rounded" alt="${flight.airline}">`;
+      } catch (error) {
+        showError('status', error.message || 'Failed to load flight');
       }
     }
-
-    function displayFlight() {
-      const imgSrc = flightData.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
-      document.getElementById('flightImage').src = imgSrc;
-      document.getElementById('flightImage').alt = flightData.airline;
-      document.getElementById('flightAirline').textContent = flightData.airline;
-      document.getElementById('flightRoute').textContent = `${flightData.origin} → ${flightData.destination}`;
-      document.getElementById('flightDate').textContent = `Departure: ${flightData.depart_date}`;
-      document.getElementById('flightPrice').textContent = `₱${Number(flightData.price).toFixed(2)}`;
-      document.getElementById('flightDescription').textContent = flightData.description || 'No description available.';
-      
-      document.getElementById('loading').style.display = 'none';
-      document.getElementById('content').style.display = 'block';
-    }
-
-    async function bookFlight() {
-      // Check if user is logged in
-      try {
-        const res = await fetch('api/auth/me');
-        const data = await res.json();
-        
-        if (!data.user) {
-          alert('Please login to make a booking');
-          window.location.href = 'login.html';
-          return;
-        }
-      } catch (e) {
-        alert('Please login to make a booking');
+    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!isAuthenticated()) {
         window.location.href = 'login.html';
         return;
       }
-
+      clearStatus('status');
       try {
-        const res = await fetch('api/bookings', {
+        await apiCall('/bookings', {
           method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            itemType: 'flight',
-            itemId: flightId,
-            totalPrice: flightData.price
+            item_type: 'flight',
+            item_id: flight.id,
+            total_price: flight.price
           })
         });
-        
-        if (res.ok) {
-          alert('Booking created successfully!');
-          window.location.href = 'bookings.html';
-        } else {
-          const data = await res.json();
-          alert('Booking failed: ' + (data.error || 'Unknown error'));
-        }
-      } catch (e) {
-        alert('Booking failed: ' + e.message);
+        showSuccess('status', 'Booking created successfully!');
+        setTimeout(() => window.location.href = 'bookings.html', 2000);
+      } catch (error) {
+        showError('status', error.message || 'Failed to create booking');
       }
-    }
-
-    window.addEventListener('DOMContentLoaded', loadFlightDetails);
+    });
+    if (flightId) loadFlight();
+    else showError('status', 'Flight ID not provided');
   </script>
 </body>
 </html>
+
+

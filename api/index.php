@@ -1,82 +1,103 @@
 <?php
+// API Router
 declare(strict_types=1);
+
 require __DIR__ . '/bootstrap.php';
 
-// Debug: Log the request URI
-error_log('API Request URI: ' . $_SERVER['REQUEST_URI']);
+// Get request URI and normalize
+$uri = $_SERVER['REQUEST_URI'] ?? '';
+$basePath = '/travel-booking/api';
+$apiPath = '/api';
 
-// Debug endpoint
-if (preg_match('#/api/debug/?$#', $_SERVER['REQUEST_URI']) || preg_match('#/travel-booking/api/debug/?$#', $_SERVER['REQUEST_URI'])) {
-  json_ok([
-    'request_uri' => $_SERVER['REQUEST_URI'],
-    'script_name' => $_SERVER['SCRIPT_NAME'],
-    'query_string' => $_SERVER['QUERY_STRING'] ?? '',
-    'method' => $_SERVER['REQUEST_METHOD']
-  ]);
-  exit;
+// Remove base path if present
+if (strpos($uri, $basePath) === 0) {
+  $uri = substr($uri, strlen($basePath));
+} elseif (strpos($uri, $apiPath) === 0) {
+  $uri = substr($uri, strlen($apiPath));
 }
 
+// Remove query string (use parse_url for better reliability)
+$parsed = parse_url($uri);
+$uri = $parsed['path'] ?? $uri;
+
+// Ensure URI starts with /
+if ($uri === '' || ($uri[0] ?? '') !== '/') {
+  $uri = '/' . $uri;
+}
+
+// Set normalized URI in global for controllers to use
+$GLOBALS['API_URI'] = $uri;
+
 // Health check
-if ($_SERVER['REQUEST_URI'] === '/travel-booking/api/' || $_SERVER['REQUEST_URI'] === '/api/' || preg_match('#/api/?$#', $_SERVER['REQUEST_URI'])) {
-  json_ok(['ok' => true, 'message' => 'PHP API online']);
-  exit;
+if ($uri === '' || $uri === '/') {
+  json_ok(['ok' => true, 'message' => 'Travel Booking API v1.0']);
 }
 
 // Route: /api/auth/*
-if (preg_match('#/travel-booking/api/auth/#', $_SERVER['REQUEST_URI'])) {
+if (preg_match('#^/auth/(register|login|logout|me|refresh)/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/auth.php';
   exit;
 }
 
+// Route: /api/destinations
+elseif (preg_match('#^/destinations(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/destinations.php';
+  exit;
+}
+
 // Route: /api/hotels
-if (preg_match('#/travel-booking/api/hotels/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/hotels(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/hotels.php';
   exit;
 }
 
 // Route: /api/flights
-if (preg_match('#/travel-booking/api/flights/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/flights(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/flights.php';
   exit;
 }
 
 // Route: /api/activities
-if (preg_match('#/travel-booking/api/activities/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/activities(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/activities.php';
   exit;
 }
 
 // Route: /api/transfers
-if (preg_match('#/travel-booking/api/transfers/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/transfers(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/transfers.php';
   exit;
 }
 
 // Route: /api/bookings
-if (preg_match('#/travel-booking/api/bookings/#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/bookings(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/bookings.php';
   exit;
 }
 
-// Route: /api/upload
-if (preg_match('#/travel-booking/api/upload/?$#', $_SERVER['REQUEST_URI'])) {
-  require __DIR__ . '/controllers/upload.php';
-  exit;
-}
-
 // Route: /api/ads
-if (preg_match('#/travel-booking/api/ads/?(\?.*)?$#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/ads(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/ads.php';
   exit;
 }
 
+// Route: /api/upload
+elseif (preg_match('#^/upload/?$#', $uri)) {
+  require __DIR__ . '/controllers/upload.php';
+  exit;
+}
+
+// Route: /api/search
+elseif (preg_match('#^/search/?$#', $uri)) {
+  require __DIR__ . '/controllers/search.php';
+  exit;
+}
+
 // Route: /api/top/*
-if (preg_match('#/travel-booking/api/top/#', $_SERVER['REQUEST_URI'])) {
+elseif (preg_match('#^/top/(hotels|flights|activities|transfers)/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/top.php';
   exit;
 }
 
-// 404
+// 404 Not Found
 json_error('Not found', 404);
-
-

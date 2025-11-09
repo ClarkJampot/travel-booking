@@ -2,90 +2,113 @@
 <html lang="en">
 <head>
   <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Hotels - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
-  <script>
-    async function loadHotels() {
-      const list = document.getElementById('list');
-      const status = document.getElementById('status');
-      list.innerHTML = '';
-      status.textContent = 'Loading...';
-      const q = new URLSearchParams();
-      const city = document.getElementById('city')?.value?.trim();
-      const country = document.getElementById('country')?.value?.trim();
-      const minPrice = document.getElementById('minPrice')?.value;
-      const maxPrice = document.getElementById('maxPrice')?.value;
-      const ratingMin = document.getElementById('ratingMin')?.value;
-      if (city) q.set('city', city);
-      if (country) q.set('country', country);
-      if (minPrice) q.set('minPrice', minPrice);
-      if (maxPrice) q.set('maxPrice', maxPrice);
-      if (ratingMin) q.set('ratingMin', ratingMin);
-      try {
-        const res = await fetch('api/hotels?' + q.toString());
-        const data = await res.json();
-        status.textContent = '';
-        (data.results || []).forEach(h => {
-          const div = document.createElement('div');
-          div.className = 'card';
-          div.onclick = () => window.location.href = `hotel-details.html?id=${h.id}`;
-          const imgSrc = h.image_url || 'data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj4KICA8cmVjdCB3aWR0aD0iNDAwIiBoZWlnaHQ9IjMwMCIgZmlsbD0iI0Y1RjVGMEYiLz4KICA8dGV4dCB4PSI1MCUiIHk9IjUwJSIgZm9udC1mYW1pbHk9IkFyaWFsLCBzYW5zLXNlcmlmIiBmb250LXNpemU9IjI0IiBmaWxsPSIjOEIwMDAwIiB0ZXh0LWFuY2hvcj0ibWlkZGxlIiBkb21pbmFudC1iYXNlbGluZT0ibWlkZGxlIj4KICAgIE5vIEltYWdlIEF2YWlsYWJsZQogIDwvdGV4dD4KPC9zdmc+';
-          div.innerHTML = `
-            <img src="${imgSrc}" alt="${h.name}" class="card-image">
-            <div class="row" style="justify-content:space-between">
-              <strong>${h.name}</strong>
-              <span class="badge">${Number(h.rating).toFixed(1)} ★</span>
-            </div>
-            <div class="muted">${h.city}, ${h.country}</div>
-            <div class="price" style="margin-top:6px;">₱${Number(h.price_per_night).toFixed(2)} <span class="muted" style="font-weight:400">/ night</span></div>
-          `;
-          list.appendChild(div);
-        });
-        if (!list.children.length) status.textContent = 'No hotels found.';
-      } catch (e) {
-        status.textContent = 'Failed to load hotels.';
-        console.error(e);
-      }
-    }
-    window.addEventListener('DOMContentLoaded', loadHotels);
-  </script>
-  </head>
+</head>
 <body>
-  <header>
-    <a href="index.html">← Home</a>
-    <nav>
-      <a href="hotels.html">Hotels</a>
-      <a href="flights.html">Flights</a>
-      <a href="activities.html">Activities</a>
-      <a href="transfers.html">Transfers</a>
-      <a href="bookings.html">Bookings</a>
-      <a href="login.html">Login</a>
-    </nav>
-  </header>
-  <main>
-    <h1>Hotels</h1>
-    <div class="toolbar">
-      <label>City <input id="city" placeholder="Cebu"></label>
-      <label>Country <input id="country" placeholder="Philippines"></label>
-      <label>Min ₱ <input id="minPrice" type="number"></label>
-      <label>Max ₱ <input id="maxPrice" type="number"></label>
-      <label>Rating ≥ <input id="ratingMin" type="number" min="0" max="5" step="0.1"></label>
-      <button onclick="loadHotels()">Search</button>
-    </div>
-    <div class="row" style="justify-content:space-between; margin-bottom:8px;">
-      <span class="muted">Fetching from <code>api/hotels</code></span>
+  <div id="header"></div>
+
+  <div class="container mt-4">
+    <h1 class="mb-4">Hotels</h1>
+    
+    <!-- Filters -->
+    <div class="filter-section">
       <div class="row">
-        <span class="badge">Free cancellation</span>
-        <span class="badge">Breakfast</span>
-        <span class="badge">Pay at hotel</span>
+        <div class="col-md-3">
+          <label for="cityFilter" class="form-label">City</label>
+          <input type="text" class="form-control" id="cityFilter" placeholder="City">
+        </div>
+        <div class="col-md-3">
+          <label for="countryFilter" class="form-label">Country</label>
+          <input type="text" class="form-control" id="countryFilter" placeholder="Country">
+        </div>
+        <div class="col-md-2">
+          <label for="minPrice" class="form-label">Min Price</label>
+          <input type="number" class="form-control" id="minPrice" placeholder="Min">
+        </div>
+        <div class="col-md-2">
+          <label for="maxPrice" class="form-label">Max Price</label>
+          <input type="number" class="form-control" id="maxPrice" placeholder="Max">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="loadHotels()">Filter</button>
+        </div>
       </div>
     </div>
-    <div id="status" class="muted"></div>
-    <div id="list" class="grid"></div>
-  </main>
+
+    <!-- Results -->
+    <div id="status"></div>
+    <div id="hotels" class="row g-4">
+      <!-- Loaded dynamically -->
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    fetch('includes/header.html')
+      .then(response => response.text())
+      .then(data => document.getElementById('header').innerHTML = data);
+    
+    fetch('includes/footer.html')
+      .then(response => response.text())
+      .then(data => document.getElementById('footer').innerHTML = data)
+      .then(() => updateNavigation());
+
+    async function loadHotels() {
+      showLoading('hotels');
+      clearStatus('status');
+      
+      const city = document.getElementById('cityFilter').value;
+      const country = document.getElementById('countryFilter').value;
+      const minPrice = document.getElementById('minPrice').value;
+      const maxPrice = document.getElementById('maxPrice').value;
+      
+      try {
+        let url = '/hotels?limit=20';
+        if (city) url += `&city=${encodeURIComponent(city)}`;
+        if (country) url += `&country=${encodeURIComponent(country)}`;
+        if (minPrice) url += `&minPrice=${minPrice}`;
+        if (maxPrice) url += `&maxPrice=${maxPrice}`;
+        
+        const data = await apiCall(url);
+        const container = document.getElementById('hotels');
+        
+        if (data.results.length === 0) {
+          container.innerHTML = '<p class="text-muted">No hotels found.</p>';
+          return;
+        }
+        
+        container.innerHTML = data.results.map(hotel => `
+          <div class="col-md-4">
+            <div class="card h-100">
+              <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}">
+              <div class="card-body">
+                <h5 class="card-title">${hotel.name}</h5>
+                <p class="card-text text-muted">${hotel.city}, ${hotel.country}</p>
+                <p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span></p>
+                <p class="rating">★ ${hotel.rating || 0}</p>
+                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary">View Details</a>
+              </div>
+            </div>
+          </div>
+        `).join('');
+      } catch (error) {
+        showError('status', error.message || 'Failed to load hotels');
+        document.getElementById('hotels').innerHTML = '';
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadHotels();
+    });
+  </script>
 </body>
 </html>
-
-
 
 

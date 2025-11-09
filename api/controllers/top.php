@@ -1,23 +1,20 @@
 <?php
+// Top items controller
 declare(strict_types=1);
-require_once __DIR__ . '/../bootstrap.php';
 
-// Load DB
-if (!file_exists(__DIR__ . '/../db.php')) {
-  json_error('Missing api/db.php', 500);
-  exit;
-}
+require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('DB connection failed: ' . $e->getMessage(), 500);
-  exit;
+  json_error('Database connection failed', 500);
 }
 
+$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
+
 // GET /api/top/hotels
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/hotels/?$#', $_SERVER['REQUEST_URI'])) {
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/hotels/?$#', $uri)) {
   $limit = min(10, max(1, (int)($_GET['limit'] ?? 4)));
   
   // Weighted scoring: (booking_count * 0.4) + (rating * 20 * 0.4) + (days_since_created_penalty * 0.2)
@@ -30,11 +27,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/hotels/?$#', $
   $stmt->execute();
   $rows = $stmt->fetchAll();
   json_ok(['results' => $rows]);
-  exit;
 }
 
 // GET /api/top/flights
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/flights/?$#', $_SERVER['REQUEST_URI'])) {
+elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/flights/?$#', $uri)) {
   $limit = min(10, max(1, (int)($_GET['limit'] ?? 4)));
   
   $sql = "SELECT TOP $limit *, 
@@ -46,11 +42,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/flights/?$#', 
   $stmt->execute();
   $rows = $stmt->fetchAll();
   json_ok(['results' => $rows]);
-  exit;
 }
 
 // GET /api/top/activities
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/activities/?$#', $_SERVER['REQUEST_URI'])) {
+elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/activities/?$#', $uri)) {
   $limit = min(10, max(1, (int)($_GET['limit'] ?? 4)));
   
   $sql = "SELECT TOP $limit *, 
@@ -62,11 +57,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/activities/?$#
   $stmt->execute();
   $rows = $stmt->fetchAll();
   json_ok(['results' => $rows]);
-  exit;
 }
 
 // GET /api/top/transfers
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/transfers/?$#', $_SERVER['REQUEST_URI'])) {
+elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/transfers/?$#', $uri)) {
   $limit = min(10, max(1, (int)($_GET['limit'] ?? 4)));
   
   $sql = "SELECT TOP $limit *, 
@@ -78,7 +72,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#/api/top/transfers/?$#'
   $stmt->execute();
   $rows = $stmt->fetchAll();
   json_ok(['results' => $rows]);
-  exit;
 }
 
-json_error('Not found', 404);
+else {
+  json_error('Not found', 404);
+}
