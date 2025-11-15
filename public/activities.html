@@ -36,13 +36,12 @@
         if (document.getElementById('dateFilter').value) url += `&date=${document.getElementById('dateFilter').value}`;
         const data = await apiCall(url);
         document.getElementById('activities').innerHTML = data.results.length === 0 ? '<p class="text-muted">No activities found.</p>' : data.results.map((a, index) => `
-          <div class="col-md-4 reveal stagger-${(index % 5) + 1}">
+          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${a.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${a.title}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="activity-details.html?id=${a.id}" class="btn btn-light btn-sm">Quick View</a>
-                  <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-sm">Book Now</a>
+                  <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -50,7 +49,6 @@
                 <p class="text-muted">${a.city}</p>
                 <p class="text-muted">${formatDate(a.date)}</p>
                 <p class="price">${formatPrice(a.price)}</p>
-                <a href="activity-details.html?id=${a.id}" class="btn btn-primary w-100">View Details</a>
               </div>
             </div>
           </div>`).join('');

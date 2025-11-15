@@ -10,12 +10,12 @@
 <body>
   <div id="header"></div>
   <div class="container mt-4">
-    <div id="flightDetails"></div>
+    <div id="flightDetails" class="reveal"></div>
     <div class="row mt-4">
       <div class="col-md-8">
-        <div class="card">
+        <div class="card reveal">
           <div class="card-body">
-            <h3 id="flightAirline"></h3>
+            <h3 id="flightAirline" class="fade-in-up"></h3>
             <p id="flightRoute"></p>
             <p class="text-muted" id="flightDate"></p>
             <p class="price" id="flightPrice"></p>
@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card">
+        <div class="card sticky-booking-form reveal">
           <div class="card-body">
             <h5>Book Now</h5>
             <form id="bookingForm">
@@ -57,7 +57,11 @@
         document.getElementById('flightPrice').textContent = formatPrice(flight.price);
         document.getElementById('totalPrice').textContent = `Total: ${formatPrice(flight.price)}`;
         document.getElementById('flightDescription').textContent = flight.description || '';
-        document.getElementById('flightDetails').innerHTML = `<img src="${flight.image_url || 'uploads/placeholder.svg'}" class="img-fluid rounded" alt="${flight.airline}">`;
+        document.getElementById('flightDetails').innerHTML = `
+          <div class="card-img-wrapper" style="height: 400px; border-radius: 12px; overflow: hidden;">
+            <img src="${flight.image_url || 'uploads/placeholder.svg'}" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="${flight.airline}" loading="lazy">
+          </div>
+        `;
       } catch (error) {
         showError('status', error.message || 'Failed to load flight');
       }
@@ -78,7 +82,7 @@
             total_price: flight.price
           })
         });
-        showSuccess('status', 'Booking created successfully!');
+        showSuccessToast('Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         showError('status', error.message || 'Failed to create booking');

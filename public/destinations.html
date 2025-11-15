@@ -35,7 +35,7 @@
 
     <!-- Results -->
     <div id="status"></div>
-    <div id="destinations" class="row g-4">
+    <div id="destinations" class="row g-4 reveal">
       <!-- Loaded dynamically -->
     </div>
   </div>
@@ -85,15 +85,19 @@
           );
         }
         
-        container.innerHTML = results.map(dest => `
-          <div class="col-md-4">
+        container.innerHTML = results.map((dest, index) => `
+          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
-              <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}">
+              <div class="card-img-wrapper">
+                <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg">View Details</a>
+                </div>
+              </div>
               <div class="card-body">
                 <h5 class="card-title">${dest.name}</h5>
                 <p class="card-text text-muted">${dest.country}</p>
                 <p class="card-text">${dest.description ? dest.description.substring(0, 100) + '...' : ''}</p>
-                <a href="destination-details.html?id=${dest.id}" class="btn btn-primary">View Details</a>
               </div>
             </div>
           </div>

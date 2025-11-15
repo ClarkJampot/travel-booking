@@ -85,13 +85,12 @@
         }
         
         container.innerHTML = data.results.map((hotel, index) => `
-          <div class="col-md-4 reveal stagger-${(index % 5) + 1}">
+          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-light btn-sm">Quick View</a>
-                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm">Book Now</a>
+                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -99,7 +98,6 @@
                 <p class="card-text text-muted">${hotel.city}, ${hotel.country}</p>
                 <p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span></p>
                 <p class="rating">★ ${hotel.rating || 0}</p>
-                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary w-100">View Details</a>
               </div>
             </div>
           </div>

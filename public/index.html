@@ -81,19 +81,24 @@
           return;
         }
         
+        // Make cards visible immediately, then animate
+        container.querySelectorAll('.reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+        
         container.innerHTML = data.results.map((dest, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}">
+          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="destination-details.html?id=${dest.id}" class="btn btn-light btn-sm">View Details</a>
+                  <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
                 <h5 class="card-title">${dest.name}</h5>
                 <p class="card-text text-muted">${dest.country}</p>
-                <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-sm">Explore</a>
               </div>
             </div>
           </div>
@@ -114,14 +119,19 @@
           return;
         }
         
+        // Make cards visible immediately
+        container.querySelectorAll('.reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+        
         container.innerHTML = data.results.map((hotel, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}">
+          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${hotel.name}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-light btn-sm">Quick View</a>
-                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm">Book Now</a>
+                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -129,7 +139,6 @@
                 <p class="card-text text-muted">${hotel.city}, ${hotel.country}</p>
                 <p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span></p>
                 <p class="rating">★ ${hotel.rating || 0}</p>
-                <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-sm w-100">View Details</a>
               </div>
             </div>
           </div>
@@ -150,14 +159,19 @@
           return;
         }
         
+        // Make cards visible immediately
+        container.querySelectorAll('.reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+        
         container.innerHTML = data.results.map((flight, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}">
+          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${flight.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${flight.airline}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="flight-details.html?id=${flight.id}" class="btn btn-light btn-sm">Quick View</a>
-                  <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-sm">Book Now</a>
+                  <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -165,7 +179,6 @@
                 <p class="card-text">${flight.origin} → ${flight.destination}</p>
                 <p class="text-muted">${formatDate(flight.depart_date)}</p>
                 <p class="price">${formatPrice(flight.price)}</p>
-                <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-sm w-100">View Details</a>
               </div>
             </div>
           </div>
@@ -186,14 +199,19 @@
           return;
         }
         
+        // Make cards visible immediately
+        container.querySelectorAll('.reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+        
         container.innerHTML = data.results.map((activity, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}">
+          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${activity.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${activity.title}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="activity-details.html?id=${activity.id}" class="btn btn-light btn-sm">Quick View</a>
-                  <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-sm">Book Now</a>
+                  <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -201,7 +219,6 @@
                 <p class="card-text text-muted">${activity.city}</p>
                 <p class="text-muted">${formatDate(activity.date)}</p>
                 <p class="price">${formatPrice(activity.price)}</p>
-                <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-sm w-100">View Details</a>
               </div>
             </div>
           </div>
@@ -213,10 +230,10 @@
 
     // Load all content
     document.addEventListener('DOMContentLoaded', function() {
-      loadFeaturedDestinations();
-      loadTopHotels();
-      loadTopFlights();
-      loadTopActivities();
+      loadFeaturedDestinations().then(() => observeRevealElements());
+      loadTopHotels().then(() => observeRevealElements());
+      loadTopFlights().then(() => observeRevealElements());
+      loadTopActivities().then(() => observeRevealElements());
     });
   </script>
 </body>

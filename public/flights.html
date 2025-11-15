@@ -38,13 +38,12 @@
         if (document.getElementById('dateFilter').value) url += `&date=${document.getElementById('dateFilter').value}`;
         const data = await apiCall(url);
         document.getElementById('flights').innerHTML = data.results.length === 0 ? '<p class="text-muted">No flights found.</p>' : data.results.map((f, index) => `
-          <div class="col-md-4 reveal stagger-${(index % 5) + 1}">
+          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${f.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${f.airline}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="flight-details.html?id=${f.id}" class="btn btn-light btn-sm">Quick View</a>
-                  <a href="flight-details.html?id=${f.id}" class="btn btn-primary btn-sm">Book Now</a>
+                  <a href="flight-details.html?id=${f.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -52,7 +51,6 @@
                 <p>${f.origin} → ${f.destination}</p>
                 <p class="text-muted">${formatDate(f.depart_date)}</p>
                 <p class="price">${formatPrice(f.price)}</p>
-                <a href="flight-details.html?id=${f.id}" class="btn btn-primary w-100">View Details</a>
               </div>
             </div>
           </div>`).join('');

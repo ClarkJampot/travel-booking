@@ -165,12 +165,6 @@ body > .container.mt-4 {
   overflow: hidden;
   position: relative;
   background: white;
-  opacity: 0;
-  animation: fadeInUp 0.6s ease-out forwards;
-}
-
-.card.visible {
-  opacity: 1;
 }
 
 .card:hover {
@@ -201,13 +195,12 @@ body > .container.mt-4 {
   left: 0;
   right: 0;
   bottom: 0;
-  background: linear-gradient(to bottom, transparent 0%, rgba(0,0,0,0.7) 100%);
+  background: rgba(0, 0, 0, 0.5);
   opacity: 0;
   transition: opacity var(--transition-base);
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 10px;
 }
 
 .card:hover .card-overlay {
@@ -215,12 +208,14 @@ body > .container.mt-4 {
 }
 
 .card-overlay .btn {
-  transform: translateY(20px);
+  transform: scale(0.8);
   transition: transform var(--transition-base);
+  font-weight: 600;
+  padding: 12px 24px;
 }
 
 .card:hover .card-overlay .btn {
-  transform: translateY(0);
+  transform: scale(1);
 }
 
 .card-title {
@@ -463,6 +458,10 @@ body > .container.mt-4 {
 
 /* Responsive */
 @media (max-width: 768px) {
+  .hero {
+    padding: 60px 20px;
+  }
+  
   .hero h1 {
     font-size: 2rem;
   }
@@ -473,6 +472,26 @@ body > .container.mt-4 {
   
   .card-img-top {
     height: 150px;
+  }
+  
+  .card-overlay {
+    flex-direction: column;
+    gap: 8px;
+  }
+  
+  .card-overlay .btn {
+    width: 80%;
+  }
+  
+  .toast {
+    min-width: 280px;
+    max-width: 90%;
+    right: 10px;
+    left: 10px;
+  }
+  
+  .filter-section {
+    padding: 16px;
   }
 }
 
@@ -612,9 +631,27 @@ html {
   transition: all 0.6s ease-out;
 }
 
-.reveal.active {
+.reveal.active,
+.reveal[style*="opacity: 1"] {
   opacity: 1;
   transform: translateY(0);
+}
+
+/* Cards should be visible by default when loaded */
+.card {
+  opacity: 1 !important;
+}
+
+/* Reveal elements containing cards should be visible when cards are loaded */
+.reveal:has(.card),
+.reveal .card {
+  opacity: 1 !important;
+}
+
+/* Make sure reveal elements with inline styles are visible */
+.reveal[style*="opacity: 1"] {
+  opacity: 1 !important;
+  transform: translateY(0) !important;
 }
 
 /* Sticky Booking Form */

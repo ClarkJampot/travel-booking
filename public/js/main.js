@@ -136,31 +136,34 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 
 // Scroll-triggered animations using Intersection Observer
+let revealObserver = null;
+
 function initScrollAnimations() {
   const observerOptions = {
     threshold: 0.1,
     rootMargin: '0px 0px -50px 0px'
   };
 
-  const observer = new IntersectionObserver((entries) => {
+  revealObserver = new IntersectionObserver((entries) => {
     entries.forEach(entry => {
       if (entry.isIntersecting) {
         entry.target.classList.add('active');
-        observer.unobserve(entry.target);
+        revealObserver.unobserve(entry.target);
       }
     });
   }, observerOptions);
 
-  // Observe all reveal elements
-  document.querySelectorAll('.reveal').forEach(el => {
-    observer.observe(el);
-  });
+  // Observe all existing reveal elements
+  observeRevealElements();
+}
 
-  // Observe cards for staggered animation
-  document.querySelectorAll('.card').forEach((card, index) => {
-    card.classList.add('reveal');
-    card.style.animationDelay = `${index * 0.1}s`;
-    observer.observe(card);
+// Function to observe reveal elements (can be called after dynamic content is added)
+function observeRevealElements() {
+  if (!revealObserver) return;
+  
+  // Observe all reveal elements that aren't already active
+  document.querySelectorAll('.reveal:not(.active)').forEach(el => {
+    revealObserver.observe(el);
   });
 }
 

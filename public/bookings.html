@@ -11,10 +11,10 @@
   <div id="header"></div>
 
   <div class="container mt-4">
-    <h1 class="mb-4">My Bookings</h1>
+    <h1 class="mb-4 reveal">My Bookings</h1>
     
     <div id="status"></div>
-    <div id="bookings">
+    <div id="bookings" class="reveal">
       <!-- Loaded dynamically -->
     </div>
   </div>
@@ -52,8 +52,8 @@
           return;
         }
         
-        container.innerHTML = data.results.map(booking => `
-          <div class="card mb-3">
+        container.innerHTML = data.results.map((booking, index) => `
+          <div class="card mb-3 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card-body">
               <div class="row">
                 <div class="col-md-8">
@@ -86,7 +86,7 @@
           method: 'PUT',
           body: JSON.stringify({ status: 'cancelled' })
         });
-        showSuccess('status', 'Booking cancelled successfully');
+        showSuccessToast('Booking cancelled successfully');
         loadBookings();
       } catch (error) {
         showError('status', error.message || 'Failed to cancel booking');

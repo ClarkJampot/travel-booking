@@ -10,12 +10,12 @@
 <body>
   <div id="header"></div>
   <div class="container mt-4">
-    <div id="activityDetails"></div>
+    <div id="activityDetails" class="reveal"></div>
     <div class="row mt-4">
       <div class="col-md-8">
-        <div class="card">
+        <div class="card reveal">
           <div class="card-body">
-            <h3 id="activityTitle"></h3>
+            <h3 id="activityTitle" class="fade-in-up"></h3>
             <p class="text-muted" id="activityCity"></p>
             <p class="text-muted" id="activityDate"></p>
             <p class="price" id="activityPrice"></p>
@@ -24,7 +24,7 @@
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card">
+        <div class="card sticky-booking-form reveal">
           <div class="card-body">
             <h5>Book Now</h5>
             <form id="bookingForm">
@@ -57,7 +57,11 @@
         document.getElementById('activityPrice').textContent = formatPrice(activity.price);
         document.getElementById('totalPrice').textContent = `Total: ${formatPrice(activity.price)}`;
         document.getElementById('activityDescription').textContent = activity.description || '';
-        document.getElementById('activityDetails').innerHTML = `<img src="${activity.image_url || 'uploads/placeholder.svg'}" class="img-fluid rounded" alt="${activity.title}">`;
+        document.getElementById('activityDetails').innerHTML = `
+          <div class="card-img-wrapper" style="height: 400px; border-radius: 12px; overflow: hidden;">
+            <img src="${activity.image_url || 'uploads/placeholder.svg'}" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="${activity.title}" loading="lazy">
+          </div>
+        `;
       } catch (error) {
         showError('status', error.message || 'Failed to load activity');
       }
@@ -78,7 +82,7 @@
             total_price: activity.price
           })
         });
-        showSuccess('status', 'Booking created successfully!');
+        showSuccessToast('Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         showError('status', error.message || 'Failed to create booking');

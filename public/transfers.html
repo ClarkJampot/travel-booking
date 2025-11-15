@@ -20,7 +20,7 @@
       </div>
     </div>
     <div id="status"></div>
-    <div id="transfers" class="row g-4"></div>
+    <div id="transfers" class="row g-4 reveal"></div>
   </div>
   <div id="footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -37,10 +37,23 @@
         if (document.getElementById('destinationFilter').value) url += `&destination=${encodeURIComponent(document.getElementById('destinationFilter').value)}`;
         if (document.getElementById('dateFilter').value) url += `&date=${document.getElementById('dateFilter').value}`;
         const data = await apiCall(url);
-        document.getElementById('transfers').innerHTML = data.results.length === 0 ? '<p class="text-muted">No transfers found.</p>' : data.results.map(t => `
-          <div class="col-md-4"><div class="card h-100"><img src="${t.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${t.service}">
-          <div class="card-body"><h5 class="card-title">${t.service}</h5><p>${t.origin} → ${t.destination}</p><p class="text-muted">${formatDate(t.date)}</p><p class="price">${formatPrice(t.price)}</p>
-          <a href="transfer-details.html?id=${t.id}" class="btn btn-primary">View Details</a></div></div></div>`).join('');
+        document.getElementById('transfers').innerHTML = data.results.length === 0 ? '<p class="text-muted">No transfers found.</p>' : data.results.map((t, index) => `
+          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+            <div class="card h-100">
+              <div class="card-img-wrapper">
+                <img src="${t.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${t.service}" loading="lazy">
+                <div class="card-overlay">
+                  <a href="transfer-details.html?id=${t.id}" class="btn btn-primary btn-lg">View Details</a>
+                </div>
+              </div>
+              <div class="card-body">
+                <h5 class="card-title">${t.service}</h5>
+                <p>${t.origin} → ${t.destination}</p>
+                <p class="text-muted">${formatDate(t.date)}</p>
+                <p class="price">${formatPrice(t.price)}</p>
+              </div>
+            </div>
+          </div>`).join('');
       } catch (error) {
         showError('status', error.message || 'Failed to load transfers');
         document.getElementById('transfers').innerHTML = '';

@@ -13,9 +13,9 @@
   <div class="container mt-5">
     <div class="row justify-content-center">
       <div class="col-md-6">
-        <div class="card">
+        <div class="card reveal">
           <div class="card-body">
-            <h2 class="card-title text-center mb-4">Register</h2>
+            <h2 class="card-title text-center mb-4 fade-in-up">Register</h2>
             <form id="registerForm">
               <div class="mb-3">
                 <label for="full_name" class="form-label">Full Name</label>
@@ -76,7 +76,7 @@
       
       try {
         await register(email, password, full_name, role);
-        showSuccess('status', 'Registration successful! Redirecting...');
+        showSuccessToast('Registration successful! Redirecting...');
         setTimeout(() => {
           window.location.href = 'index.html';
         }, 1000);
