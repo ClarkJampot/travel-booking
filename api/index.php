@@ -99,5 +99,23 @@ elseif (preg_match('#^/top/(hotels|flights|activities|transfers)/?$#', $uri, $ma
   exit;
 }
 
+// Route: /api/provinces and /api/cities
+elseif (preg_match('#^/(provinces|cities)(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/locations.php';
+  exit;
+}
+
+// Route: /api/profile
+elseif (preg_match('#^/profile/?$#', $uri)) {
+  require __DIR__ . '/controllers/profile.php';
+  exit;
+}
+
+// Route: /api/promotions
+elseif (preg_match('#^/promotions/?$#', $uri)) {
+  require __DIR__ . '/controllers/promotions.php';
+  exit;
+}
+
 // 404 Not Found
 json_error('Not found', 404);

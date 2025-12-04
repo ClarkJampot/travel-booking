@@ -9,18 +9,84 @@
 </head>
 <body>
   <div id="header"></div>
+
   <div class="container mt-4">
     <h1 class="mb-4">Flights</h1>
     <div class="filter-section">
-      <div class="row">
-        <div class="col-md-3"><label class="form-label">Origin</label><input type="text" class="form-control" id="originFilter"></div>
-        <div class="col-md-3"><label class="form-label">Destination</label><input type="text" class="form-control" id="destinationFilter"></div>
-        <div class="col-md-3"><label class="form-label">Date</label><input type="date" class="form-control" id="dateFilter"></div>
-        <div class="col-md-3 d-flex align-items-end"><button class="btn btn-primary w-100" onclick="loadFlights()">Filter</button></div>
+      <div class="row mb-3">
+        <div class="col-md-2">
+          <label class="form-label">Origin Province</label>
+          <select class="form-control" id="originProvinceFilter">
+            <option value="">All Provinces</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Origin City</label>
+          <select class="form-control" id="originCityFilter">
+            <option value="">All Cities</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Destination Province</label>
+          <select class="form-control" id="destinationProvinceFilter">
+            <option value="">All Provinces</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Destination City</label>
+          <select class="form-control" id="destinationCityFilter">
+            <option value="">All Cities</option>
+          </select>
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Date</label>
+          <input type="date" class="form-control" id="dateFilter">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="handleFilterClick()">Filter</button>
+        </div>
+      </div>
+      <div class="row mb-3">
+        <div class="col-md-4">
+          <label class="form-label">Keyword Search</label>
+          <input type="text" class="form-control" id="keywordFilter" placeholder="Search flights...">
+        </div>
+        <div class="col-md-8">
+          <label class="form-label">Trip Type</label>
+          <div>
+            <button id="oneWayBtn" class="btn btn-outline-primary me-2">One Way</button>
+            <button id="roundTripBtn" class="btn btn-outline-primary">Round Trip</button>
+          </div>
+        </div>
       </div>
     </div>
     <div id="status"></div>
+    
+    <!-- Promoted Flights Section -->
+    <div id="promotedFlights" class="promoted-section mb-4" style="display: none;">
+      <h3 class="mb-3">Promoted Flights</h3>
+      <div class="row g-4">
+        <!-- Loaded dynamically -->
+      </div>
+    </div>
+    
+    <!-- Regular Flights -->
     <div id="flights" class="row g-4 reveal"></div>
+    
+    <!-- Pagination -->
+    <nav aria-label="Flights pagination" id="paginationNav" style="display: none;">
+      <ul class="pagination justify-content-center mt-4">
+        <li class="page-item" id="prevPageItem">
+          <a class="page-link" href="#" id="prevPageLink">Previous</a>
+        </li>
+        <li class="page-item" id="pageNumbers">
+          <!-- Page numbers loaded dynamically -->
+        </li>
+        <li class="page-item" id="nextPageItem">
+          <a class="page-link" href="#" id="nextPageLink">Next</a>
+        </li>
+      </ul>
+    </nav>
   </div>
   <div id="footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
@@ -29,37 +95,298 @@
   <script>
     fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
     fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
+    
+    let selectedTripType = null;
+    
+    async function loadProvinces() {
+      try {
+        const data = await apiCall('/provinces');
+        const originProvinceSelect = document.getElementById('originProvinceFilter');
+        const destinationProvinceSelect = document.getElementById('destinationProvinceFilter');
+        if (data.results && data.results.length > 0) {
+          data.results.forEach(province => {
+            const option1 = document.createElement('option');
+            option1.value = province.id;
+            option1.textContent = province.name;
+            originProvinceSelect.appendChild(option1);
+            
+            const option2 = document.createElement('option');
+            option2.value = province.id;
+            option2.textContent = province.name;
+            destinationProvinceSelect.appendChild(option2);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading provinces:', error);
+      }
+    }
+    
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        q: params.get('q') || '',
+        origin_city_id: params.get('origin_city_id') || '',
+        destination_city_id: params.get('destination_city_id') || '',
+        date: params.get('date') || '',
+        trip_type: params.get('trip_type') || '',
+        page: parseInt(params.get('page')) || 1
+      };
+    }
+
+    function updateURLWithFilters(page = 1) {
+      const params = new URLSearchParams();
+      const originCityId = document.getElementById('originCityFilter').value;
+      const destinationCityId = document.getElementById('destinationCityFilter').value;
+      const date = document.getElementById('dateFilter').value;
+      const keyword = document.getElementById('keywordFilter').value;
+      
+      if (originCityId) params.set('origin_city_id', originCityId);
+      if (destinationCityId) params.set('destination_city_id', destinationCityId);
+      if (date) params.set('date', date);
+      if (keyword) params.set('q', keyword);
+      if (selectedTripType) params.set('trip_type', selectedTripType);
+      if (page > 1) params.set('page', page);
+      
+      const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.pushState({}, '', newURL);
+    }
+    
     async function loadFlights() {
       showLoading('flights');
+      const urlParams = getUrlParams();
+      
+      // Pre-fill filter inputs from URL
+      if (urlParams.origin_city_id) {
+        // Need to find which province this city belongs to
+        try {
+          const cityData = await apiCall(`/cities?id=${urlParams.origin_city_id}`);
+          if (cityData.city && cityData.city.province_id) {
+            document.getElementById('originProvinceFilter').value = cityData.city.province_id;
+            const originCitySelect = document.getElementById('originCityFilter');
+            originCitySelect.disabled = false;
+            await loadCitiesForProvince(cityData.city.province_id, originCitySelect);
+          }
+        } catch (e) {
+          console.error('Error loading origin city:', e);
+        }
+        document.getElementById('originCityFilter').value = urlParams.origin_city_id;
+      }
+      if (urlParams.destination_city_id) {
+        try {
+          const cityData = await apiCall(`/cities?id=${urlParams.destination_city_id}`);
+          if (cityData.city && cityData.city.province_id) {
+            document.getElementById('destinationProvinceFilter').value = cityData.city.province_id;
+            const destinationCitySelect = document.getElementById('destinationCityFilter');
+            destinationCitySelect.disabled = false;
+            await loadCitiesForProvince(cityData.city.province_id, destinationCitySelect);
+          }
+        } catch (e) {
+          console.error('Error loading destination city:', e);
+        }
+        document.getElementById('destinationCityFilter').value = urlParams.destination_city_id;
+      }
+      if (urlParams.date) document.getElementById('dateFilter').value = urlParams.date;
+      if (urlParams.q) {
+        document.getElementById('keywordFilter').value = urlParams.q;
+      }
+      if (urlParams.trip_type) {
+        selectedTripType = urlParams.trip_type;
+        if (urlParams.trip_type === 'one-way') {
+          document.getElementById('oneWayBtn').classList.add('active');
+          document.getElementById('roundTripBtn').classList.remove('active');
+        } else if (urlParams.trip_type === 'round-trip') {
+          document.getElementById('roundTripBtn').classList.add('active');
+          document.getElementById('oneWayBtn').classList.remove('active');
+        }
+      }
+      
       try {
-        let url = '/flights?limit=20';
-        if (document.getElementById('originFilter').value) url += `&origin=${encodeURIComponent(document.getElementById('originFilter').value)}`;
-        if (document.getElementById('destinationFilter').value) url += `&destination=${encodeURIComponent(document.getElementById('destinationFilter').value)}`;
-        if (document.getElementById('dateFilter').value) url += `&date=${document.getElementById('dateFilter').value}`;
+        const currentPage = urlParams.page || 1;
+        const limit = 12;
+        let url = `/flights?limit=${limit}&page=${currentPage}`;
+        if (urlParams.origin_city_id) url += `&origin_city_id=${urlParams.origin_city_id}`;
+        if (urlParams.destination_city_id) url += `&destination_city_id=${urlParams.destination_city_id}`;
+        if (urlParams.date) url += `&date=${urlParams.date}`;
+        if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
+        if (urlParams.trip_type) url += `&trip_type=${urlParams.trip_type}`;
         const data = await apiCall(url);
-        document.getElementById('flights').innerHTML = data.results.length === 0 ? '<p class="text-muted">No flights found.</p>' : data.results.map((f, index) => `
-          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-            <div class="card h-100">
-              <div class="card-img-wrapper">
-                <img src="${f.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${f.airline}" loading="lazy">
-                <div class="card-overlay">
-                  <a href="flight-details.html?id=${f.id}" class="btn btn-primary btn-lg">View Details</a>
+        const container = document.getElementById('flights');
+        const promotedContainer = document.getElementById('promotedFlights');
+        const promotedRow = promotedContainer.querySelector('.row');
+        
+        // Display promoted flights
+        if (data.promoted && data.promoted.length > 0) {
+          promotedContainer.style.display = 'block';
+          promotedRow.innerHTML = data.promoted.map((f, index) => {
+            const priceDisplay = f.discount_percent > 0 
+              ? `<div class="price-container">
+                  <span class="original-price">${formatPrice(f.price)}</span>
+                  <span class="discounted-price">${formatPrice(f.discounted_price || f.price * (1 - f.discount_percent / 100))}</span>
+                </div>`
+              : `<p class="price">${formatPrice(f.price)}</p>`;
+            
+            return `
+              <div class="col-md-6 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+                <div class="card h-100 promoted-item">
+                  <div class="card-img-wrapper">
+                    <img src="${normalizeImageUrl(f.image_url)}" class="card-img-top" alt="${f.airline}" loading="lazy">
+                    ${f.discount_percent > 0 ? `<div class="discount-badge">${f.discount_percent}% OFF</div>` : ''}
+                    <div class="card-overlay">
+                      <a href="flight-details.html?id=${f.id}" class="btn btn-primary btn-lg">View Details</a>
+                    </div>
+                  </div>
+                  <div class="card-body">
+                    <h5 class="card-title">${f.airline}</h5>
+                    <p>${f.origin_city_name || f.origin} → ${f.destination_city_name || f.destination}</p>
+                    <p class="text-muted">${formatDate(f.depart_date)}</p>
+                    ${f.trip_type ? `<p class="text-muted"><small>${f.trip_type}</small></p>` : ''}
+                    ${priceDisplay}
+                  </div>
                 </div>
               </div>
-              <div class="card-body">
-                <h5 class="card-title">${f.airline}</h5>
-                <p>${f.origin} → ${f.destination}</p>
-                <p class="text-muted">${formatDate(f.depart_date)}</p>
-                <p class="price">${formatPrice(f.price)}</p>
+            `;
+          }).join('');
+        } else {
+          promotedContainer.style.display = 'none';
+        }
+        
+        // Display regular flights
+        if (!data || !data.results || data.results.length === 0) {
+          if (!data.promoted || data.promoted.length === 0) {
+            container.innerHTML = '<p class="text-muted">No flights found.</p>';
+          } else {
+            container.innerHTML = '';
+          }
+          return;
+        }
+        
+        container.innerHTML = data.results.map((f, index) => {
+          const priceDisplay = f.discount_percent > 0 
+            ? `<div class="price-container">
+                <span class="original-price">${formatPrice(f.price)}</span>
+                <span class="discounted-price">${formatPrice(f.discounted_price || f.price * (1 - f.discount_percent / 100))}</span>
+              </div>`
+            : `<p class="price">${formatPrice(f.price)}</p>`;
+          
+          return `
+            <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+              <div class="card h-100">
+                <div class="card-img-wrapper">
+                  <img src="${normalizeImageUrl(f.image_url)}" class="card-img-top" alt="${f.airline}" loading="lazy">
+                  ${f.discount_percent > 0 ? `<div class="discount-badge">${f.discount_percent}% OFF</div>` : ''}
+                  ${f.ad ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
+                  <div class="card-overlay">
+                    <a href="flight-details.html?id=${f.id}" class="btn btn-primary btn-lg">View Details</a>
+                  </div>
+                </div>
+                <div class="card-body">
+                  <h5 class="card-title">${f.airline}</h5>
+                  <p>${f.origin_city_name || f.origin} → ${f.destination_city_name || f.destination}</p>
+                  <p class="text-muted">${formatDate(f.depart_date)}</p>
+                  ${f.trip_type ? `<p class="text-muted"><small>${f.trip_type}</small></p>` : ''}
+                  ${priceDisplay}
+                </div>
               </div>
             </div>
-          </div>`).join('');
+          `;
+        }).join('');
+        
+        // Update pagination
+        updatePagination(currentPage, limit, data.results ? data.results.length : 0);
       } catch (error) {
         showError('status', error.message || 'Failed to load flights');
         document.getElementById('flights').innerHTML = '';
+        document.getElementById('paginationNav').style.display = 'none';
       }
     }
-    document.addEventListener('DOMContentLoaded', loadFlights);
+    
+    function updatePagination(currentPage, limit, itemCount) {
+      const paginationNav = document.getElementById('paginationNav');
+      const pageNumbers = document.getElementById('pageNumbers');
+      const prevPageItem = document.getElementById('prevPageItem');
+      const nextPageItem = document.getElementById('nextPageItem');
+      
+      if (itemCount < limit && currentPage === 1) {
+        paginationNav.style.display = 'none';
+        return;
+      }
+      
+      paginationNav.style.display = 'block';
+      
+      if (currentPage > 1) {
+        prevPageItem.classList.remove('disabled');
+        document.getElementById('prevPageLink').onclick = (e) => {
+          e.preventDefault();
+          updateURLWithFilters(currentPage - 1);
+          loadFlights();
+        };
+      } else {
+        prevPageItem.classList.add('disabled');
+        document.getElementById('prevPageLink').onclick = (e) => e.preventDefault();
+      }
+      
+      if (itemCount >= limit) {
+        nextPageItem.classList.remove('disabled');
+        document.getElementById('nextPageLink').onclick = (e) => {
+          e.preventDefault();
+          updateURLWithFilters(currentPage + 1);
+          loadFlights();
+        };
+      } else {
+        nextPageItem.classList.add('disabled');
+        document.getElementById('nextPageLink').onclick = (e) => e.preventDefault();
+      }
+      
+      let pageNumbersHtml = '';
+      const maxPages = 5;
+      let startPage = Math.max(1, currentPage - 2);
+      let endPage = startPage + maxPages - 1;
+      
+      for (let i = startPage; i <= endPage; i++) {
+        const isActive = i === currentPage;
+        pageNumbersHtml += `
+          <li class="page-item ${isActive ? 'active' : ''}">
+            <a class="page-link" href="#" onclick="event.preventDefault(); updateURLWithFilters(${i}); loadFlights();">${i}</a>
+          </li>
+        `;
+      }
+      
+      pageNumbers.innerHTML = pageNumbersHtml;
+    }
+
+    function handleFilterClick() {
+      updateURLWithFilters(1);
+      loadFlights();
+    }
+
+    window.addEventListener('popstate', function() {
+      loadFlights();
+    });
+
+    document.addEventListener('DOMContentLoaded', async function() {
+      await loadProvinces();
+      initCascadingCityDropdown('originProvinceFilter', 'originCityFilter');
+      initCascadingCityDropdown('destinationProvinceFilter', 'destinationCityFilter');
+      
+      // Trip type button handlers
+      document.getElementById('oneWayBtn').addEventListener('click', function() {
+        selectedTripType = 'one-way';
+        this.classList.add('active');
+        document.getElementById('roundTripBtn').classList.remove('active');
+        updateURLWithFilters();
+        loadFlights();
+      });
+      
+      document.getElementById('roundTripBtn').addEventListener('click', function() {
+        selectedTripType = 'round-trip';
+        this.classList.add('active');
+        document.getElementById('oneWayBtn').classList.remove('active');
+        updateURLWithFilters();
+        loadFlights();
+      });
+      
+      loadFlights();
+    });
   </script>
 </body>
 </html>

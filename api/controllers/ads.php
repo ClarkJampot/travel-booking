@@ -17,6 +17,7 @@ $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 // GET /api/ads
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/ads/?$#', $uri)) {
   $placement = $_GET['placement'] ?? null;
+  $createdBy = isset($_GET['created_by']) ? (int)$_GET['created_by'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
   $offset = ($page - 1) * $limit;
@@ -27,6 +28,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/ads/?$#', $uri)) {
   if ($placement) {
     $where[] = 'placement = ?';
     $params[] = $placement;
+  }
+  
+  if ($createdBy !== null) {
+    $where[] = 'created_by = ?';
+    $params[] = $createdBy;
   }
   
   $whereSql = 'WHERE ' . implode(' AND ', $where);
@@ -46,6 +52,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/ads/?$#', $uri)) {
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/ads/?$#', $uri)) {
   requireRole(['admin']);
   
+  $user = get_authenticated_user();
   $input = json_decode(file_get_contents('php://input'), true);
   
   $placement = trim($input['placement'] ?? '');
@@ -53,6 +60,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/ads/?$#', $uri)) {
   $image_url = trim($input['image_url'] ?? '');
   $link_url = trim($input['link_url'] ?? '');
   $active = isset($input['active']) ? (bool)$input['active'] : true;
+  $createdBy = isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
   
   if (!$placement || !$title) {
     json_error('Missing required fields: placement, title', 400);
@@ -62,8 +70,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/ads/?$#', $uri)) {
     json_error('Invalid placement', 400);
   }
   
-  $stmt = $pdo->prepare('INSERT INTO ads (placement, title, image_url, link_url, active) VALUES (?, ?, ?, ?, ?)');
-  $stmt->execute([$placement, $title, $image_url, $link_url, $active ? 1 : 0]);
+  $stmt = $pdo->prepare('INSERT INTO ads (placement, title, image_url, link_url, active, created_by) VALUES (?, ?, ?, ?, ?, ?)');
+  $stmt->execute([$placement, $title, $image_url, $link_url, $active ? 1 : 0, $createdBy]);
   $adId = (int)$pdo->lastInsertId();
   
   $stmt = $pdo->prepare('SELECT * FROM ads WHERE id = ?');

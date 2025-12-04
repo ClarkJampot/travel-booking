@@ -11,14 +11,13 @@
   <div id="header"></div>
   <div class="container mt-4">
     <div id="hotelDetails" class="reveal"></div>
-    <div class="row mt-4">
+    <div class="row mt-4 mb-4">
       <div class="col-md-8">
         <div class="card reveal">
           <div class="card-body">
             <h3 id="hotelName" class="fade-in-up"></h3>
             <p class="text-muted" id="hotelLocation"></p>
             <p class="price" id="hotelPrice"></p>
-            <p class="rating" id="hotelRating"></p>
             <p id="hotelDescription"></p>
           </div>
         </div>
@@ -53,6 +52,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/carousel.js"></script>
   <script>
     fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
     fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
@@ -64,15 +64,74 @@
         const data = await apiCall(`/hotels?id=${hotelId}`);
         hotel = data.hotel;
         document.getElementById('hotelName').textContent = hotel.name;
-        document.getElementById('hotelLocation').textContent = `${hotel.city}, ${hotel.country}`;
-        document.getElementById('hotelPrice').innerHTML = `${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span>`;
-        document.getElementById('hotelRating').textContent = `★ ${hotel.rating || 0}`;
-        document.getElementById('hotelDescription').textContent = hotel.description || '';
-        document.getElementById('hotelDetails').innerHTML = `
-          <div class="card-img-wrapper" style="height: 400px; border-radius: 12px; overflow: hidden;">
-            <img src="${hotel.image_url || 'uploads/placeholder.svg'}" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="${hotel.name}" loading="lazy">
-          </div>
+        // Use city_name and province_name if available
+        const location = hotel.city_name && hotel.province_name 
+          ? `${hotel.city_name}, ${hotel.province_name}`
+          : (hotel.city_name ? hotel.city_name : '');
+        document.getElementById('hotelLocation').textContent = location;
+        
+        // Display price with discount if applicable
+        const discountedPrice = hotel.discount_percent > 0 
+          ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
+          : hotel.price_per_night;
+        
+        let priceHTML = '';
+        if (hotel.discount_percent > 0) {
+          priceHTML = `
+            <div class="price-container">
+              <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
+              <span class="discounted-price">${formatPrice(discountedPrice)}</span>
+              <span class="price-small">/night</span>
+            </div>
+          `;
+        } else {
+          priceHTML = `${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span>`;
+        }
+        document.getElementById('hotelPrice').innerHTML = priceHTML;
+        
+        // Add discount and promoted badges if applicable
+        const badgeHTML = `
+          ${hotel.ad ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${hotel.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${hotel.discount_percent}% OFF</span>` : ''}
         `;
+        if (hotel.ad || hotel.discount_percent > 0) {
+          document.getElementById('hotelPrice').insertAdjacentHTML('beforebegin', badgeHTML);
+        }
+        
+        document.getElementById('hotelDescription').textContent = hotel.description || '';
+        // Combine primary image with additional images for carousel
+        const allImages = combineImages(hotel.image_url, hotel.images || []);
+        document.getElementById('hotelDetails').innerHTML = createImageCarousel(allImages, 'hotelCarousel', hotel.name);
+        
+        // Initialize carousel and add hover effects after DOM insertion
+        setTimeout(() => {
+          const carouselEl = document.getElementById('hotelCarousel');
+          if (carouselEl && allImages.length > 1) {
+            // Initialize Bootstrap carousel
+            const bsCarousel = new bootstrap.Carousel(carouselEl, {
+              interval: false,
+              wrap: true
+            });
+            
+            // Sync thumbnails when carousel slides
+            carouselEl.addEventListener('slid.bs.carousel', function(event) {
+              updateActiveThumbnail('hotelCarousel', event.to);
+            });
+          }
+          
+          // Add hover effects for expand hint
+          carouselEl?.querySelectorAll('.card-img-wrapper').forEach(wrapper => {
+            wrapper.addEventListener('mouseenter', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '1';
+            });
+            wrapper.addEventListener('mouseleave', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '0';
+            });
+          });
+        }, 50);
+        
         calculateTotal();
       } catch (error) {
         showError('status', error.message || 'Failed to load hotel');
@@ -81,7 +140,10 @@
     function calculateTotal() {
       const nights = parseInt(document.getElementById('nights').value) || 1;
       if (hotel) {
-        const total = hotel.price_per_night * nights;
+        const pricePerNight = hotel.discount_percent > 0 
+          ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
+          : hotel.price_per_night;
+        const total = pricePerNight * nights;
         const priceEl = document.getElementById('totalPrice');
         priceEl.style.animation = 'pulse 0.3s ease';
         priceEl.textContent = `Total: ${formatPrice(total)}`;
@@ -97,7 +159,10 @@
       }
       clearStatus('status');
       const nights = parseInt(document.getElementById('nights').value) || 1;
-      const totalPrice = hotel.price_per_night * nights;
+      const pricePerNight = hotel.discount_percent > 0 
+        ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
+        : hotel.price_per_night;
+      const totalPrice = pricePerNight * nights;
       try {
         await apiCall('/bookings', {
           method: 'POST',

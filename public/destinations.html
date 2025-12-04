@@ -16,25 +16,32 @@
     <!-- Filters -->
     <div class="filter-section">
       <div class="row">
-        <div class="col-md-4">
-          <label for="countryFilter" class="form-label">Country</label>
-          <select class="form-select" id="countryFilter">
-            <option value="">All Countries</option>
-            <option value="Philippines">Philippines</option>
+        <div class="col-md-3">
+          <label for="provinceFilter" class="form-label">Province</label>
+          <select class="form-control" id="provinceFilter">
+            <option value="">All Provinces</option>
           </select>
         </div>
-        <div class="col-md-4">
-          <label for="searchInput" class="form-label">Search</label>
-          <input type="text" class="form-control" id="searchInput" placeholder="Search destinations...">
+        <div class="col-md-3">
+          <label for="cityFilter" class="form-label">City</label>
+          <select class="form-control" id="cityFilter">
+            <option value="">All Cities</option>
+          </select>
         </div>
-        <div class="col-md-4 d-flex align-items-end">
-          <button class="btn btn-primary w-100" onclick="loadDestinations()">Filter</button>
+        <div class="col-md-3">
+          <label for="keywordFilter" class="form-label">Keyword Search</label>
+          <input type="text" class="form-control" id="keywordFilter" placeholder="Search destinations...">
+        </div>
+        <div class="col-md-3 d-flex align-items-end">
+          <button class="btn btn-primary w-100" onclick="handleFilterClick()">Filter</button>
         </div>
       </div>
     </div>
 
     <!-- Results -->
     <div id="status"></div>
+    
+    <!-- Destinations -->
     <div id="destinations" class="row g-4 reveal">
       <!-- Loaded dynamically -->
     </div>
@@ -55,48 +62,111 @@
       .then(data => document.getElementById('footer').innerHTML = data)
       .then(() => updateNavigation());
 
+    async function loadProvinces() {
+      try {
+        const data = await apiCall('/provinces');
+        const provinceSelect = document.getElementById('provinceFilter');
+        if (data.results && data.results.length > 0) {
+          data.results.forEach(province => {
+            const option = document.createElement('option');
+            option.value = province.id;
+            option.textContent = province.name;
+            provinceSelect.appendChild(option);
+          });
+        }
+      } catch (error) {
+        console.error('Error loading provinces:', error);
+      }
+    }
+
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        province_id: params.get('province_id') || '',
+        city_id: params.get('city_id') || '',
+        q: params.get('q') || ''
+      };
+    }
+
+    function updateURLWithFilters() {
+      const params = new URLSearchParams();
+      const provinceId = document.getElementById('provinceFilter').value;
+      const cityId = document.getElementById('cityFilter').value;
+      const keyword = document.getElementById('keywordFilter').value;
+      
+      if (provinceId) params.set('province_id', provinceId);
+      if (cityId) params.set('city_id', cityId);
+      if (keyword) params.set('q', keyword);
+      
+      const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
+      window.history.pushState({}, '', newURL);
+    }
+
     async function loadDestinations() {
       showLoading('destinations');
       clearStatus('status');
       
-      const country = document.getElementById('countryFilter').value;
-      const search = document.getElementById('searchInput').value;
+      const urlParams = getUrlParams();
+      
+      // Pre-fill filter inputs from URL
+      if (urlParams.province_id) {
+        document.getElementById('provinceFilter').value = urlParams.province_id;
+        // Trigger city dropdown update
+        const provinceSelect = document.getElementById('provinceFilter');
+        const citySelect = document.getElementById('cityFilter');
+        if (provinceSelect.value) {
+          citySelect.disabled = false;
+          await loadCitiesForProvince(provinceSelect.value, citySelect);
+        }
+      }
+      if (urlParams.city_id) {
+        // If city_id is provided but no province_id, fetch city to get province
+        if (!urlParams.province_id) {
+          try {
+            const cityData = await apiCall(`/cities?id=${urlParams.city_id}`);
+            if (cityData.city && cityData.city.province_id) {
+              document.getElementById('provinceFilter').value = cityData.city.province_id;
+              const citySelect = document.getElementById('cityFilter');
+              citySelect.disabled = false;
+              await loadCitiesForProvince(cityData.city.province_id, citySelect);
+            }
+          } catch (e) {
+            console.error('Error loading city:', e);
+          }
+        }
+        document.getElementById('cityFilter').value = urlParams.city_id;
+      }
+      if (urlParams.q) {
+        document.getElementById('keywordFilter').value = urlParams.q;
+      }
       
       try {
         let url = '/destinations?limit=20';
-        if (country) url += `&country=${encodeURIComponent(country)}`;
+        if (urlParams.province_id) url += `&province_id=${urlParams.province_id}`;
+        if (urlParams.city_id) url += `&city_id=${urlParams.city_id}`;
+        if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
         
         const data = await apiCall(url);
         const container = document.getElementById('destinations');
         
-        if (data.results.length === 0) {
+        // Display destinations
+        if (!data || !data.results || data.results.length === 0) {
           container.innerHTML = '<p class="text-muted">No destinations found.</p>';
           return;
         }
         
-        // Filter by search term if provided
-        let results = data.results;
-        if (search) {
-          const searchLower = search.toLowerCase();
-          results = results.filter(dest => 
-            dest.name.toLowerCase().includes(searchLower) ||
-            dest.country.toLowerCase().includes(searchLower) ||
-            (dest.description && dest.description.toLowerCase().includes(searchLower))
-          );
-        }
-        
-        container.innerHTML = results.map((dest, index) => `
+        container.innerHTML = data.results.map((dest, index) => `
           <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
-                <img src="${dest.image_url || 'uploads/placeholder.svg'}" class="card-img-top" alt="${dest.name}" loading="lazy">
+                <img src="${normalizeImageUrl(dest.image_url)}" class="card-img-top" alt="${dest.name}" loading="lazy">
                 <div class="card-overlay">
                   <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg">View Details</a>
                 </div>
               </div>
               <div class="card-body">
                 <h5 class="card-title">${dest.name}</h5>
-                <p class="card-text text-muted">${dest.country}</p>
+                <p class="card-text text-muted">Philippines</p>
                 <p class="card-text">${dest.description ? dest.description.substring(0, 100) + '...' : ''}</p>
               </div>
             </div>
@@ -108,13 +178,18 @@
       }
     }
 
-    document.getElementById('searchInput').addEventListener('keypress', function(e) {
-      if (e.key === 'Enter') {
-        loadDestinations();
-      }
+    function handleFilterClick() {
+      updateURLWithFilters();
+      loadDestinations();
+    }
+
+    window.addEventListener('popstate', function() {
+      loadDestinations();
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
+    document.addEventListener('DOMContentLoaded', async function() {
+      await loadProvinces();
+      initCascadingCityDropdown('provinceFilter', 'cityFilter');
       loadDestinations();
     });
   </script>

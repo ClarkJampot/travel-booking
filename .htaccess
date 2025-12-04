@@ -7,4 +7,8 @@ RewriteCond %{REQUEST_URI} !^/api/
 
 # Redirect root to public directory
 RewriteRule ^$ public/ [L]
+
+# Rewrite all other requests to public directory (except if file exists at root)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ public/$1 [L]

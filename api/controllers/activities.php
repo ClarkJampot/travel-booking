@@ -20,19 +20,29 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities/?$#', $uri
   
   // Get single activity
   if ($id) {
-    $stmt = $pdo->prepare('SELECT * FROM activities WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT a.*, c.name as city_name, p.name as province_name, p.region 
+      FROM activities a 
+      LEFT JOIN cities c ON a.city_id = c.id 
+      LEFT JOIN provinces p ON c.province_id = p.id 
+      WHERE a.id = ?');
     $stmt->execute([$id]);
     $activity = $stmt->fetch();
     if (!$activity) {
       json_error('Activity not found', 404);
     }
+    // Fetch all images from entity_images
+    $images = get_entity_images($pdo, 'activity', $id);
+    $activity['images'] = $images;
+    // Add image_url for backward compatibility (first image)
+    $activity['image_url'] = $images[0] ?? null;
     json_ok(['activity' => $activity]);
   }
   
   // List activities
-  $city = $_GET['city'] ?? null;
+  $city_id = isset($_GET['city_id']) ? (int)$_GET['city_id'] : null;
   $destination_id = isset($_GET['destination_id']) ? (int)$_GET['destination_id'] : null;
   $date = $_GET['date'] ?? null;
+  $q = isset($_GET['q']) ? trim($_GET['q']) : null;
   $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
@@ -41,34 +51,129 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities/?$#', $uri
   $where = [];
   $params = [];
   
-  if ($city) {
-    $where[] = 'city = ?';
-    $params[] = $city;
+  if ($city_id !== null) {
+    $where[] = 'a.city_id = ?';
+    $params[] = $city_id;
   }
   if ($destination_id !== null) {
-    $where[] = 'destination_id = ?';
+    $where[] = 'a.destination_id = ?';
     $params[] = $destination_id;
   }
   if ($date) {
-    $where[] = 'date >= ?';
+    $where[] = 'a.date >= ?';
     $params[] = $date;
   }
+  if ($q) {
+    // Escape special characters for SQL LIKE: %, _, [, ]
+    $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $q);
+    $where[] = "(a.title COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR p.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR a.description COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?)";
+    $searchPattern = '%' . $searchTerm . '%';
+    $params[] = $searchPattern;
+    $params[] = $searchPattern;
+    $params[] = $searchPattern;
+    $params[] = $searchPattern;
+  }
   if ($createdBy !== null) {
-    $where[] = 'created_by = ?';
+    $where[] = 'a.created_by = ?';
     $params[] = $createdBy;
   }
   
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
-  // SQL Server OFFSET/FETCH syntax - must use integers directly, not parameters
-  $offsetInt = (int)$offset;
-  $limitInt = (int)$limit;
-  $sql = "SELECT * FROM activities $whereSql ORDER BY date ASC, price ASC, id ASC OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";
   
-  $stmt = $pdo->prepare($sql);
-  $stmt->execute($params);
-  $activities = $stmt->fetchAll();
+  // Check if promotion columns exist
+  $promotedActivities = [];
+  $promotedIds = [];
   
-  json_ok(['page' => $page, 'limit' => $limit, 'results' => $activities]);
+  try {
+    // First, get 1-2 random promoted items matching filters
+    $promotedWhere = array_merge(['a.ad = 1'], $where);
+    $promotedWhereSql = 'WHERE ' . implode(' AND ', $promotedWhere);
+    $promotedParams = $params;
+    
+    $promotedSql = "SELECT TOP 2 a.*, c.name as city_name, p.name as province_name, p.region,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'activity' AND entity_id = a.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM activities a 
+      LEFT JOIN cities c ON a.city_id = c.id 
+      LEFT JOIN provinces p ON c.province_id = p.id 
+      $promotedWhereSql 
+      ORDER BY NEWID()";
+    
+    $promotedStmt = $pdo->prepare($promotedSql);
+    $promotedStmt->execute($promotedParams);
+    $promotedActivities = $promotedStmt->fetchAll();
+    
+    // Get promoted IDs to exclude from regular results
+    $promotedIds = array_column($promotedActivities, 'id');
+  } catch (PDOException $e) {
+    // If columns don't exist, just continue without promoted items
+    error_log('Promoted activities query failed (columns may not exist): ' . $e->getMessage());
+    $promotedActivities = [];
+    $promotedIds = [];
+  }
+  
+  try {
+    // Now get regular items (excluding promoted ones already shown)
+    $regularWhere = $where;
+    if (!empty($promotedIds)) {
+      $placeholders = implode(',', array_fill(0, count($promotedIds), '?'));
+      $regularWhere[] = "a.id NOT IN ($placeholders)";
+      $regularParams = array_merge($params, $promotedIds);
+    } else {
+      $regularParams = $params;
+    }
+    
+    $regularWhereSql = $regularWhere ? ('WHERE ' . implode(' AND ', $regularWhere)) : '';
+    $offsetInt = (int)$offset;
+    $limitInt = (int)$limit;
+    
+    // Try with promotion-aware ORDER BY first, fall back if columns don't exist
+    $orderBy = "a.date ASC, a.price ASC, a.id ASC";
+    $sql = "SELECT a.*, c.name as city_name, p.name as province_name, p.region,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'activity' AND entity_id = a.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM activities a 
+      LEFT JOIN cities c ON a.city_id = c.id 
+      LEFT JOIN provinces p ON c.province_id = p.id 
+      $regularWhereSql 
+      ORDER BY $orderBy
+      OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";
+    
+    try {
+      $stmt = $pdo->prepare($sql);
+      $stmt->execute($regularParams);
+      $activities = $stmt->fetchAll();
+    } catch (PDOException $e) {
+      // If query fails, try simpler version
+      error_log('Activities query failed, trying simpler version: ' . $e->getMessage());
+      $sql = "SELECT a.*, c.name as city_name, p.name as province_name, p.region,
+        (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'activity' AND entity_id = a.id ORDER BY display_order ASC, id ASC) as image_url
+        FROM activities a 
+        LEFT JOIN cities c ON a.city_id = c.id 
+        LEFT JOIN provinces p ON c.province_id = p.id 
+        $regularWhereSql 
+        ORDER BY a.date ASC, a.price ASC, a.id ASC
+        OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";
+      $stmt = $pdo->prepare($sql);
+      $stmt->execute($regularParams);
+      $activities = $stmt->fetchAll();
+    }
+    
+    // Calculate discounted prices (only if discount_percent column exists)
+    foreach ($promotedActivities as &$activity) {
+      if (isset($activity['discount_percent']) && $activity['discount_percent'] > 0) {
+        $activity['discounted_price'] = round($activity['price'] * (1 - $activity['discount_percent'] / 100), 2);
+      }
+    }
+    foreach ($activities as &$activity) {
+      if (isset($activity['discount_percent']) && $activity['discount_percent'] > 0) {
+        $activity['discounted_price'] = round($activity['price'] * (1 - $activity['discount_percent'] / 100), 2);
+      }
+    }
+    
+    json_ok(['page' => $page, 'limit' => $limit, 'promoted' => $promotedActivities, 'results' => $activities]);
+  } catch (PDOException $e) {
+    error_log('Activities query failed: ' . $e->getMessage() . ' | SQL: ' . ($sql ?? ''));
+    json_error('Database query failed', 500);
+  }
 }
 
 // POST /api/activities (agency/admin only)
@@ -80,14 +185,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/activities/?$#', $ur
   
   $title = trim($input['title'] ?? '');
   $destination_id = isset($input['destination_id']) ? (int)$input['destination_id'] : null;
-  $city = trim($input['city'] ?? '');
+  $city_id = isset($input['city_id']) ? (int)$input['city_id'] : null;
   $date = $input['date'] ?? '';
   $price = isset($input['price']) ? (float)$input['price'] : null;
   $description = trim($input['description'] ?? '');
-  $image_url = trim($input['image_url'] ?? '');
+  $images = $input['images'] ?? []; // Array of image URLs
   
-  if (!$title || !$city || !$date || $price === null) {
-    json_error('Missing required fields: title, city, date, price', 400);
+  if (!$title || $city_id === null || !$date || $price === null) {
+    json_error('Missing required fields: title, city_id, date, price', 400);
   }
   
   if ($price < 0) {
@@ -96,13 +201,32 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/activities/?$#', $ur
   
   $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
   
-  $stmt = $pdo->prepare('INSERT INTO activities (title, destination_id, city, date, price, description, image_url, created_by) VALUES (?, ?, ?, ?, ?, ?, ?, ?)');
-  $stmt->execute([$title, $destination_id, $city, $date, $price, $description, $image_url, $createdBy]);
+  $stmt = $pdo->prepare('INSERT INTO activities (title, destination_id, city_id, date, price, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)');
+  $stmt->execute([$title, $destination_id, $city_id, $date, $price, $description, $createdBy]);
   $activityId = (int)$pdo->lastInsertId();
   
-  $stmt = $pdo->prepare('SELECT * FROM activities WHERE id = ?');
+  // Insert images into entity_images
+  if (!empty($images) && is_array($images)) {
+    $imgStmt = $pdo->prepare('INSERT INTO entity_images (entity_type, entity_id, image_url, display_order) VALUES (?, ?, ?, ?)');
+    foreach ($images as $index => $imageUrl) {
+      if (!empty($imageUrl)) {
+        $imgStmt->execute(['activity', $activityId, trim($imageUrl), $index + 1]);
+      }
+    }
+  }
+  
+  $stmt = $pdo->prepare('SELECT a.*, c.name as city_name, p.name as province_name, p.region 
+    FROM activities a 
+    LEFT JOIN cities c ON a.city_id = c.id 
+    LEFT JOIN provinces p ON c.province_id = p.id 
+    WHERE a.id = ?');
   $stmt->execute([$activityId]);
   $activity = $stmt->fetch();
+  
+  // Fetch all images from entity_images
+  $allImages = get_entity_images($pdo, 'activity', $activityId);
+  $activity['images'] = $allImages;
+  $activity['image_url'] = $allImages[0] ?? null;
   
   json_ok(['activity' => $activity], 201);
 }
@@ -139,9 +263,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/activities/(\d+)/?$#'
     $updates[] = 'destination_id = ?';
     $params[] = (int)$input['destination_id'];
   }
-  if (isset($input['city'])) {
-    $updates[] = 'city = ?';
-    $params[] = trim($input['city']);
+  if (isset($input['city_id'])) {
+    $updates[] = 'city_id = ?';
+    $params[] = (int)$input['city_id'];
   }
   if (isset($input['date'])) {
     $updates[] = 'date = ?';
@@ -155,23 +279,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/activities/(\d+)/?$#'
     $updates[] = 'description = ?';
     $params[] = trim($input['description']);
   }
-  if (isset($input['image_url'])) {
-    $updates[] = 'image_url = ?';
-    $params[] = trim($input['image_url']);
-  }
   
-  if (empty($updates)) {
+  // Handle images update (replace all existing images)
+  $images = $input['images'] ?? null;
+  
+  if (empty($updates) && $images === null) {
     json_error('No fields to update', 400);
   }
   
-  $params[] = $id;
-  $sql = 'UPDATE activities SET ' . implode(', ', $updates) . ' WHERE id = ?';
-  $stmt = $pdo->prepare($sql);
-  $stmt->execute($params);
+  if (!empty($updates)) {
+    $params[] = $id;
+    $sql = 'UPDATE activities SET ' . implode(', ', $updates) . ' WHERE id = ?';
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($params);
+  }
   
-  $stmt = $pdo->prepare('SELECT * FROM activities WHERE id = ?');
+  // Update images if provided
+  if ($images !== null && is_array($images)) {
+    // Delete existing images
+    $delStmt = $pdo->prepare('DELETE FROM entity_images WHERE entity_type = ? AND entity_id = ?');
+    $delStmt->execute(['activity', $id]);
+    
+    // Insert new images
+    if (!empty($images)) {
+      $imgStmt = $pdo->prepare('INSERT INTO entity_images (entity_type, entity_id, image_url, display_order) VALUES (?, ?, ?, ?)');
+      foreach ($images as $index => $imageUrl) {
+        if (!empty($imageUrl)) {
+          $imgStmt->execute(['activity', $id, trim($imageUrl), $index + 1]);
+        }
+      }
+    }
+  }
+  
+  $stmt = $pdo->prepare('SELECT a.*, c.name as city_name, p.name as province_name, p.region 
+    FROM activities a 
+    LEFT JOIN cities c ON a.city_id = c.id 
+    LEFT JOIN provinces p ON c.province_id = p.id 
+    WHERE a.id = ?');
   $stmt->execute([$id]);
   $activity = $stmt->fetch();
+  
+  // Fetch all images from entity_images
+  $allImages = get_entity_images($pdo, 'activity', $id);
+  $activity['images'] = $allImages;
+  $activity['image_url'] = $allImages[0] ?? null;
   
   json_ok(['activity' => $activity]);
 }

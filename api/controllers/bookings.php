@@ -33,7 +33,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/bookings/?$#', $uri))
     // Get item details
     $itemDetails = null;
     if ($booking['item_type'] === 'hotel') {
-      $stmt = $pdo->prepare('SELECT name, city, country FROM hotels WHERE id = ?');
+      $stmt = $pdo->prepare('SELECT h.name, c.name as city_name, p.name as province_name 
+        FROM hotels h 
+        LEFT JOIN cities c ON h.city_id = c.id 
+        LEFT JOIN provinces p ON h.province_id = p.id 
+        WHERE h.id = ?');
       $stmt->execute([$booking['item_id']]);
       $itemDetails = $stmt->fetch();
     } elseif ($booking['item_type'] === 'flight') {

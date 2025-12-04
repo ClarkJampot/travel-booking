@@ -11,7 +11,7 @@
   <div id="header"></div>
   <div class="container mt-4">
     <div id="transferDetails"></div>
-    <div class="row mt-4">
+    <div class="row mt-4 mb-4">
       <div class="col-md-8">
         <div class="card">
           <div class="card-body">
@@ -41,6 +41,7 @@
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
+  <script src="js/carousel.js"></script>
   <script>
     fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
     fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
@@ -54,10 +55,62 @@
         document.getElementById('transferService').textContent = transfer.service;
         document.getElementById('transferRoute').textContent = `${transfer.origin} → ${transfer.destination}`;
         document.getElementById('transferDate').textContent = formatDate(transfer.date);
-        document.getElementById('transferPrice').textContent = formatPrice(transfer.price);
-        document.getElementById('totalPrice').textContent = `Total: ${formatPrice(transfer.price)}`;
+        // Display price with discount if applicable
+        const discountedPrice = transfer.discount_percent > 0 
+          ? transfer.price * (1 - transfer.discount_percent / 100)
+          : transfer.price;
+        
+        let priceHTML = '';
+        if (transfer.discount_percent > 0) {
+          priceHTML = `
+            <div class="price-container">
+              <span class="original-price">${formatPrice(transfer.price)}</span>
+              <span class="discounted-price">${formatPrice(discountedPrice)}</span>
+            </div>
+          `;
+        } else {
+          priceHTML = formatPrice(transfer.price);
+        }
+        document.getElementById('transferPrice').innerHTML = priceHTML;
+        
+        // Add discount and promoted badges if applicable
+        const badgeHTML = `
+          ${transfer.ad ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${transfer.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${transfer.discount_percent}% OFF</span>` : ''}
+        `;
+        if (transfer.ad || transfer.discount_percent > 0) {
+          document.getElementById('transferPrice').insertAdjacentHTML('beforebegin', badgeHTML);
+        }
+        
+        document.getElementById('totalPrice').textContent = `Total: ${formatPrice(discountedPrice)}`;
         document.getElementById('transferDescription').textContent = transfer.description || '';
-        document.getElementById('transferDetails').innerHTML = `<img src="${transfer.image_url || 'uploads/placeholder.svg'}" class="img-fluid rounded" alt="${transfer.service}">`;
+        // Combine primary image with additional images for carousel
+        const allImages = combineImages(transfer.image_url, transfer.images || []);
+        document.getElementById('transferDetails').innerHTML = createImageCarousel(allImages, 'transferCarousel', transfer.service);
+        
+        // Initialize carousel and add hover effects after DOM insertion
+        setTimeout(() => {
+          const carouselEl = document.getElementById('transferCarousel');
+          if (carouselEl && allImages.length > 1) {
+            const bsCarousel = new bootstrap.Carousel(carouselEl, {
+              interval: false,
+              wrap: true
+            });
+            carouselEl.addEventListener('slid.bs.carousel', function(event) {
+              updateActiveThumbnail('transferCarousel', event.to);
+            });
+          }
+          carouselEl?.querySelectorAll('.card-img-wrapper').forEach(wrapper => {
+            wrapper.addEventListener('mouseenter', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '1';
+            });
+            wrapper.addEventListener('mouseleave', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '0';
+            });
+          });
+        }, 50);
       } catch (error) {
         showError('status', error.message || 'Failed to load transfer');
       }
@@ -75,7 +128,7 @@
           body: JSON.stringify({
             item_type: 'transfer',
             item_id: transfer.id,
-            total_price: transfer.price
+            total_price: transfer.discount_percent > 0 ? transfer.price * (1 - transfer.discount_percent / 100) : transfer.price
           })
         });
         showSuccess('status', 'Booking created successfully!');

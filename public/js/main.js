@@ -11,6 +11,29 @@ const API_BASE = (() => {
   return '/api';
 })();
 
+// Normalize image URLs to work with subdirectory installations
+function normalizeImageUrl(url) {
+  if (!url) return 'uploads/placeholder.svg';
+  
+  // If URL starts with /, make it relative to base path
+  if (url.startsWith('/')) {
+    const path = window.location.pathname;
+    
+    // Check if path contains 'travel-booking' (subdirectory installation)
+    if (path.includes('/travel-booking')) {
+      // If URL doesn't already have the base path, prepend it
+      if (!url.startsWith('/travel-booking')) {
+        return '/travel-booking' + url;
+      }
+    }
+    // For root installation, return as-is
+    return url;
+  }
+  
+  // Already relative, return as-is
+  return url;
+}
+
 // API helper functions
 async function apiCall(endpoint, options = {}) {
   const token = localStorage.getItem('token');
@@ -29,15 +52,24 @@ async function apiCall(endpoint, options = {}) {
       headers
     });
     
-    const data = await response.json();
+    let data;
+    try {
+      data = await response.json();
+    } catch (jsonError) {
+      // If response is not JSON, get text
+      const text = await response.text();
+      throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
+    }
     
     if (!response.ok) {
-      throw new Error(data.error || 'Request failed');
+      const errorMsg = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`;
+      throw new Error(errorMsg);
     }
     
     return data;
   } catch (error) {
     console.error('API Error:', error);
+    console.error('Endpoint:', `${API_BASE}${endpoint}`);
     throw error;
   }
 }
@@ -255,4 +287,72 @@ function debounce(func, wait) {
     clearTimeout(timeout);
     timeout = setTimeout(later, wait);
   };
+}
+
+// Initialize cascading city dropdown based on province selection
+function initCascadingCityDropdown(provinceSelectId, citySelectId) {
+  const provinceSelect = document.getElementById(provinceSelectId);
+  const citySelect = document.getElementById(citySelectId);
+  
+  if (!provinceSelect || !citySelect) return;
+  
+  // Initially disable city dropdown if no province is selected
+  const initialProvinceId = provinceSelect.value;
+  if (initialProvinceId) {
+    citySelect.disabled = false;
+    loadCitiesForProvince(initialProvinceId, citySelect);
+  } else {
+    citySelect.disabled = true;
+    citySelect.innerHTML = '<option value="">Select Province First</option>';
+  }
+  
+  provinceSelect.addEventListener('change', async function() {
+    const provinceId = this.value;
+    citySelect.innerHTML = '<option value="">Select City</option>';
+    
+    if (!provinceId) {
+      // Disable city dropdown if no province selected
+      citySelect.disabled = true;
+      citySelect.innerHTML = '<option value="">Select Province First</option>';
+      return;
+    }
+    
+    // Enable city dropdown and load cities for selected province
+    citySelect.disabled = false;
+    await loadCitiesForProvince(provinceId, citySelect);
+  });
+}
+
+// Load cities for a specific province
+async function loadCitiesForProvince(provinceId, citySelect) {
+  try {
+    const cities = await apiCall(`/cities?province_id=${provinceId}`);
+    if (cities.results && cities.results.length > 0) {
+      cities.results.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city.id;
+        option.textContent = city.name;
+        citySelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading cities:', error);
+  }
+}
+
+// Load all cities
+async function loadAllCities(citySelect) {
+  try {
+    const cities = await apiCall('/cities');
+    if (cities.results && cities.results.length > 0) {
+      cities.results.forEach(city => {
+        const option = document.createElement('option');
+        option.value = city.id;
+        option.textContent = city.name;
+        citySelect.appendChild(option);
+      });
+    }
+  } catch (error) {
+    console.error('Error loading cities:', error);
+  }
 }
