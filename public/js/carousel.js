@@ -64,9 +64,6 @@ function createImageCarousel(images, id, alt = '') {
 
   const carouselHtml = `
     <div id="${id}" class="carousel slide" data-bs-ride="false" data-bs-interval="false">
-      <div class="carousel-indicators">
-        ${carouselIndicators}
-      </div>
       <div class="carousel-inner">
         ${carouselItems}
       </div>
@@ -138,24 +135,18 @@ function openImageModal(carouselId, startIndex = 0) {
 
   // Update modal with images
   const modalCarousel = modal.querySelector('#imageExpandedCarousel');
-  const modalIndicators = modal.querySelector('.carousel-indicators');
   const modalInner = modal.querySelector('.carousel-inner');
+  const thumbnailsContainer = modal.querySelector('#imageExpandedCarousel .carousel-thumbnails-container');
   
   // Clear existing content
-  modalIndicators.innerHTML = '';
   modalInner.innerHTML = '';
+  if (thumbnailsContainer) {
+    thumbnailsContainer.innerHTML = '';
+  }
 
   // Build carousel items
   data.images.forEach((img, index) => {
     const isActive = index === startIndex ? 'active' : '';
-    const indicator = document.createElement('button');
-    indicator.type = 'button';
-    indicator.setAttribute('data-bs-target', '#imageExpandedCarousel');
-    indicator.setAttribute('data-bs-slide-to', index);
-    indicator.className = isActive;
-    indicator.setAttribute('aria-label', `Slide ${index + 1}`);
-    modalIndicators.appendChild(indicator);
-
     const item = document.createElement('div');
     item.className = `carousel-item ${isActive}`;
     item.innerHTML = `
@@ -164,6 +155,27 @@ function openImageModal(carouselId, startIndex = 0) {
       </div>
     `;
     modalInner.appendChild(item);
+
+    // Build thumbnails inside the modal carousel
+    if (thumbnailsContainer) {
+      const thumb = document.createElement('div');
+      thumb.className = `carousel-thumbnail ${isActive}`;
+      thumb.setAttribute('data-thumbnail-index', index);
+      thumb.innerHTML = `
+        <img src="${img}" alt="${data.alt} - Thumbnail ${index + 1}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+      `;
+      thumb.addEventListener('click', (e) => {
+        e.preventDefault();
+        const bsCarousel = bootstrap.Carousel.getInstance(modalCarousel) || new bootstrap.Carousel(modalCarousel, {
+          interval: false,
+          wrap: true,
+          keyboard: true
+        });
+        bsCarousel.to(index);
+        updateActiveThumbnail('imageExpandedCarousel', index);
+      });
+      thumbnailsContainer.appendChild(thumb);
+    }
   });
 
   // Initialize Bootstrap modal
@@ -192,6 +204,13 @@ function openImageModal(carouselId, startIndex = 0) {
       }, 100);
     }
     
+    // Sync active thumbnail when slide changes
+    modalCarousel.addEventListener('slid.bs.carousel', function (event) {
+      if (typeof event.to === 'number') {
+        updateActiveThumbnail('imageExpandedCarousel', event.to);
+      }
+    });
+
     // Prevent accidental navigation from hover events
     const prevBtn = modalCarousel.querySelector('.carousel-control-prev');
     const nextBtn = modalCarousel.querySelector('.carousel-control-next');
@@ -279,7 +298,6 @@ function createImageModal() {
         </div>
         <div class="modal-body p-0">
           <div id="imageExpandedCarousel" class="carousel slide carousel-fade" data-bs-ride="false" data-bs-interval="false">
-            <div class="carousel-indicators"></div>
             <div class="carousel-inner"></div>
             <button class="carousel-control-prev" type="button" data-bs-target="#imageExpandedCarousel" data-bs-slide="prev">
               <span class="carousel-control-prev-icon" aria-hidden="true"></span>
@@ -289,6 +307,9 @@ function createImageModal() {
               <span class="carousel-control-next-icon" aria-hidden="true"></span>
               <span class="visually-hidden">Next</span>
             </button>
+            <div class="carousel-thumbnails">
+              <div class="carousel-thumbnails-container"></div>
+            </div>
           </div>
         </div>
       </div>
