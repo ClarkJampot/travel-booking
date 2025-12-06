@@ -647,29 +647,26 @@ INSERT INTO dbo.destinations(name, description, featured) VALUES
 -- ============================================================================
 -- Owner 1 (user_id 7): Hotels 1-5
 -- Owner 2 (user_id 8): Hotels 6-10
--- Owner 3 (user_id 9): Hotels 11-15
+-- Owner 3 (user_id 9): Hotels 11-12
 
 INSERT INTO dbo.hotels(name, destination_id, city_id, province_id, price_per_night, description, created_by, ad, discount_percent) VALUES
 -- Owner 1 hotels
 (N'Boracay Paradise Resort', 1, (SELECT id FROM dbo.cities WHERE name = N'Boracay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Aklan')), (SELECT id FROM dbo.provinces WHERE name = N'Aklan'), 3500.00, N'Beachfront resort with stunning sunset views and direct beach access.', 7, 1, 20.00),
 (N'Manila Grand Hotel', NULL, (SELECT id FROM dbo.cities WHERE name = N'Manila'), (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila'), 2500.00, N'Modern hotel in the heart of Manila with excellent city views.', 7, 0, 0.00),
-(N'Baguio Mountain View Inn', 4, (SELECT id FROM dbo.cities WHERE name = N'Baguio'), (SELECT id FROM dbo.provinces WHERE name = N'Benguet'), 1800.00, N'Cozy mountain retreat with cool climate and scenic views.', 7, 0, 15.00),
-(N'Cebu City Central Hotel', NULL, (SELECT id FROM dbo.cities WHERE name = N'Cebu City'), (SELECT id FROM dbo.provinces WHERE name = N'Cebu'), 2200.00, N'Conveniently located hotel in downtown Cebu City.', 7, 1, 35.00),
-(N'Tagaytay Ridge Resort', NULL, (SELECT id FROM dbo.cities WHERE name = N'Tagaytay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batangas')), (SELECT id FROM dbo.provinces WHERE name = N'Batangas'), 3200.00, N'Scenic resort overlooking Taal Volcano with cool mountain breeze.', 7, 0, 0.00),
+(N'Prestige Vacation Apartments', 4, (SELECT id FROM dbo.cities WHERE name = N'Baguio'), (SELECT id FROM dbo.provinces WHERE name = N'Benguet'), 1800.00, N'Cozy mountain retreat with cool climate and scenic views.', 7, 0, 15.00),
+(N'One Central Hotel', NULL, (SELECT id FROM dbo.cities WHERE name = N'Cebu City'), (SELECT id FROM dbo.provinces WHERE name = N'Cebu'), 2200.00, N'Conveniently located hotel in downtown Cebu City.', 7, 1, 35.00),
+(N'Summit Ridge Resort', NULL, (SELECT id FROM dbo.cities WHERE name = N'Tagaytay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batangas')), (SELECT id FROM dbo.provinces WHERE name = N'Batangas'), 3200.00, N'Scenic resort overlooking Taal Volcano with cool mountain breeze.', 7, 0, 0.00),
 
 -- Owner 2 hotels
-(N'El Nido Beach Resort', 6, (SELECT id FROM dbo.cities WHERE name = N'El Nido'), (SELECT id FROM dbo.provinces WHERE name = N'Palawan'), 4500.00, N'Luxurious beachfront resort with access to stunning lagoons.', 8, 1, 30.00),
-(N'Coron Bay Resort', 7, (SELECT id FROM dbo.cities WHERE name = N'Coron'), (SELECT id FROM dbo.provinces WHERE name = N'Palawan'), 4200.00, N'Diving resort with easy access to world-class dive sites.', 8, 0, 0.00),
-(N'Siargao Surf Resort', 5, (SELECT id FROM dbo.cities WHERE name = N'General Luna'), (SELECT id FROM dbo.provinces WHERE name = N'Surigao del Norte'), 3800.00, N'Surfing-focused resort near Cloud 9 surf break.', 8, 1, 22.00),
-(N'Bohol Island Resort', 3, (SELECT id FROM dbo.cities WHERE name = N'Panglao'), (SELECT id FROM dbo.provinces WHERE name = N'Bohol'), 3600.00, N'Beachfront resort near Alona Beach with stunning views.', 8, 0, 10.00),
-(N'Dumaguete Seaview Hotel', NULL, (SELECT id FROM dbo.cities WHERE name = N'Dumaguete'), (SELECT id FROM dbo.provinces WHERE name = N'Negros Oriental'), 2800.00, N'Comfortable hotel with ocean views in the City of Gentle People.', 8, 0, 0.00),
+(N'El Nido Beach Hotel', 6, (SELECT id FROM dbo.cities WHERE name = N'El Nido'), (SELECT id FROM dbo.provinces WHERE name = N'Palawan'), 4500.00, N'Luxurious beachfront resort with access to stunning lagoons.', 8, 1, 30.00),
+(N'Bacau Bay Resort Coron', 7, (SELECT id FROM dbo.cities WHERE name = N'Coron'), (SELECT id FROM dbo.provinces WHERE name = N'Palawan'), 4200.00, N'Diving resort with easy access to world-class dive sites.', 8, 0, 0.00),
+(N'Harana Surf Resort', 5, (SELECT id FROM dbo.cities WHERE name = N'General Luna'), (SELECT id FROM dbo.provinces WHERE name = N'Surigao del Norte'), 3800.00, N'Surfing-focused resort near Cloud 9 surf break.', 8, 1, 22.00),
+(N'Henann Resort Alona Beach', 3, (SELECT id FROM dbo.cities WHERE name = N'Panglao'), (SELECT id FROM dbo.provinces WHERE name = N'Bohol'), 3600.00, N'Beachfront resort near Alona Beach with stunning views.', 8, 0, 10.00),
+(N'Seaview Beach Resort', NULL, (SELECT id FROM dbo.cities WHERE name = N'Dumaguete'), (SELECT id FROM dbo.provinces WHERE name = N'Negros Oriental'), 2800.00, N'Comfortable hotel with ocean views in the City of Gentle People.', 8, 0, 0.00),
 
 -- Owner 3 hotels
-(N'Vigan Heritage Inn', 8, (SELECT id FROM dbo.cities WHERE name = N'Vigan'), (SELECT id FROM dbo.provinces WHERE name = N'Ilocos Sur'), 2000.00, N'Historic inn in the heart of Vigan''s Spanish colonial district.', 9, 0, 0.00),
-(N'Sagada Mountain Lodge', 9, (SELECT id FROM dbo.cities WHERE name = N'Sagada'), (SELECT id FROM dbo.provinces WHERE name = N'Mountain Province'), 1500.00, N'Rustic lodge perfect for adventure seekers and nature lovers.', 9, 1, 18.00),
-(N'Batanes Stone House Inn', 10, (SELECT id FROM dbo.cities WHERE name = N'Basco'), (SELECT id FROM dbo.provinces WHERE name = N'Batanes'), 2500.00, N'Traditional stone house accommodation with authentic Ivatan architecture.', 9, 0, 0.00),
-(N'Davao City Hotel', NULL, (SELECT id FROM dbo.cities WHERE name = N'Davao City'), (SELECT id FROM dbo.provinces WHERE name = N'Davao del Sur'), 2400.00, N'Modern hotel in the heart of Davao City with excellent amenities.', 9, 0, 8.00),
-(N'Iloilo Business Hotel', NULL, (SELECT id FROM dbo.cities WHERE name = N'Iloilo City'), (SELECT id FROM dbo.provinces WHERE name = N'Iloilo'), 2100.00, N'Business-friendly hotel in Iloilo City with modern facilities.', 9, 1, 28.00);
+(N'Vigan Heritage Mansion', 8, (SELECT id FROM dbo.cities WHERE name = N'Vigan'), (SELECT id FROM dbo.provinces WHERE name = N'Ilocos Sur'), 2000.00, N'Historic inn in the heart of Vigan''s Spanish colonial district.', 9, 0, 0.00),
+(N'Kanip Aw Pines View Lodge', 9, (SELECT id FROM dbo.cities WHERE name = N'Sagada'), (SELECT id FROM dbo.provinces WHERE name = N'Mountain Province'), 1500.00, N'Rustic lodge perfect for adventure seekers and nature lovers.', 9, 1, 18.00);
 
 -- ============================================================================
 -- FLIGHTS (Owned by agencies)
@@ -784,254 +781,238 @@ INSERT INTO dbo.bookings(user_id, item_type, item_id, total_price, status) VALUE
 -- Hotel Images (3-5 images per hotel)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES
 -- Hotel 1: Boracay Paradise Resort (Primary image + additional)
-(N'hotel', 1, N'/uploads/hotels/boracay-paradise.jpg', 1),
-(N'hotel', 1, N'/uploads/hotels/boracay-paradise-1.jpg', 2),
-(N'hotel', 1, N'/uploads/hotels/boracay-paradise-2.jpg', 3),
-(N'hotel', 1, N'/uploads/hotels/boracay-paradise-3.jpg', 4),
+(N'hotel', 1, N'/uploads/hotels/1/boracay-paradise.jpg', 1),
+(N'hotel', 1, N'/uploads/hotels/1/boracay-paradise-1.jpg', 2),
+(N'hotel', 1, N'/uploads/hotels/1/boracay-paradise-2.jpg', 3),
+(N'hotel', 1, N'/uploads/hotels/1/boracay-paradise-3.jpg', 4),
 -- Hotel 2: Manila Grand Hotel (Primary image + additional)
-(N'hotel', 2, N'/uploads/hotels/manila-grand.jpg', 1),
-(N'hotel', 2, N'/uploads/hotels/manila-grand-1.jpg', 2),
-(N'hotel', 2, N'/uploads/hotels/manila-grand-2.jpg', 3),
--- Hotel 3: Baguio Mountain View Inn (Primary image + additional)
-(N'hotel', 3, N'/uploads/hotels/baguio-inn.jpg', 1),
-(N'hotel', 3, N'/uploads/hotels/baguio-inn-1.jpg', 2),
-(N'hotel', 3, N'/uploads/hotels/baguio-inn-2.jpg', 3),
-(N'hotel', 3, N'/uploads/hotels/baguio-inn-3.jpg', 4),
--- Hotel 4: Cebu City Central Hotel (Primary image + additional)
-(N'hotel', 4, N'/uploads/hotels/cebu-central.jpg', 1),
-(N'hotel', 4, N'/uploads/hotels/cebu-central-1.jpg', 2),
-(N'hotel', 4, N'/uploads/hotels/cebu-central-2.jpg', 3),
--- Hotel 5: Tagaytay Ridge Resort (Primary image + additional)
-(N'hotel', 5, N'/uploads/hotels/tagaytay-ridge.jpg', 1),
-(N'hotel', 5, N'/uploads/hotels/tagaytay-ridge-1.jpg', 2),
-(N'hotel', 5, N'/uploads/hotels/tagaytay-ridge-2.jpg', 3),
-(N'hotel', 5, N'/uploads/hotels/tagaytay-ridge-3.jpg', 4),
-(N'hotel', 5, N'/uploads/hotels/tagaytay-ridge-4.jpg', 5),
--- Hotel 6: El Nido Beach Resort (Primary image + additional)
-(N'hotel', 6, N'/uploads/hotels/el-nido-beach.jpg', 1),
-(N'hotel', 6, N'/uploads/hotels/el-nido-beach-1.jpg', 2),
-(N'hotel', 6, N'/uploads/hotels/el-nido-beach-2.jpg', 3),
-(N'hotel', 6, N'/uploads/hotels/el-nido-beach-3.jpg', 4),
--- Hotel 7: Coron Bay Resort (Primary image + additional)
-(N'hotel', 7, N'/uploads/hotels/coron-bay.jpg', 1),
-(N'hotel', 7, N'/uploads/hotels/coron-bay-1.jpg', 2),
-(N'hotel', 7, N'/uploads/hotels/coron-bay-2.jpg', 3),
--- Hotel 8: Siargao Surf Resort (Primary image + additional)
-(N'hotel', 8, N'/uploads/hotels/siargao-surf.jpg', 1),
-(N'hotel', 8, N'/uploads/hotels/siargao-surf-1.jpg', 2),
-(N'hotel', 8, N'/uploads/hotels/siargao-surf-2.jpg', 3),
-(N'hotel', 8, N'/uploads/hotels/siargao-surf-3.jpg', 4),
--- Hotel 9: Bohol Island Resort (Primary image + additional)
-(N'hotel', 9, N'/uploads/hotels/bohol-island.jpg', 1),
-(N'hotel', 9, N'/uploads/hotels/bohol-island-1.jpg', 2),
-(N'hotel', 9, N'/uploads/hotels/bohol-island-2.jpg', 3),
--- Hotel 10: Dumaguete Seaview Hotel (Primary image + additional)
-(N'hotel', 10, N'/uploads/hotels/dumaguete-seaview.jpg', 1),
-(N'hotel', 10, N'/uploads/hotels/dumaguete-seaview-1.jpg', 2),
-(N'hotel', 10, N'/uploads/hotels/dumaguete-seaview-2.jpg', 3),
--- Hotel 11: Vigan Heritage Inn (Primary image + additional)
-(N'hotel', 11, N'/uploads/hotels/vigan-heritage.jpg', 1),
-(N'hotel', 11, N'/uploads/hotels/vigan-heritage-1.jpg', 2),
-(N'hotel', 11, N'/uploads/hotels/vigan-heritage-2.jpg', 3),
-(N'hotel', 11, N'/uploads/hotels/vigan-heritage-3.jpg', 4),
--- Hotel 12: Sagada Mountain Lodge (Primary image + additional)
-(N'hotel', 12, N'/uploads/hotels/sagada-lodge.jpg', 1),
-(N'hotel', 12, N'/uploads/hotels/sagada-lodge-1.jpg', 2),
-(N'hotel', 12, N'/uploads/hotels/sagada-lodge-2.jpg', 3),
--- Hotel 13: Batanes Stone House Inn (Primary image + additional)
-(N'hotel', 13, N'/uploads/hotels/batanes-stone.jpg', 1),
-(N'hotel', 13, N'/uploads/hotels/batanes-stone-1.jpg', 2),
-(N'hotel', 13, N'/uploads/hotels/batanes-stone-2.jpg', 3),
-(N'hotel', 13, N'/uploads/hotels/batanes-stone-3.jpg', 4),
-(N'hotel', 13, N'/uploads/hotels/batanes-stone-4.jpg', 5),
--- Hotel 14: Davao City Hotel (Primary image + additional)
-(N'hotel', 14, N'/uploads/hotels/davao-city.jpg', 1),
-(N'hotel', 14, N'/uploads/hotels/davao-city-1.jpg', 2),
-(N'hotel', 14, N'/uploads/hotels/davao-city-2.jpg', 3),
--- Hotel 15: Iloilo Business Hotel (Primary image + additional)
-(N'hotel', 15, N'/uploads/hotels/iloilo-business.jpg', 1),
-(N'hotel', 15, N'/uploads/hotels/iloilo-business-1.jpg', 2),
-(N'hotel', 15, N'/uploads/hotels/iloilo-business-2.jpg', 3);
+(N'hotel', 2, N'/uploads/hotels/2/manila-grand.jpg', 1),
+(N'hotel', 2, N'/uploads/hotels/2/manila-grand-1.jpg', 2),
+(N'hotel', 2, N'/uploads/hotels/2/manila-grand-2.jpg', 3),
+-- Hotel 3: Prestige Vacation Apartments (Primary image + additional)
+(N'hotel', 3, N'/uploads/hotels/3/prestige-apts.jpg', 1),
+(N'hotel', 3, N'/uploads/hotels/3/prestige-apts-1.jpg', 2),
+(N'hotel', 3, N'/uploads/hotels/3/prestige-apts-2.jpg', 3),
+(N'hotel', 3, N'/uploads/hotels/3/prestige-apts-3.jpg', 4),
+-- Hotel 4: One Central Hotel (Primary image + additional)
+(N'hotel', 4, N'/uploads/hotels/4/cebu-central.jpg', 1),
+(N'hotel', 4, N'/uploads/hotels/4/cebu-central-1.jpg', 2),
+(N'hotel', 4, N'/uploads/hotels/4/cebu-central-2.jpg', 3),
+-- Hotel 5: Summit Ridge Resort (Primary image + additional)
+(N'hotel', 5, N'/uploads/hotels/5/tagaytay-ridge.jpg', 1),
+(N'hotel', 5, N'/uploads/hotels/5/tagaytay-ridge-1.jpg', 2),
+(N'hotel', 5, N'/uploads/hotels/5/tagaytay-ridge-2.jpg', 3),
+(N'hotel', 5, N'/uploads/hotels/5/tagaytay-ridge-3.jpg', 4),
+(N'hotel', 5, N'/uploads/hotels/5/tagaytay-ridge-4.jpg', 5),
+-- Hotel 6: El Nido Beach Hotel (Primary image + additional)
+(N'hotel', 6, N'/uploads/hotels/6/el-nido-beach.jpg', 1),
+(N'hotel', 6, N'/uploads/hotels/6/el-nido-beach-1.jpg', 2),
+(N'hotel', 6, N'/uploads/hotels/6/el-nido-beach-2.jpg', 3),
+(N'hotel', 6, N'/uploads/hotels/6/el-nido-beach-3.jpg', 4),
+-- Hotel 7: Bacau Bay Resort Coron (Primary image + additional)
+(N'hotel', 7, N'/uploads/hotels/7/bacau-bay-resort-coron.jpg', 1),
+(N'hotel', 7, N'/uploads/hotels/7/bacau-bay-resort-coron-1.jpg', 2),
+(N'hotel', 7, N'/uploads/hotels/7/bacau-bay-resort-coron-2.jpg', 3),
+-- Hotel 8: Harana Surf Resort (Primary image + additional)
+(N'hotel', 8, N'/uploads/hotels/8/harana-surf.jpg', 1),
+(N'hotel', 8, N'/uploads/hotels/8/harana-surf-1.jpg', 2),
+(N'hotel', 8, N'/uploads/hotels/8/harana-surf-2.jpg', 3),
+(N'hotel', 8, N'/uploads/hotels/8/harana-surf-3.jpg', 4),
+-- Hotel 9: Henann Resort Alona Beach (Primary image + additional)
+(N'hotel', 9, N'/uploads/hotels/9/henann-resort-alona.jpg', 1),
+(N'hotel', 9, N'/uploads/hotels/9/henann-resort-alona-1.jpg', 2),
+(N'hotel', 9, N'/uploads/hotels/9/henann-resort-alona-2.jpg', 3),
+-- Hotel 10: Seaview Beach Resort (Primary image + additional)
+(N'hotel', 10, N'/uploads/hotels/10/dumaguete-seaview.jpg', 1),
+(N'hotel', 10, N'/uploads/hotels/10/dumaguete-seaview-1.jpg', 2),
+(N'hotel', 10, N'/uploads/hotels/10/dumaguete-seaview-2.jpg', 3),
+-- Hotel 11: Vigan Heritage Mansion (Primary image + additional)
+(N'hotel', 11, N'/uploads/hotels/11/vigan-heritage.jpg', 1),
+(N'hotel', 11, N'/uploads/hotels/11/vigan-heritage-1.jpg', 2),
+-- Hotel 12: Kanip Aw Pines View Lodge (Primary image + additional)
+(N'hotel', 12, N'/uploads/hotels/12/sagada-lodge.jpg', 1),
+(N'hotel', 12, N'/uploads/hotels/12/sagada-lodge-1.jpg', 2),
+(N'hotel', 12, N'/uploads/hotels/12/sagada-lodge-2.jpg', 3);
 
 -- Activity Images (2-4 images per activity)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES
 -- Activity 1: Boracay Island Hopping Tour (Primary image + additional)
-(N'activity', 1, N'/uploads/activities/boracay-hopping.jpg', 1),
-(N'activity', 1, N'/uploads/activities/boracay-hopping-1.jpg', 2),
-(N'activity', 1, N'/uploads/activities/boracay-hopping-2.jpg', 3),
+(N'activity', 1, N'/uploads/activities/1/boracay-hopping.jpg', 1),
+(N'activity', 1, N'/uploads/activities/1/boracay-hopping-1.jpg', 2),
+(N'activity', 1, N'/uploads/activities/1/boracay-hopping-2.jpg', 3),
 -- Activity 2: Manila City Tour (Primary image + additional)
-(N'activity', 2, N'/uploads/activities/manila-tour.jpg', 1),
-(N'activity', 2, N'/uploads/activities/manila-tour-1.jpg', 2),
+(N'activity', 2, N'/uploads/activities/2/manila-tour.jpg', 1),
+(N'activity', 2, N'/uploads/activities/2/manila-tour-1.jpg', 2),
 -- Activity 3: Baguio Strawberry Farm Experience (Primary image + additional)
-(N'activity', 3, N'/uploads/activities/baguio-strawberry.jpg', 1),
-(N'activity', 3, N'/uploads/activities/baguio-strawberry-1.jpg', 2),
-(N'activity', 3, N'/uploads/activities/baguio-strawberry-2.jpg', 3),
+(N'activity', 3, N'/uploads/activities/3/baguio-strawberry.jpg', 1),
+(N'activity', 3, N'/uploads/activities/3/baguio-strawberry-1.jpg', 2),
+(N'activity', 3, N'/uploads/activities/3/baguio-strawberry-2.jpg', 3),
 -- Activity 4: Cebu Heritage Walk (Primary image + additional)
-(N'activity', 4, N'/uploads/activities/cebu-heritage.jpg', 1),
-(N'activity', 4, N'/uploads/activities/cebu-heritage-1.jpg', 2),
+(N'activity', 4, N'/uploads/activities/4/cebu-heritage.jpg', 1),
+(N'activity', 4, N'/uploads/activities/4/cebu-heritage-1.jpg', 2),
 -- Activity 5: Tagaytay Ridge Hiking (Primary image + additional)
-(N'activity', 5, N'/uploads/activities/tagaytay-hiking.jpg', 1),
-(N'activity', 5, N'/uploads/activities/tagaytay-hiking-1.jpg', 2),
-(N'activity', 5, N'/uploads/activities/tagaytay-hiking-2.jpg', 3),
-(N'activity', 5, N'/uploads/activities/tagaytay-hiking-3.jpg', 4),
+(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking.jpg', 1),
+(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking-1.jpg', 2),
+(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking-2.jpg', 3),
+(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking-3.jpg', 4),
 -- Activity 6: El Nido Island Hopping Tour A (Primary image + additional)
-(N'activity', 6, N'/uploads/activities/el-nido-tour-a.jpg', 1),
-(N'activity', 6, N'/uploads/activities/el-nido-tour-a-1.jpg', 2),
-(N'activity', 6, N'/uploads/activities/el-nido-tour-a-2.jpg', 3),
-(N'activity', 6, N'/uploads/activities/el-nido-tour-a-3.jpg', 4),
+(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a.jpg', 1),
+(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a-1.jpg', 2),
+(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a-2.jpg', 3),
+(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a-3.jpg', 4),
 -- Activity 7: Coron Wreck Diving (Primary image + additional)
-(N'activity', 7, N'/uploads/activities/coron-diving.jpg', 1),
-(N'activity', 7, N'/uploads/activities/coron-diving-1.jpg', 2),
-(N'activity', 7, N'/uploads/activities/coron-diving-2.jpg', 3),
+(N'activity', 7, N'/uploads/activities/7/coron-diving.jpg', 1),
+(N'activity', 7, N'/uploads/activities/7/coron-diving-1.jpg', 2),
+(N'activity', 7, N'/uploads/activities/7/coron-diving-2.jpg', 3),
 -- Activity 8: Siargao Surfing Lesson (Primary image + additional)
-(N'activity', 8, N'/uploads/activities/siargao-surfing.jpg', 1),
-(N'activity', 8, N'/uploads/activities/siargao-surfing-1.jpg', 2),
-(N'activity', 8, N'/uploads/activities/siargao-surfing-2.jpg', 3),
+(N'activity', 8, N'/uploads/activities/8/siargao-surfing.jpg', 1),
+(N'activity', 8, N'/uploads/activities/8/siargao-surfing-1.jpg', 2),
+(N'activity', 8, N'/uploads/activities/8/siargao-surfing-2.jpg', 3),
 -- Activity 9: Bohol Countryside Tour (Primary image + additional)
-(N'activity', 9, N'/uploads/activities/bohol-countryside.jpg', 1),
-(N'activity', 9, N'/uploads/activities/bohol-countryside-1.jpg', 2),
-(N'activity', 9, N'/uploads/activities/bohol-countryside-2.jpg', 3),
-(N'activity', 9, N'/uploads/activities/bohol-countryside-3.jpg', 4),
+(N'activity', 9, N'/uploads/activities/9/bohol-countryside.jpg', 1),
+(N'activity', 9, N'/uploads/activities/9/bohol-countryside-1.jpg', 2),
+(N'activity', 9, N'/uploads/activities/9/bohol-countryside-2.jpg', 3),
+(N'activity', 9, N'/uploads/activities/9/bohol-countryside-3.jpg', 4),
 -- Activity 10: Dumaguete City Tour (Primary image + additional)
-(N'activity', 10, N'/uploads/activities/dumaguete-tour.jpg', 1),
-(N'activity', 10, N'/uploads/activities/dumaguete-tour-1.jpg', 2),
+(N'activity', 10, N'/uploads/activities/10/dumaguete-tour.jpg', 1),
+(N'activity', 10, N'/uploads/activities/10/dumaguete-tour-1.jpg', 2),
 -- Activity 11: Vigan Heritage Walk (Primary image + additional)
-(N'activity', 11, N'/uploads/activities/vigan-heritage.jpg', 1),
-(N'activity', 11, N'/uploads/activities/vigan-heritage-1.jpg', 2),
-(N'activity', 11, N'/uploads/activities/vigan-heritage-2.jpg', 3),
+(N'activity', 11, N'/uploads/activities/11/vigan-heritage.jpg', 1),
+(N'activity', 11, N'/uploads/activities/11/vigan-heritage-1.jpg', 2),
+(N'activity', 11, N'/uploads/activities/11/vigan-heritage-2.jpg', 3),
 -- Activity 12: Sagada Cave Connection (Primary image + additional)
-(N'activity', 12, N'/uploads/activities/sagada-caves.jpg', 1),
-(N'activity', 12, N'/uploads/activities/sagada-caves-1.jpg', 2),
-(N'activity', 12, N'/uploads/activities/sagada-caves-2.jpg', 3),
-(N'activity', 12, N'/uploads/activities/sagada-caves-3.jpg', 4),
+(N'activity', 12, N'/uploads/activities/12/sagada-caves.jpg', 1),
+(N'activity', 12, N'/uploads/activities/12/sagada-caves-1.jpg', 2),
+(N'activity', 12, N'/uploads/activities/12/sagada-caves-2.jpg', 3),
+(N'activity', 12, N'/uploads/activities/12/sagada-caves-3.jpg', 4),
 -- Activity 13: Batanes North Tour (Primary image + additional)
-(N'activity', 13, N'/uploads/activities/batanes-north.jpg', 1),
-(N'activity', 13, N'/uploads/activities/batanes-north-1.jpg', 2),
-(N'activity', 13, N'/uploads/activities/batanes-north-2.jpg', 3),
+(N'activity', 13, N'/uploads/activities/13/batanes-north.jpg', 1),
+(N'activity', 13, N'/uploads/activities/13/batanes-north-1.jpg', 2),
+(N'activity', 13, N'/uploads/activities/13/batanes-north-2.jpg', 3),
 -- Activity 14: Davao City Nature Tour (Primary image + additional)
-(N'activity', 14, N'/uploads/activities/davao-nature.jpg', 1),
-(N'activity', 14, N'/uploads/activities/davao-nature-1.jpg', 2),
-(N'activity', 14, N'/uploads/activities/davao-nature-2.jpg', 3),
+(N'activity', 14, N'/uploads/activities/14/davao-nature.jpg', 1),
+(N'activity', 14, N'/uploads/activities/14/davao-nature-1.jpg', 2),
+(N'activity', 14, N'/uploads/activities/14/davao-nature-2.jpg', 3),
 -- Activity 15: Iloilo Culinary Tour (Primary image + additional)
-(N'activity', 15, N'/uploads/activities/iloilo-culinary.jpg', 1),
-(N'activity', 15, N'/uploads/activities/iloilo-culinary-1.jpg', 2),
-(N'activity', 15, N'/uploads/activities/iloilo-culinary-2.jpg', 3);
+(N'activity', 15, N'/uploads/activities/15/iloilo-culinary.jpg', 1),
+(N'activity', 15, N'/uploads/activities/15/iloilo-culinary-1.jpg', 2),
+(N'activity', 15, N'/uploads/activities/15/iloilo-culinary-2.jpg', 3);
 
 -- Destination Images (2-4 images per destination)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES
 -- Destination 1: Boracay Island (Primary image + additional)
-(N'destination', 1, N'/uploads/destinations/boracay.jpg', 1),
-(N'destination', 1, N'/uploads/destinations/boracay-1.jpg', 2),
-(N'destination', 1, N'/uploads/destinations/boracay-2.jpg', 3),
-(N'destination', 1, N'/uploads/destinations/boracay-3.jpg', 4),
+(N'destination', 1, N'/uploads/destinations/1/boracay.jpg', 1),
+(N'destination', 1, N'/uploads/destinations/1/boracay-1.jpg', 2),
+(N'destination', 1, N'/uploads/destinations/1/boracay-2.jpg', 3),
+(N'destination', 1, N'/uploads/destinations/1/boracay-3.jpg', 4),
 -- Destination 2: Palawan Underground River (Primary image + additional)
-(N'destination', 2, N'/uploads/destinations/puerto-princesa.jpg', 1),
-(N'destination', 2, N'/uploads/destinations/puerto-princesa-1.jpg', 2),
-(N'destination', 2, N'/uploads/destinations/puerto-princesa-2.jpg', 3),
+(N'destination', 2, N'/uploads/destinations/2/puerto-princesa.jpg', 1),
+(N'destination', 2, N'/uploads/destinations/2/puerto-princesa-1.jpg', 2),
+(N'destination', 2, N'/uploads/destinations/2/puerto-princesa-2.jpg', 3),
 -- Destination 3: Bohol Chocolate Hills (Primary image + additional)
-(N'destination', 3, N'/uploads/destinations/bohol.jpg', 1),
-(N'destination', 3, N'/uploads/destinations/bohol-1.jpg', 2),
-(N'destination', 3, N'/uploads/destinations/bohol-2.jpg', 3),
-(N'destination', 3, N'/uploads/destinations/bohol-3.jpg', 4),
+(N'destination', 3, N'/uploads/destinations/3/bohol.jpg', 1),
+(N'destination', 3, N'/uploads/destinations/3/bohol-1.jpg', 2),
+(N'destination', 3, N'/uploads/destinations/3/bohol-2.jpg', 3),
+(N'destination', 3, N'/uploads/destinations/3/bohol-3.jpg', 4),
 -- Destination 4: Baguio City (Primary image + additional)
-(N'destination', 4, N'/uploads/destinations/baguio.jpg', 1),
-(N'destination', 4, N'/uploads/destinations/baguio-1.jpg', 2),
-(N'destination', 4, N'/uploads/destinations/baguio-2.jpg', 3),
+(N'destination', 4, N'/uploads/destinations/4/baguio.jpg', 1),
+(N'destination', 4, N'/uploads/destinations/4/baguio-1.jpg', 2),
+(N'destination', 4, N'/uploads/destinations/4/baguio-2.jpg', 3),
 -- Destination 5: Siargao Island (Primary image + additional)
-(N'destination', 5, N'/uploads/destinations/siargao.jpg', 1),
-(N'destination', 5, N'/uploads/destinations/siargao-1.jpg', 2),
-(N'destination', 5, N'/uploads/destinations/siargao-2.jpg', 3),
-(N'destination', 5, N'/uploads/destinations/siargao-3.jpg', 4),
+(N'destination', 5, N'/uploads/destinations/5/siargao.jpg', 1),
+(N'destination', 5, N'/uploads/destinations/5/siargao-1.jpg', 2),
+(N'destination', 5, N'/uploads/destinations/5/siargao-2.jpg', 3),
+(N'destination', 5, N'/uploads/destinations/5/siargao-3.jpg', 4),
 -- Destination 6: El Nido (Primary image + additional)
-(N'destination', 6, N'/uploads/destinations/el-nido.jpg', 1),
-(N'destination', 6, N'/uploads/destinations/el-nido-1.jpg', 2),
-(N'destination', 6, N'/uploads/destinations/el-nido-2.jpg', 3),
-(N'destination', 6, N'/uploads/destinations/el-nido-3.jpg', 4),
+(N'destination', 6, N'/uploads/destinations/6/el-nido.jpg', 1),
+(N'destination', 6, N'/uploads/destinations/6/el-nido-1.jpg', 2),
+(N'destination', 6, N'/uploads/destinations/6/el-nido-2.jpg', 3),
+(N'destination', 6, N'/uploads/destinations/6/el-nido-3.jpg', 4),
 -- Destination 7: Coron (Primary image + additional)
-(N'destination', 7, N'/uploads/destinations/coron.jpg', 1),
-(N'destination', 7, N'/uploads/destinations/coron-1.jpg', 2),
-(N'destination', 7, N'/uploads/destinations/coron-2.jpg', 3),
+(N'destination', 7, N'/uploads/destinations/7/coron.jpg', 1),
+(N'destination', 7, N'/uploads/destinations/7/coron-1.jpg', 2),
+(N'destination', 7, N'/uploads/destinations/7/coron-2.jpg', 3),
 -- Destination 8: Vigan (Primary image + additional)
-(N'destination', 8, N'/uploads/destinations/vigan.jpg', 1),
-(N'destination', 8, N'/uploads/destinations/vigan-1.jpg', 2),
-(N'destination', 8, N'/uploads/destinations/vigan-2.jpg', 3),
-(N'destination', 8, N'/uploads/destinations/vigan-3.jpg', 4),
+(N'destination', 8, N'/uploads/destinations/8/vigan.jpg', 1),
+(N'destination', 8, N'/uploads/destinations/8/vigan-1.jpg', 2),
+(N'destination', 8, N'/uploads/destinations/8/vigan-2.jpg', 3),
+(N'destination', 8, N'/uploads/destinations/8/vigan-3.jpg', 4),
 -- Destination 9: Sagada (Primary image + additional)
-(N'destination', 9, N'/uploads/destinations/sagada.jpg', 1),
-(N'destination', 9, N'/uploads/destinations/sagada-1.jpg', 2),
-(N'destination', 9, N'/uploads/destinations/sagada-2.jpg', 3),
+(N'destination', 9, N'/uploads/destinations/9/sagada.jpg', 1),
+(N'destination', 9, N'/uploads/destinations/9/sagada-1.jpg', 2),
+(N'destination', 9, N'/uploads/destinations/9/sagada-2.jpg', 3),
 -- Destination 10: Batanes (Primary image + additional)
-(N'destination', 10, N'/uploads/destinations/batanes.jpg', 1),
-(N'destination', 10, N'/uploads/destinations/batanes-1.jpg', 2),
-(N'destination', 10, N'/uploads/destinations/batanes-2.jpg', 3),
-(N'destination', 10, N'/uploads/destinations/batanes-3.jpg', 4),
-(N'destination', 10, N'/uploads/destinations/batanes-4.jpg', 5);
+(N'destination', 10, N'/uploads/destinations/10/batanes.jpg', 1),
+(N'destination', 10, N'/uploads/destinations/10/batanes-1.jpg', 2),
+(N'destination', 10, N'/uploads/destinations/10/batanes-2.jpg', 3),
+(N'destination', 10, N'/uploads/destinations/10/batanes-3.jpg', 4),
+(N'destination', 10, N'/uploads/destinations/10/batanes-4.jpg', 5);
 
 -- Flight Images (1-2 images per flight)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES
 -- Flight 1: MNL to MPH (Boracay) (Primary image + additional)
-(N'flight', 1, N'/uploads/flights/pal-mnl-boracay.jpg', 1),
-(N'flight', 1, N'/uploads/flights/pal-mnl-boracay-1.jpg', 2),
+(N'flight', 1, N'/uploads/flights/1/pal-mnl-boracay.jpg', 1),
+(N'flight', 1, N'/uploads/flights/1/pal-mnl-boracay-1.jpg', 2),
 -- Flight 2: MNL to CEB (Primary image)
-(N'flight', 2, N'/uploads/flights/cebu-pac-mnl-ceb.jpg', 1),
+(N'flight', 2, N'/uploads/flights/2/cebu-pac-mnl-ceb.jpg', 1),
 -- Flight 3: MNL to PPS (Primary image + additional)
-(N'flight', 3, N'/uploads/flights/airasia-mnl-puerto.jpg', 1),
-(N'flight', 3, N'/uploads/flights/airasia-mnl-puerto-1.jpg', 2),
+(N'flight', 3, N'/uploads/flights/3/airasia-mnl-puerto.jpg', 1),
+(N'flight', 3, N'/uploads/flights/3/airasia-mnl-puerto-1.jpg', 2),
 -- Flight 4: MNL to TAG (Bohol) (Primary image)
-(N'flight', 4, N'/uploads/flights/pal-mnl-bohol.jpg', 1),
+(N'flight', 4, N'/uploads/flights/4/pal-mnl-bohol.jpg', 1),
 -- Flight 5: MNL to BAG (Baguio) (Primary image + additional)
-(N'flight', 5, N'/uploads/flights/cebu-pac-mnl-baguio.jpg', 1),
-(N'flight', 5, N'/uploads/flights/cebu-pac-mnl-baguio-1.jpg', 2),
+(N'flight', 5, N'/uploads/flights/5/cebu-pac-mnl-baguio.jpg', 1),
+(N'flight', 5, N'/uploads/flights/5/cebu-pac-mnl-baguio-1.jpg', 2),
 -- Flight 6: MNL to USU (El Nido) (Primary image + additional)
-(N'flight', 6, N'/uploads/flights/pal-mnl-el-nido.jpg', 1),
-(N'flight', 6, N'/uploads/flights/pal-mnl-el-nido-1.jpg', 2),
+(N'flight', 6, N'/uploads/flights/6/pal-mnl-el-nido.jpg', 1),
+(N'flight', 6, N'/uploads/flights/6/pal-mnl-el-nido-1.jpg', 2),
 -- Flight 7: MNL to DVO (Primary image)
-(N'flight', 7, N'/uploads/flights/cebu-pac-mnl-davao.jpg', 1),
+(N'flight', 7, N'/uploads/flights/7/cebu-pac-mnl-davao.jpg', 1),
 -- Flight 8: MNL to DGT (Primary image + additional)
-(N'flight', 8, N'/uploads/flights/airasia-mnl-dumaguete.jpg', 1),
-(N'flight', 8, N'/uploads/flights/airasia-mnl-dumaguete-1.jpg', 2),
+(N'flight', 8, N'/uploads/flights/8/airasia-mnl-dumaguete.jpg', 1),
+(N'flight', 8, N'/uploads/flights/8/airasia-mnl-dumaguete-1.jpg', 2),
 -- Flight 9: CEB to MPH (Primary image)
-(N'flight', 9, N'/uploads/flights/pal-ceb-boracay.jpg', 1),
+(N'flight', 9, N'/uploads/flights/9/pal-ceb-boracay.jpg', 1),
 -- Flight 10: MNL to ILO (Primary image + additional)
-(N'flight', 10, N'/uploads/flights/cebu-pac-mnl-iloilo.jpg', 1),
-(N'flight', 10, N'/uploads/flights/cebu-pac-mnl-iloilo-1.jpg', 2),
+(N'flight', 10, N'/uploads/flights/10/cebu-pac-mnl-iloilo.jpg', 1),
+(N'flight', 10, N'/uploads/flights/10/cebu-pac-mnl-iloilo-1.jpg', 2),
 -- Flight 11: MNL to VGN (Primary image)
-(N'flight', 11, N'/uploads/flights/pal-mnl-vigan.jpg', 1),
+(N'flight', 11, N'/uploads/flights/11/pal-mnl-vigan.jpg', 1),
 -- Flight 12: MNL to LGP (Primary image + additional)
-(N'flight', 12, N'/uploads/flights/cebu-pac-mnl-legazpi.jpg', 1),
-(N'flight', 12, N'/uploads/flights/cebu-pac-mnl-legazpi-1.jpg', 2),
+(N'flight', 12, N'/uploads/flights/12/cebu-pac-mnl-legazpi.jpg', 1),
+(N'flight', 12, N'/uploads/flights/12/cebu-pac-mnl-legazpi-1.jpg', 2),
 -- Flight 13: MNL to BCD (Primary image)
-(N'flight', 13, N'/uploads/flights/airasia-mnl-bacolod.jpg', 1),
+(N'flight', 13, N'/uploads/flights/13/airasia-mnl-bacolod.jpg', 1),
 -- Flight 14: MNL to ZAM (Primary image + additional)
-(N'flight', 14, N'/uploads/flights/pal-mnl-zamboanga.jpg', 1),
-(N'flight', 14, N'/uploads/flights/pal-mnl-zamboanga-1.jpg', 2),
+(N'flight', 14, N'/uploads/flights/14/pal-mnl-zamboanga.jpg', 1),
+(N'flight', 14, N'/uploads/flights/14/pal-mnl-zamboanga-1.jpg', 2),
 -- Flight 15: MNL to CDO (Primary image)
-(N'flight', 15, N'/uploads/flights/cebu-pac-mnl-cagayan.jpg', 1);
+(N'flight', 15, N'/uploads/flights/15/cebu-pac-mnl-cagayan.jpg', 1);
 
 -- Transfer Images (1-2 images per transfer)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES
 -- Transfer 1: Manila to Boracay (Primary image + additional)
-(N'transfer', 1, N'/uploads/transfers/manila-boracay.jpg', 1),
-(N'transfer', 1, N'/uploads/transfers/manila-boracay-1.jpg', 2),
+(N'transfer', 1, N'/uploads/transfers/1/manila-boracay.jpg', 1),
+(N'transfer', 1, N'/uploads/transfers/1/manila-boracay-1.jpg', 2),
 -- Transfer 2: Cebu to Bohol (Primary image)
-(N'transfer', 2, N'/uploads/transfers/cebu-bohol.jpg', 1),
+(N'transfer', 2, N'/uploads/transfers/2/cebu-bohol.jpg', 1),
 -- Transfer 3: Manila to Baguio (Primary image + additional)
-(N'transfer', 3, N'/uploads/transfers/manila-baguio.jpg', 1),
-(N'transfer', 3, N'/uploads/transfers/manila-baguio-1.jpg', 2),
+(N'transfer', 3, N'/uploads/transfers/3/manila-baguio.jpg', 1),
+(N'transfer', 3, N'/uploads/transfers/3/manila-baguio-1.jpg', 2),
 -- Transfer 4: Puerto Princesa to El Nido (Primary image + additional)
-(N'transfer', 4, N'/uploads/transfers/puerto-el-nido.jpg', 1),
-(N'transfer', 4, N'/uploads/transfers/puerto-el-nido-1.jpg', 2),
+(N'transfer', 4, N'/uploads/transfers/4/puerto-el-nido.jpg', 1),
+(N'transfer', 4, N'/uploads/transfers/4/puerto-el-nido-1.jpg', 2),
 -- Transfer 5: Manila to Tagaytay (Primary image)
-(N'transfer', 5, N'/uploads/transfers/manila-tagaytay.jpg', 1),
+(N'transfer', 5, N'/uploads/transfers/5/manila-tagaytay.jpg', 1),
 -- Transfer 6: Davao to General Santos (Primary image + additional)
-(N'transfer', 6, N'/uploads/transfers/davao-gensan.jpg', 1),
-(N'transfer', 6, N'/uploads/transfers/davao-gensan-1.jpg', 2),
+(N'transfer', 6, N'/uploads/transfers/6/davao-gensan.jpg', 1),
+(N'transfer', 6, N'/uploads/transfers/6/davao-gensan-1.jpg', 2),
 -- Transfer 7: Manila to Vigan (Primary image + additional)
-(N'transfer', 7, N'/uploads/transfers/manila-vigan.jpg', 1),
-(N'transfer', 7, N'/uploads/transfers/manila-vigan-1.jpg', 2),
+(N'transfer', 7, N'/uploads/transfers/7/manila-vigan.jpg', 1),
+(N'transfer', 7, N'/uploads/transfers/7/manila-vigan-1.jpg', 2),
 -- Transfer 8: Manila to Sagada (Primary image)
-(N'transfer', 8, N'/uploads/transfers/manila-sagada.jpg', 1),
+(N'transfer', 8, N'/uploads/transfers/8/manila-sagada.jpg', 1),
 -- Transfer 9: Manila to Batanes (Primary image + additional)
-(N'transfer', 9, N'/uploads/transfers/manila-batanes.jpg', 1),
-(N'transfer', 9, N'/uploads/transfers/manila-batanes-1.jpg', 2);
+(N'transfer', 9, N'/uploads/transfers/9/manila-batanes.jpg', 1),
+(N'transfer', 9, N'/uploads/transfers/9/manila-batanes-1.jpg', 2);
 
