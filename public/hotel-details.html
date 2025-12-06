@@ -81,11 +81,11 @@
             <div class="price-container">
               <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
               <span class="discounted-price">${formatPrice(discountedPrice)}</span>
-              <span class="price-small">/night</span>
+              <span class="price-small"> /night</span>
             </div>
           `;
         } else {
-          priceHTML = `${formatPrice(hotel.price_per_night)}<span class="price-small">/night</span>`;
+          priceHTML = `${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span>`;
         }
         document.getElementById('hotelPrice').innerHTML = priceHTML;
         

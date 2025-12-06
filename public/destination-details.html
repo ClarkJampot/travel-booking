@@ -109,7 +109,7 @@
         const hotelsData = await apiCall(`/hotels?destination_id=${destId}&limit=6`);
         document.getElementById('hotels').innerHTML = hotelsData.results.length === 0 ? '<p class="text-muted">No hotels available.</p>' : hotelsData.results.map(h => `
           <div class="col-md-6"><div class="card h-100"><img src="${normalizeImageUrl(h.image_url)}" class="card-img-top" alt="${h.name}">
-          <div class="card-body"><h5 class="card-title">${h.name}</h5><p class="price">${formatPrice(h.price_per_night)}/night</p>
+          <div class="card-body"><h5 class="card-title">${h.name}</h5><p class="price">${formatPrice(h.price_per_night)}<span class="price-small"> /night</span></p>
           <a href="hotel-details.html?id=${h.id}" class="btn btn-primary btn-sm">View Details</a></div></div></div>`).join('');
         const activitiesData = await apiCall(`/activities?destination_id=${destId}&limit=6`);
         document.getElementById('activities').innerHTML = activitiesData.results.length === 0 ? '<p class="text-muted">No activities available.</p>' : activitiesData.results.map(a => `

@@ -10,7 +10,7 @@
 <body>
   <div id="header"></div>
 
-  <div class="container mt-4">
+  <div class="container mt-4 mb-5">
     <h1 class="mb-4">Activities</h1>
     <div class="filter-section">
       <div class="row">
@@ -273,7 +273,8 @@
       let pageNumbersHtml = '';
       const maxPages = 5;
       let startPage = Math.max(1, currentPage - 2);
-      let endPage = startPage + maxPages - 1;
+      // Only show pages up to current page if no more items, otherwise show up to maxPages
+      let endPage = itemCount >= limit ? Math.min(startPage + maxPages - 1, currentPage + 2) : currentPage;
       
       for (let i = startPage; i <= endPage; i++) {
         const isActive = i === currentPage;
