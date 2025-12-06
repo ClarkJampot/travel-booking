@@ -42,8 +42,12 @@
     <div id="status"></div>
     
     <!-- Destinations -->
-    <div id="destinations" class="row g-4 reveal">
-      <!-- Loaded dynamically -->
+    <div id="destinations" class="row g-4 reveal"></div>
+  </div>
+  
+  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading more...</span>
     </div>
   </div>
 
@@ -62,6 +66,11 @@
       .then(data => document.getElementById('footer').innerHTML = data)
       .then(() => updateNavigation());
 
+    let currentPage = 1;
+    const limit = 12;
+    let isLoading = false;
+    let hasMore = true;
+    
     async function loadProvinces() {
       try {
         const data = await apiCall('/provinces');
@@ -102,13 +111,23 @@
       window.history.pushState({}, '', newURL);
     }
 
-    async function loadDestinations() {
-      showLoading('destinations');
+    async function loadDestinations(reset = false) {
+      if (isLoading || (!hasMore && !reset)) return;
+      
+      isLoading = true;
+      const loadingIndicator = document.getElementById('loadingMore');
+      
+      if (reset) {
+        currentPage = 1;
+        hasMore = true;
+        document.getElementById('destinations').innerHTML = '';
+        loadingIndicator.style.display = 'none';
+      } else {
+        loadingIndicator.style.display = 'none';
+      }
+      
       clearStatus('status');
-      
       const urlParams = getUrlParams();
-      
-      // Pre-fill filter inputs from URL
       if (urlParams.province_id) {
         document.getElementById('provinceFilter').value = urlParams.province_id;
         // Trigger city dropdown update
@@ -141,7 +160,7 @@
       }
       
       try {
-        let url = '/destinations?limit=20';
+        let url = `/destinations?limit=${limit}&page=${currentPage}`;
         if (urlParams.province_id) url += `&province_id=${urlParams.province_id}`;
         if (urlParams.city_id) url += `&city_id=${urlParams.city_id}`;
         if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
@@ -149,13 +168,18 @@
         const data = await apiCall(url);
         const container = document.getElementById('destinations');
         
-        // Display destinations
         if (!data || !data.results || data.results.length === 0) {
-          container.innerHTML = '<p class="text-muted">No destinations found.</p>';
+          if (currentPage === 1) {
+            container.innerHTML = '<p class="text-muted">No destinations found.</p>';
+          }
+          hasMore = false;
+          loadingIndicator.style.display = 'none';
+          isLoading = false;
           return;
         }
         
-        container.innerHTML = data.results.map((dest, index) => `
+        hasMore = data.results.length >= limit;
+        const destinationsHtml = data.results.map((dest, index) => `
           <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
             <div class="card h-100">
               <div class="card-img-wrapper">
@@ -172,25 +196,55 @@
             </div>
           </div>
         `).join('');
+        
+        container.insertAdjacentHTML('beforeend', destinationsHtml);
+        currentPage++;
+        loadingIndicator.style.display = 'none';
       } catch (error) {
         showError('status', error.message || 'Failed to load destinations');
-        document.getElementById('destinations').innerHTML = '';
+        hasMore = false;
+        loadingIndicator.style.display = 'none';
+      } finally {
+        isLoading = false;
       }
+    }
+    
+    let scrollTimeout;
+    function setupInfiniteScroll() {
+      window.addEventListener('scroll', () => {
+        if (isLoading || !hasMore) return;
+        
+        if (scrollTimeout) return;
+        scrollTimeout = setTimeout(() => {
+          scrollTimeout = null;
+          
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const windowHeight = window.innerHeight;
+          const documentHeight = document.documentElement.scrollHeight;
+          
+          if (scrollTop + windowHeight >= documentHeight - 300) {
+            const loadingIndicator = document.getElementById('loadingMore');
+            loadingIndicator.style.display = 'block';
+            loadDestinations();
+          }
+        }, 100);
+      });
     }
 
     function handleFilterClick() {
       updateURLWithFilters();
-      loadDestinations();
+      loadDestinations(true);
     }
 
     window.addEventListener('popstate', function() {
-      loadDestinations();
+      loadDestinations(true);
     });
 
     document.addEventListener('DOMContentLoaded', async function() {
       await loadProvinces();
       initCascadingCityDropdown('provinceFilter', 'cityFilter');
-      loadDestinations();
+      setupInfiniteScroll();
+      loadDestinations(true);
     });
   </script>
 </body>

@@ -61,21 +61,12 @@
     <div id="hotels" class="row g-4 reveal">
       <!-- Loaded dynamically -->
     </div>
-    
-    <!-- Pagination -->
-    <nav aria-label="Hotels pagination" id="paginationNav" style="display: none;">
-      <ul class="pagination justify-content-center mt-4">
-        <li class="page-item" id="prevPageItem">
-          <a class="page-link" href="#" id="prevPageLink">Previous</a>
-        </li>
-        <li class="page-item" id="pageNumbers">
-          <!-- Page numbers loaded dynamically -->
-        </li>
-        <li class="page-item" id="nextPageItem">
-          <a class="page-link" href="#" id="nextPageLink">Next</a>
-        </li>
-      </ul>
-    </nav>
+  </div>
+  
+  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;">
+    <div class="spinner-border text-primary" role="status">
+      <span class="visually-hidden">Loading more...</span>
+    </div>
   </div>
 
   <div id="footer"></div>
@@ -92,6 +83,12 @@
       .then(response => response.text())
       .then(data => document.getElementById('footer').innerHTML = data)
       .then(() => updateNavigation());
+
+    // Infinite scroll variables
+    let currentPage = 1;
+    const limit = 12;
+    let isLoading = false;
+    let hasMore = true;
 
     async function loadProvinces() {
       try {
@@ -124,7 +121,7 @@
     }
 
     // Update URL with current filter values
-    function updateURLWithFilters(page = 1) {
+    function updateURLWithFilters() {
       const params = new URLSearchParams();
       const provinceId = document.getElementById('provinceFilter').value;
       const cityId = document.getElementById('cityFilter').value;
@@ -137,53 +134,32 @@
       if (keyword) params.set('q', keyword);
       if (minPrice) params.set('minPrice', minPrice);
       if (maxPrice) params.set('maxPrice', maxPrice);
-      if (page > 1) params.set('page', page);
       
       const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.pushState({}, '', newURL);
     }
 
-    async function loadHotels() {
-      showLoading('hotels');
-      clearStatus('status');
+    async function loadHotels(reset = false) {
+      if (isLoading || (!hasMore && !reset)) return;
       
-      const urlParams = getUrlParams();
+      isLoading = true;
+      const loadingIndicator = document.getElementById('loadingMore');
       
-      // Pre-fill filter inputs from URL
-      if (urlParams.province_id) {
-        document.getElementById('provinceFilter').value = urlParams.province_id;
-        // Trigger city dropdown update
-        const provinceSelect = document.getElementById('provinceFilter');
-        const citySelect = document.getElementById('cityFilter');
-        if (provinceSelect.value) {
-          citySelect.disabled = false;
-          await loadCitiesForProvince(provinceSelect.value, citySelect);
-        }
+      if (reset) {
+        currentPage = 1;
+        hasMore = true;
+        document.getElementById('hotels').innerHTML = '';
+        const promotedContainer = document.getElementById('promotedHotels');
+        const promotedRow = promotedContainer.querySelector('.row');
+        if (promotedRow) promotedRow.innerHTML = '';
+        promotedContainer.style.display = 'none';
+        loadingIndicator.style.display = 'none';
+      } else {
+        loadingIndicator.style.display = 'none';
       }
-      if (urlParams.city_id) {
-        // If city_id is provided but no province_id, fetch city to get province
-        if (!urlParams.province_id) {
-          try {
-            const cityData = await apiCall(`/cities?id=${urlParams.city_id}`);
-            if (cityData.city && cityData.city.province_id) {
-              document.getElementById('provinceFilter').value = cityData.city.province_id;
-              const citySelect = document.getElementById('cityFilter');
-              citySelect.disabled = false;
-              await loadCitiesForProvince(cityData.city.province_id, citySelect);
-            }
-          } catch (e) {
-            console.error('Error loading city:', e);
-          }
-        }
-        document.getElementById('cityFilter').value = urlParams.city_id;
-      }
-      if (urlParams.minPrice) document.getElementById('minPrice').value = urlParams.minPrice;
-      if (urlParams.maxPrice) document.getElementById('maxPrice').value = urlParams.maxPrice;
-      if (urlParams.q) document.getElementById('keywordFilter').value = urlParams.q;
       
       try {
-        const currentPage = urlParams.page || 1;
-        const limit = 12; // Items per page
+        const urlParams = getUrlParams();
         let url = `/hotels?limit=${limit}&page=${currentPage}`;
         if (urlParams.province_id) url += `&province_id=${urlParams.province_id}`;
         if (urlParams.city_id) url += `&city_id=${urlParams.city_id}`;
@@ -196,52 +172,65 @@
         const promotedContainer = document.getElementById('promotedHotels');
         const promotedRow = promotedContainer.querySelector('.row');
         
-        // Display promoted hotels
-        if (data.promoted && data.promoted.length > 0) {
-          promotedContainer.style.display = 'block';
-          promotedRow.innerHTML = data.promoted.map((hotel, index) => {
-            const priceDisplay = hotel.discount_percent > 0 
-              ? `<div class="price-container">
-                  <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
-                  <span class="discounted-price">${formatPrice(hotel.discounted_price || hotel.price_per_night * (1 - hotel.discount_percent / 100))}</span>
-                  <span class="price-small"> /night</span>
-                </div>`
-              : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
-            
-            return `
-              <div class="col-md-6 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-                <div class="card h-100 promoted-item">
-                  <div class="card-img-wrapper">
-                    <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
-                    ${hotel.discount_percent > 0 ? `<div class="discount-badge">${hotel.discount_percent}% OFF</div>` : ''}
-                    <div class="card-overlay">
-                      <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
+        // Display promoted hotels (only on first page/reset)
+        if (reset || currentPage === 1) {
+          if (data.promoted && data.promoted.length > 0) {
+            promotedContainer.style.display = 'block';
+            // Always clear first to prevent duplicates, limit to 2 items max
+            promotedRow.innerHTML = data.promoted.slice(0, 2).map((hotel, index) => {
+              const priceDisplay = hotel.discount_percent > 0 
+                ? `<div class="price-container">
+                    <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
+                    <span class="discounted-price">${formatPrice(hotel.discounted_price || hotel.price_per_night * (1 - hotel.discount_percent / 100))}</span>
+                    <span class="price-small"> /night</span>
+                  </div>`
+                : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
+              
+              return `
+                <div class="col-md-6 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+                  <div class="card h-100 promoted-item">
+                    <div class="card-img-wrapper">
+                      <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
+                      ${hotel.discount_percent > 0 ? `<div class="discount-badge">${hotel.discount_percent}% OFF</div>` : ''}
+                      <div class="card-overlay">
+                        <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
+                      </div>
+                    </div>
+                    <div class="card-body">
+                      <h5 class="card-title">${hotel.name}</h5>
+                      <p class="card-text text-muted">${hotel.city_name || ''}${hotel.province_name ? ', ' + hotel.province_name : ''}</p>
+                      ${priceDisplay}
                     </div>
                   </div>
-                  <div class="card-body">
-                    <h5 class="card-title">${hotel.name}</h5>
-                    <p class="card-text text-muted">${hotel.city_name || ''}${hotel.province_name ? ', ' + hotel.province_name : ''}</p>
-                    ${priceDisplay}
-                  </div>
                 </div>
-              </div>
-            `;
-          }).join('');
-        } else {
-          promotedContainer.style.display = 'none';
+              `;
+            }).join('');
+          } else {
+            promotedContainer.style.display = 'none';
+          }
         }
         
         // Display regular hotels
         if (!data || !data.results || data.results.length === 0) {
-          if (!data.promoted || data.promoted.length === 0) {
-            container.innerHTML = '<p class="text-muted">No hotels found.</p>';
-          } else {
-            container.innerHTML = '';
+          if (currentPage === 1) {
+            if (!data.promoted || data.promoted.length === 0) {
+              container.innerHTML = '<p class="text-muted">No hotels found.</p>';
+            } else {
+              container.innerHTML = '';
+            }
           }
+          hasMore = false;
+          loadingIndicator.style.display = 'none';
+          isLoading = false;
           return;
         }
         
-        container.innerHTML = data.results.map((hotel, index) => {
+        // Check if we have more items
+        hasMore = data.results.length >= limit;
+        
+        // Append hotels to container
+        const existingCount = container.querySelectorAll('.col-md-4').length;
+        const hotelsHtml = data.results.map((hotel, index) => {
           const priceDisplay = hotel.discount_percent > 0 
             ? `<div class="price-container">
                 <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
@@ -251,7 +240,7 @@
             : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
           
           return `
-            <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+            <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
               <div class="card h-100">
                 <div class="card-img-wrapper">
                   <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
@@ -271,89 +260,87 @@
           `;
         }).join('');
         
-        // Update pagination
-        updatePagination(currentPage, limit, data.results ? data.results.length : 0);
+        container.insertAdjacentHTML('beforeend', hotelsHtml);
+        currentPage++;
+        loadingIndicator.style.display = 'none';
       } catch (error) {
         showError('status', error.message || 'Failed to load hotels');
-        document.getElementById('hotels').innerHTML = '';
-        document.getElementById('paginationNav').style.display = 'none';
+        hasMore = false;
+        loadingIndicator.style.display = 'none';
+      } finally {
+        isLoading = false;
       }
     }
     
-    function updatePagination(currentPage, limit, itemCount) {
-      const paginationNav = document.getElementById('paginationNav');
-      const pageNumbers = document.getElementById('pageNumbers');
-      const prevPageItem = document.getElementById('prevPageItem');
-      const nextPageItem = document.getElementById('nextPageItem');
-      
-      // Hide pagination if no items or only one page
-      if (itemCount < limit && currentPage === 1) {
-        paginationNav.style.display = 'none';
-        return;
-      }
-      
-      paginationNav.style.display = 'block';
-      
-      // Previous button
-      if (currentPage > 1) {
-        prevPageItem.classList.remove('disabled');
-        document.getElementById('prevPageLink').onclick = (e) => {
-          e.preventDefault();
-          updateURLWithFilters(currentPage - 1);
-          loadHotels();
-        };
-      } else {
-        prevPageItem.classList.add('disabled');
-        document.getElementById('prevPageLink').onclick = (e) => e.preventDefault();
-      }
-      
-      // Next button (show if we got a full page of results)
-      if (itemCount >= limit) {
-        nextPageItem.classList.remove('disabled');
-        document.getElementById('nextPageLink').onclick = (e) => {
-          e.preventDefault();
-          updateURLWithFilters(currentPage + 1);
-          loadHotels();
-        };
-      } else {
-        nextPageItem.classList.add('disabled');
-        document.getElementById('nextPageLink').onclick = (e) => e.preventDefault();
-      }
-      
-      // Page numbers (show current and adjacent pages)
-      let pageNumbersHtml = '';
-      const maxPages = 5;
-      let startPage = Math.max(1, currentPage - 2);
-      // Only show pages up to current page if no more items, otherwise show up to maxPages
-      let endPage = itemCount >= limit ? Math.min(startPage + maxPages - 1, currentPage + 2) : currentPage;
-      
-      for (let i = startPage; i <= endPage; i++) {
-        const isActive = i === currentPage;
-        pageNumbersHtml += `
-          <li class="page-item ${isActive ? 'active' : ''}">
-            <a class="page-link" href="#" onclick="event.preventDefault(); updateURLWithFilters(${i}); loadHotels();">${i}</a>
-          </li>
-        `;
-      }
-      
-      pageNumbers.innerHTML = pageNumbersHtml;
+    let scrollTimeout;
+    function setupInfiniteScroll() {
+      window.addEventListener('scroll', () => {
+        if (isLoading || !hasMore) return;
+        
+        if (scrollTimeout) return;
+        scrollTimeout = setTimeout(() => {
+          scrollTimeout = null;
+          
+          const scrollTop = window.pageYOffset || document.documentElement.scrollTop;
+          const windowHeight = window.innerHeight;
+          const documentHeight = document.documentElement.scrollHeight;
+          
+          if (scrollTop + windowHeight >= documentHeight - 300) {
+            const loadingIndicator = document.getElementById('loadingMore');
+            loadingIndicator.style.display = 'block';
+            loadHotels();
+          }
+        }, 100);
+      });
     }
 
     // Handle filter button click
     function handleFilterClick() {
-      updateURLWithFilters(1); // Reset to page 1 when filtering
-      loadHotels();
+      updateURLWithFilters();
+      loadHotels(true);
     }
 
-    // Listen for back/forward buttons
     window.addEventListener('popstate', function() {
-      loadHotels();
+      loadHotels(true);
     });
 
     document.addEventListener('DOMContentLoaded', async function() {
       await loadProvinces();
       initCascadingCityDropdown('provinceFilter', 'cityFilter');
-      loadHotels();
+      
+      // Pre-fill filter inputs from URL
+      const urlParams = getUrlParams();
+      if (urlParams.province_id) {
+        document.getElementById('provinceFilter').value = urlParams.province_id;
+        const provinceSelect = document.getElementById('provinceFilter');
+        const citySelect = document.getElementById('cityFilter');
+        if (provinceSelect.value) {
+          citySelect.disabled = false;
+          await loadCitiesForProvince(provinceSelect.value, citySelect);
+        }
+      }
+      if (urlParams.city_id) {
+        if (!urlParams.province_id) {
+          try {
+            const cityData = await apiCall(`/cities?id=${urlParams.city_id}`);
+            if (cityData.city && cityData.city.province_id) {
+              document.getElementById('provinceFilter').value = cityData.city.province_id;
+              const citySelect = document.getElementById('cityFilter');
+              citySelect.disabled = false;
+              await loadCitiesForProvince(cityData.city.province_id, citySelect);
+            }
+          } catch (e) {
+            console.error('Error loading city:', e);
+          }
+        }
+        document.getElementById('cityFilter').value = urlParams.city_id;
+      }
+      if (urlParams.minPrice) document.getElementById('minPrice').value = urlParams.minPrice;
+      if (urlParams.maxPrice) document.getElementById('maxPrice').value = urlParams.maxPrice;
+      if (urlParams.q) document.getElementById('keywordFilter').value = urlParams.q;
+      
+      setupInfiniteScroll();
+      loadHotels(true);
     });
   </script>
 </body>

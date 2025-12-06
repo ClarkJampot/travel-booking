@@ -116,8 +116,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   }
   
   try {
-    // Now get regular items (excluding promoted ones already shown)
+    // Now get regular items (excluding ALL promoted ones)
     $regularWhere = $where;
+    // Exclude all promoted items from regular results
+    $regularWhere[] = "(t.ad = 0 OR t.ad IS NULL)";
     if (!empty($promotedIds)) {
       $placeholders = implode(',', array_fill(0, count($promotedIds), '?'));
       $regularWhere[] = "t.id NOT IN ($placeholders)";
