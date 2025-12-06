@@ -357,7 +357,7 @@ function renderDropdownItem(item, type) {
       detailUrl = `hotel-details.html?id=${item.id}`;
       title = escapeHtml(item.name || '');
       subtitle = escapeHtml(`${item.city_name || ''}${item.province_name ? ', ' + item.province_name : ''}`);
-      price = item.price_per_night ? formatPrice(item.price_per_night) + '/night' : '';
+      price = item.price_per_night ? formatPrice(item.price_per_night) + ' /night' : '';
       break;
     case 'flights':
       detailUrl = `flight-details.html?id=${item.id}`;
@@ -525,7 +525,7 @@ function renderResultCard(item, type) {
       detailUrl = `hotel-details.html?id=${item.id}`;
       title = item.name;
       subtitle = `${item.city_name || ''}${item.province_name ? ', ' + item.province_name : ''}`;
-      price = item.price_per_night ? formatPrice(item.price_per_night) + '<span class="price-small">/night</span>' : '';
+      price = item.price_per_night ? formatPrice(item.price_per_night) + '<span class="price-small"> /night</span>' : '';
       break;
     case 'flights':
       detailUrl = `flight-details.html?id=${item.id}`;
