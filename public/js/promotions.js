@@ -25,7 +25,7 @@ async function loadPromotionsCarousel() {
               <div class="promotion-card" onclick="window.location.href='${item.link_url}'">
                 <div class="promotion-image-wrapper">
                   <img src="${normalizeImageUrl(item.image_url)}" alt="${item.name}" loading="lazy">
-                  <div class="discount-badge">${item.discount_percent}% OFF</div>
+                  <div class="discount-badge">${formatPercent(item.discount_percent)}% OFF</div>
                 </div>
                 <div class="promotion-content">
                   <h5 class="promotion-title">${item.name || item.title || item.service || 'Untitled'}</h5>

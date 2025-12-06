@@ -90,7 +90,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $promotedWhereSql = 'WHERE ' . implode(' AND ', $promotedWhere);
     $promotedParams = $params;
     
-    $promotedSql = "SELECT TOP 2 t.*, 
+    $promotedSql = "SELECT TOP 2 t.*, CAST(t.ad AS INT) as ad,
       co.name as origin_city_name, po.name as origin_province_name,
       cd.name as destination_city_name, pd.name as destination_province_name,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer' AND entity_id = t.id ORDER BY display_order ASC, id ASC) as image_url
@@ -134,7 +134,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     
     // Try with promotion-aware ORDER BY first, fall back if columns don't exist
     $orderBy = "t.date ASC, t.price ASC, t.id ASC";
-    $sql = "SELECT t.*, 
+    $sql = "SELECT t.*, CAST(t.ad AS INT) as ad,
       co.name as origin_city_name, po.name as origin_province_name,
       cd.name as destination_city_name, pd.name as destination_province_name,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer' AND entity_id = t.id ORDER BY display_order ASC, id ASC) as image_url
@@ -154,7 +154,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     } catch (PDOException $e) {
       // If query fails, try simpler version
       error_log('Transfers query failed, trying simpler version: ' . $e->getMessage());
-      $sql = "SELECT t.*, 
+      $sql = "SELECT t.*, CAST(t.ad AS INT) as ad,
         co.name as origin_city_name, po.name as origin_province_name,
         cd.name as destination_city_name, pd.name as destination_province_name,
         (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer' AND entity_id = t.id ORDER BY display_order ASC, id ASC) as image_url

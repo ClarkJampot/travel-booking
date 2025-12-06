@@ -179,7 +179,8 @@
                 <div class="card h-100 promoted-item">
                   <div class="card-img-wrapper">
                     <img src="${normalizeImageUrl(a.image_url)}" class="card-img-top" alt="${a.title}" loading="lazy">
-                    ${a.discount_percent > 0 ? `<div class="discount-badge">${a.discount_percent}% OFF</div>` : ''}
+                    ${a.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(a.discount_percent)}% OFF</div>` : ''}
+                    ${isPromoted(a.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
                     <div class="card-overlay">
                       <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-lg">View Details</a>
                     </div>
@@ -223,8 +224,8 @@
               <div class="card h-100">
                 <div class="card-img-wrapper">
                   <img src="${normalizeImageUrl(a.image_url)}" class="card-img-top" alt="${a.title}" loading="lazy">
-                  ${a.discount_percent > 0 ? `<div class="discount-badge">${a.discount_percent}% OFF</div>` : ''}
-                  ${a.ad ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
+                  ${a.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(a.discount_percent)}% OFF</div>` : ''}
+                  ${isPromoted(a.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
                   <div class="card-overlay">
                     <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-lg">View Details</a>
                   </div>

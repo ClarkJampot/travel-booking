@@ -96,7 +96,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     $promotedWhereSql = 'WHERE ' . implode(' AND ', $promotedWhere);
     $promotedParams = $params;
     
-    $promotedSql = "SELECT TOP 2 f.*, 
+    $promotedSql = "SELECT TOP 2 f.*, CAST(f.ad AS INT) as ad,
       co.name as origin_city_name, po.name as origin_province_name,
       cd.name as destination_city_name, pd.name as destination_province_name,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight' AND entity_id = f.id ORDER BY display_order ASC, id ASC) as image_url
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     
     // Try with promotion-aware ORDER BY first, fall back if columns don't exist
     $orderBy = "f.depart_date ASC, f.price ASC, f.id ASC";
-    $sql = "SELECT f.*, 
+    $sql = "SELECT f.*, CAST(f.ad AS INT) as ad,
       co.name as origin_city_name, po.name as origin_province_name,
       cd.name as destination_city_name, pd.name as destination_province_name,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight' AND entity_id = f.id ORDER BY display_order ASC, id ASC) as image_url

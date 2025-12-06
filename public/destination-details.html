@@ -71,8 +71,8 @@
         
         // Add discount and promoted badges if applicable
         const badgeHTML = `
-          ${dest.ad ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
-          ${dest.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${dest.discount_percent}% OFF</span>` : ''}
+          ${isPromoted(dest.ad) ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${dest.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${formatPercent(dest.discount_percent)}% OFF</span>` : ''}
         `;
         if (dest.ad || dest.discount_percent > 0) {
           document.getElementById('destName').insertAdjacentHTML('afterend', badgeHTML);

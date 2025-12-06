@@ -75,8 +75,8 @@
         
         // Add discount and promoted badges if applicable
         const badgeHTML = `
-          ${flight.ad ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
-          ${flight.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${flight.discount_percent}% OFF</span>` : ''}
+          ${isPromoted(flight.ad) ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${flight.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${formatPercent(flight.discount_percent)}% OFF</span>` : ''}
         `;
         if (flight.ad || flight.discount_percent > 0) {
           document.getElementById('flightPrice').insertAdjacentHTML('beforebegin', badgeHTML);

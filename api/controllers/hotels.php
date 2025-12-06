@@ -100,7 +100,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/hotels/?$#', $uri)) {
     $promotedWhereSql = 'WHERE ' . implode(' AND ', $promotedWhere);
     $promotedParams = $params;
     
-    $promotedSql = "SELECT TOP 2 h.*, c.name as city_name, p.name as province_name, p.region,
+    $promotedSql = "SELECT TOP 2 h.*, CAST(h.ad AS INT) as ad, c.name as city_name, p.name as province_name, p.region,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'hotel' AND entity_id = h.id ORDER BY display_order ASC, id ASC) as image_url
       FROM hotels h 
       LEFT JOIN cities c ON h.city_id = c.id 
@@ -140,7 +140,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/hotels/?$#', $uri)) {
     
     // Try with promotion-aware ORDER BY first, fall back if columns don't exist
     $orderBy = "h.price_per_night ASC, h.id ASC";
-    $sql = "SELECT h.*, c.name as city_name, p.name as province_name, p.region,
+    $sql = "SELECT h.*, CAST(h.ad AS INT) as ad, c.name as city_name, p.name as province_name, p.region,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'hotel' AND entity_id = h.id ORDER BY display_order ASC, id ASC) as image_url
       FROM hotels h 
       LEFT JOIN cities c ON h.city_id = c.id 
@@ -156,7 +156,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/hotels/?$#', $uri)) {
     } catch (PDOException $e) {
       // If query fails, try simpler version without promotion columns
       error_log('Hotels query failed, trying simpler version: ' . $e->getMessage());
-      $sql = "SELECT h.*, c.name as city_name, p.name as province_name, p.region,
+      $sql = "SELECT h.*, CAST(h.ad AS INT) as ad, c.name as city_name, p.name as province_name, p.region,
         (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'hotel' AND entity_id = h.id ORDER BY display_order ASC, id ASC) as image_url
         FROM hotels h 
         LEFT JOIN cities c ON h.city_id = c.id 

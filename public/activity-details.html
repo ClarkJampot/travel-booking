@@ -79,8 +79,8 @@
         
         // Add discount and promoted badges if applicable
         const badgeHTML = `
-          ${activity.ad ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
-          ${activity.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${activity.discount_percent}% OFF</span>` : ''}
+          ${isPromoted(activity.ad) ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${activity.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${formatPercent(activity.discount_percent)}% OFF</span>` : ''}
         `;
         if (activity.ad || activity.discount_percent > 0) {
           document.getElementById('activityPrice').insertAdjacentHTML('beforebegin', badgeHTML);

@@ -119,10 +119,31 @@ function clearStatus(elementId) {
 
 // Format price
 function formatPrice(price) {
-  return new Intl.NumberFormat('en-PH', {
+  const formatted = new Intl.NumberFormat('en-PH', {
     style: 'currency',
-    currency: 'PHP'
+    currency: 'PHP',
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 2
   }).format(price);
+  return formatted.replace(/\.00(?=\s|$)/, '');
+}
+
+// Format percentage (removes trailing zeros)
+function formatPercent(value) {
+  if (value == null || value === '') return '0';
+  const num = typeof value === 'string' ? parseFloat(value) : value;
+  return num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/\.?0+$/, '');
+}
+
+// Check if item is promoted (handles SQL Server BIT field formats)
+function isPromoted(ad) {
+  if (ad == null || ad === undefined) return false;
+  // Handle various formats: integer 1, boolean true, string "1", or truthy value
+  if (ad === 1 || ad === true || ad === '1') return true;
+  if (ad === 0 || ad === false || ad === '0') return false;
+  // Convert to number as fallback
+  const num = Number(ad);
+  return !isNaN(num) && num === 1;
 }
 
 // Format date

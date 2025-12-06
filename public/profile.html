@@ -53,11 +53,11 @@
       
       return `
         <div class="col-md-4 mb-4">
-          <div class="card h-100 ${item.ad ? 'promoted-item' : ''}">
+          <div class="card h-100 ${isPromoted(item.ad) ? 'promoted-item' : ''}">
             <div class="card-img-wrapper">
               <img src="${normalizeImageUrl(item.image_url)}" class="card-img-top" alt="${item[nameField]}" loading="lazy">
-              ${item.discount_percent > 0 ? `<div class="discount-badge">${item.discount_percent}% OFF</div>` : ''}
-              ${item.ad ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
+              ${item.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(item.discount_percent)}% OFF</div>` : ''}
+              ${isPromoted(item.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
               <div class="card-overlay">
                 <a href="${detailPage}?id=${item.id}" class="btn btn-primary btn-lg">View Details</a>
               </div>
