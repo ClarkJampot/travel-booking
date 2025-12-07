@@ -12,7 +12,7 @@
   <div class="container mt-4">
     <div id="destinationDetails"></div>
     <div class="row mt-4 mb-4">
-      <div class="col-md-8">
+      <div class="col-12">
         <div class="card">
           <div class="card-body">
             <h3 id="destName"></h3>
@@ -26,29 +26,6 @@
         <div class="mt-4">
           <h4>Activities in this Destination</h4>
           <div id="activities" class="row g-4"></div>
-        </div>
-      </div>
-      <div class="col-md-4">
-        <div class="card">
-          <div class="card-body">
-            <h5>Inquiry Form</h5>
-            <form id="inquiryForm">
-              <div class="mb-3">
-                <label class="form-label">Name</label>
-                <input type="text" class="form-control" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Email</label>
-                <input type="email" class="form-control" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Message</label>
-                <textarea class="form-control" rows="4" required></textarea>
-              </div>
-              <div id="status"></div>
-              <button type="submit" class="btn btn-primary w-100">Send Inquiry</button>
-            </form>
-          </div>
         </div>
       </div>
     </div>
@@ -107,12 +84,12 @@
           });
         }, 50);
         const hotelsData = await apiCall(`/hotels?destination_id=${destId}&limit=6`);
-        document.getElementById('hotels').innerHTML = hotelsData.results.length === 0 ? '<p class="text-muted">No hotels available.</p>' : hotelsData.results.map(h => `
+        document.getElementById('hotels').innerHTML = hotelsData.results.length === 0 ? '<p class="text-muted">Currently no hotels available. If you\'re a hotel owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>' : hotelsData.results.map(h => `
           <div class="col-md-6"><div class="card h-100"><img src="${normalizeImageUrl(h.image_url)}" class="card-img-top" alt="${h.name}">
           <div class="card-body"><h5 class="card-title">${h.name}</h5><p class="price">${formatPrice(h.price_per_night)}<span class="price-small"> /night</span></p>
           <a href="hotel-details.html?id=${h.id}" class="btn btn-primary btn-sm">View Details</a></div></div></div>`).join('');
         const activitiesData = await apiCall(`/activities?destination_id=${destId}&limit=6`);
-        document.getElementById('activities').innerHTML = activitiesData.results.length === 0 ? '<p class="text-muted">No activities available.</p>' : activitiesData.results.map(a => `
+        document.getElementById('activities').innerHTML = activitiesData.results.length === 0 ? '<p class="text-muted">Currently no activities available. If you\'re an agency, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an agency to make a listing!</p>' : activitiesData.results.map(a => `
           <div class="col-md-6"><div class="card h-100"><img src="${normalizeImageUrl(a.image_url)}" class="card-img-top" alt="${a.title}">
           <div class="card-body"><h5 class="card-title">${a.title}</h5><p class="price">${formatPrice(a.price)}</p>
           <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-sm">View Details</a></div></div></div>`).join('');
@@ -120,11 +97,6 @@
         showError('status', error.message || 'Failed to load destination');
       }
     }
-    document.getElementById('inquiryForm').addEventListener('submit', function(e) {
-      e.preventDefault();
-      showSuccess('status', 'Inquiry sent successfully!');
-      this.reset();
-    });
     if (destId) loadDestination();
     else showError('status', 'Destination ID not provided');
   </script>

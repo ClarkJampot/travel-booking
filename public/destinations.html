@@ -170,7 +170,7 @@
         
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
-            container.innerHTML = '<p class="text-muted">No destinations found.</p>';
+            container.innerHTML = '<p class="text-muted">Currently no destinations available. If you\'re an owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>';
           }
           hasMore = false;
           loadingIndicator.style.display = 'none';

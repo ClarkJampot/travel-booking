@@ -215,7 +215,7 @@
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
             if (!data.promoted || data.promoted.length === 0) {
-              container.innerHTML = '<p class="text-muted">No hotels found.</p>';
+              container.innerHTML = '<p class="text-muted">Currently no hotels available. If you\'re a hotel owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>';
             } else {
               container.innerHTML = '';
             }

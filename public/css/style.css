@@ -54,6 +54,7 @@ body > .container.mt-4 {
   border-radius: 12px;
   overflow: hidden;
   box-shadow: var(--shadow-md);
+  padding: 15px;
 }
 
 .carousel-inner {
@@ -1613,6 +1614,7 @@ html {
   overflow: hidden;
   width: 100%;
   margin: 0 50px;
+  padding: 15px;
   position: relative;
 }
 
