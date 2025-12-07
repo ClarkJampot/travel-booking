@@ -632,8 +632,8 @@ INSERT INTO dbo.users(email, password_hash, full_name, phone, role_id) VALUES
 -- ============================================================================
 INSERT INTO dbo.destinations(name, description, featured) VALUES
 (N'Boracay Island', N'Famous white sand beach destination in Aklan, perfect for water activities and nightlife.', 1),
-(N'Palawan Underground River', N'UNESCO World Heritage Site featuring an underground river system in Puerto Princesa.', 1),
-(N'Bohol Chocolate Hills', N'Unique geological formation with over 1,200 cone-shaped hills.', 1),
+(N'Puerto Princesa', N'Capital city of Palawan, gateway to stunning natural attractions including the Underground River.', 1),
+(N'Bohol', N'Beautiful island province known for its unique Chocolate Hills, tarsiers, and pristine beaches.', 1),
 (N'Baguio City', N'Cool mountain city known as the Summer Capital of the Philippines.', 1),
 (N'Siargao Island', N'Surfing capital of the Philippines with pristine beaches and natural pools.', 1),
 (N'El Nido', N'Stunning limestone cliffs, crystal-clear lagoons, and pristine beaches.', 0),
@@ -716,7 +716,7 @@ INSERT INTO dbo.activities(title, destination_id, city_id, date, price, descript
 (N'El Nido Island Hopping Tour A', 6, (SELECT id FROM dbo.cities WHERE name = N'El Nido'), '2024-07-10', 3200.00, N'Visit Secret Lagoon, Big Lagoon, and stunning beaches.', 5, 1, 25.00),
 (N'Coron Wreck Diving', 7, (SELECT id FROM dbo.cities WHERE name = N'Coron'), '2024-07-15', 4500.00, N'Dive to World War II shipwrecks in crystal-clear waters.', 5, 0, 0.00),
 (N'Siargao Surfing Lesson', 5, (SELECT id FROM dbo.cities WHERE name = N'General Luna'), '2024-07-20', 3500.00, N'Learn to surf at Cloud 9 with professional instructors.', 5, 1, 18.00),
-(N'Bohol Countryside Tour', 3, (SELECT id FROM dbo.cities WHERE name = N'Tagbilaran'), '2024-07-25', 2800.00, N'Visit Chocolate Hills, Tarsier Sanctuary, and Loboc River cruise.', 5, 0, 0.00),
+(N'Bohol Chocolate Hills Tour', 3, (SELECT id FROM dbo.cities WHERE name = N'Tagbilaran'), '2024-07-25', 2500.00, N'Visit the unique geological formation with over 1,200 cone-shaped hills. Includes viewing deck and optional ATV adventure.', 5, 1, 15.00),
 (N'Dumaguete City Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Dumaguete'), '2024-08-01', 1600.00, N'Explore Dumaguete''s heritage sites and local markets.', 5, 0, 8.00),
 
 -- Agency 3 activities
@@ -724,7 +724,8 @@ INSERT INTO dbo.activities(title, destination_id, city_id, date, price, descript
 (N'Sagada Cave Connection', 9, (SELECT id FROM dbo.cities WHERE name = N'Sagada'), '2024-08-10', 2200.00, N'Adventure through connected caves with stunning rock formations.', 6, 1, 22.00),
 (N'Batanes North Tour', 10, (SELECT id FROM dbo.cities WHERE name = N'Basco'), '2024-08-15', 3500.00, N'Explore Basco, Mahatao, and Ivana with rolling hills and lighthouses.', 6, 0, 0.00),
 (N'Davao City Nature Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Davao City'), '2024-08-20', 2800.00, N'Visit Mount Apo, Philippine Eagle Center, and Davao Crocodile Park.', 6, 0, 12.00),
-(N'Iloilo Culinary Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Iloilo City'), '2024-08-25', 2100.00, N'Food tour featuring famous Ilonggo dishes and local delicacies.', 6, 0, 0.00);
+(N'Iloilo Culinary Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Iloilo City'), '2024-08-25', 2100.00, N'Food tour featuring famous Ilonggo dishes and local delicacies.', 6, 0, 0.00),
+(N'Palawan Underground River Tour', 2, (SELECT id FROM dbo.cities WHERE name = N'Puerto Princesa'), '2024-09-01', 3800.00, N'UNESCO World Heritage Site featuring an underground river system. Boat tour through the spectacular cave system.', 4, 1, 20.00);
 
 -- ============================================================================
 -- TRANSFERS (Owned by agencies)
@@ -868,11 +869,11 @@ INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) 
 (N'activity', 8, N'/uploads/activities/8/siargao-surfing.jpg', 1),
 (N'activity', 8, N'/uploads/activities/8/siargao-surfing-1.jpg', 2),
 (N'activity', 8, N'/uploads/activities/8/siargao-surfing-2.jpg', 3),
--- Activity 9: Bohol Countryside Tour (Primary image + additional)
-(N'activity', 9, N'/uploads/activities/9/bohol-countryside.jpg', 1),
-(N'activity', 9, N'/uploads/activities/9/bohol-countryside-1.jpg', 2),
-(N'activity', 9, N'/uploads/activities/9/bohol-countryside-2.jpg', 3),
-(N'activity', 9, N'/uploads/activities/9/bohol-countryside-3.jpg', 4),
+-- Activity 9: Bohol Chocolate Hills Tour (Primary image + additional)
+(N'activity', 9, N'/uploads/activities/9/chocolate-hills.jpg', 1),
+(N'activity', 9, N'/uploads/activities/9/chocolate-hills-1.jpg', 2),
+(N'activity', 9, N'/uploads/activities/9/chocolate-hills-2.jpg', 3),
+(N'activity', 9, N'/uploads/activities/9/chocolate-hills-3.jpg', 4),
 -- Activity 10: Dumaguete City Tour (Primary image + additional)
 (N'activity', 10, N'/uploads/activities/10/dumaguete-tour.jpg', 1),
 (N'activity', 10, N'/uploads/activities/10/dumaguete-tour-1.jpg', 2),
@@ -896,7 +897,11 @@ INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) 
 -- Activity 15: Iloilo Culinary Tour (Primary image + additional)
 (N'activity', 15, N'/uploads/activities/15/iloilo-culinary.jpg', 1),
 (N'activity', 15, N'/uploads/activities/15/iloilo-culinary-1.jpg', 2),
-(N'activity', 15, N'/uploads/activities/15/iloilo-culinary-2.jpg', 3);
+(N'activity', 15, N'/uploads/activities/15/iloilo-culinary-2.jpg', 3),
+-- Activity 16: Palawan Underground River Tour (Primary image + additional)
+(N'activity', 16, N'/uploads/activities/16/underground-river.jpg', 1),
+(N'activity', 16, N'/uploads/activities/16/underground-river-1.jpg', 2),
+(N'activity', 16, N'/uploads/activities/16/underground-river-2.jpg', 3);
 
 -- Destination Images (2-4 images per destination)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES
@@ -905,15 +910,14 @@ INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) 
 (N'destination', 1, N'/uploads/destinations/1/boracay-1.jpg', 2),
 (N'destination', 1, N'/uploads/destinations/1/boracay-2.jpg', 3),
 (N'destination', 1, N'/uploads/destinations/1/boracay-3.jpg', 4),
--- Destination 2: Palawan Underground River (Primary image + additional)
+-- Destination 2: Puerto Princesa (Primary image + additional)
 (N'destination', 2, N'/uploads/destinations/2/puerto-princesa.jpg', 1),
 (N'destination', 2, N'/uploads/destinations/2/puerto-princesa-1.jpg', 2),
 (N'destination', 2, N'/uploads/destinations/2/puerto-princesa-2.jpg', 3),
--- Destination 3: Bohol Chocolate Hills (Primary image + additional)
+-- Destination 3: Bohol (Primary image + additional)
 (N'destination', 3, N'/uploads/destinations/3/bohol.jpg', 1),
 (N'destination', 3, N'/uploads/destinations/3/bohol-1.jpg', 2),
 (N'destination', 3, N'/uploads/destinations/3/bohol-2.jpg', 3),
-(N'destination', 3, N'/uploads/destinations/3/bohol-3.jpg', 4),
 -- Destination 4: Baguio City (Primary image + additional)
 (N'destination', 4, N'/uploads/destinations/4/baguio.jpg', 1),
 (N'destination', 4, N'/uploads/destinations/4/baguio-1.jpg', 2),
