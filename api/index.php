@@ -51,9 +51,27 @@ elseif (preg_match('#^/hotels(?:/(\d+))?/?$#', $uri, $matches)) {
   exit;
 }
 
-// Route: /api/flights
+// Route: /api/airports
+elseif (preg_match('#^/airports(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/airports.php';
+  exit;
+}
+
+// Route: /api/flights/routes
+elseif (preg_match('#^/flights/routes(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/flight-routes.php';
+  exit;
+}
+
+// Route: /api/flights/book
+elseif (preg_match('#^/flights/book/?$#', $uri)) {
+  require __DIR__ . '/controllers/flight-instances.php';
+  exit;
+}
+
+// Route: /api/flights (instances search)
 elseif (preg_match('#^/flights(?:/(\d+))?/?$#', $uri, $matches)) {
-  require __DIR__ . '/controllers/flights.php';
+  require __DIR__ . '/controllers/flight-instances.php';
   exit;
 }
 
@@ -63,9 +81,27 @@ elseif (preg_match('#^/activities(?:/(\d+))?/?$#', $uri, $matches)) {
   exit;
 }
 
-// Route: /api/transfers
+// Route: /api/transfers/types
+elseif (preg_match('#^/transfers/types(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/transfer-types.php';
+  exit;
+}
+
+// Route: /api/transfers/routes
+elseif (preg_match('#^/transfers/routes(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/transfer-routes.php';
+  exit;
+}
+
+// Route: /api/transfers/book
+elseif (preg_match('#^/transfers/book/?$#', $uri)) {
+  require __DIR__ . '/controllers/transfer-instances.php';
+  exit;
+}
+
+// Route: /api/transfers (instances search)
 elseif (preg_match('#^/transfers(?:/(\d+))?/?$#', $uri, $matches)) {
-  require __DIR__ . '/controllers/transfers.php';
+  require __DIR__ . '/controllers/transfer-instances.php';
   exit;
 }
 
