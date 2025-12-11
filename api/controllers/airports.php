@@ -192,3 +192,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/airports/(\d+)/?$#
 
 json_error('Not found', 404);
 
+
+
+
+

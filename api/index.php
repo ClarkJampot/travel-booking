@@ -63,13 +63,19 @@ elseif (preg_match('#^/flights/routes(?:/(\d+))?/?$#', $uri, $matches)) {
   exit;
 }
 
+// Route: /api/flights/instances
+elseif (preg_match('#^/flights/instances/?$#', $uri)) {
+  require __DIR__ . '/controllers/flight-instances.php';
+  exit;
+}
+
 // Route: /api/flights/book
 elseif (preg_match('#^/flights/book/?$#', $uri)) {
   require __DIR__ . '/controllers/flight-instances.php';
   exit;
 }
 
-// Route: /api/flights (instances search)
+// Route: /api/flights (routes listing and detail)
 elseif (preg_match('#^/flights(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/flight-instances.php';
   exit;

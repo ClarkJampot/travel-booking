@@ -34,11 +34,11 @@
         </div>
         <div class="col-md-2">
           <label for="minPrice" class="form-label">Min Price</label>
-          <input type="number" class="form-control" id="minPrice" placeholder="Min">
+          <input type="number" class="form-control" id="minPrice" placeholder="Min" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="col-md-2">
           <label for="maxPrice" class="form-label">Max Price</label>
-          <input type="number" class="form-control" id="maxPrice" placeholder="Max">
+          <input type="number" class="form-control" id="maxPrice" placeholder="Max" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
         </div>
         <div class="col-md-2 d-flex align-items-end">
           <button class="btn btn-primary w-100" onclick="handleFilterClick()">Filter</button>
@@ -137,6 +137,19 @@
       
       const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.pushState({}, '', newURL);
+    }
+
+    // Force integer-only values on numeric inputs
+    function enforceIntegerInput(inputId) {
+      const el = document.getElementById(inputId);
+      if (!el) return;
+      const sanitize = () => {
+        const cleaned = el.value.replace(/[^0-9]/g, '');
+        el.value = cleaned;
+      };
+      el.addEventListener('input', sanitize);
+      el.addEventListener('change', sanitize);
+      sanitize();
     }
 
     async function loadHotels(reset = false) {
@@ -308,6 +321,8 @@
     document.addEventListener('DOMContentLoaded', async function() {
       await loadProvinces();
       initCascadingCityDropdown('provinceFilter', 'cityFilter');
+      enforceIntegerInput('minPrice');
+      enforceIntegerInput('maxPrice');
       
       // Pre-fill filter inputs from URL
       const urlParams = getUrlParams();

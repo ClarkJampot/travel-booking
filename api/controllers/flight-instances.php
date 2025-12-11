@@ -18,14 +18,43 @@ $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) {
   $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
   
-  // Get single instance
+  // Get single route or instance
   if ($id) {
+    // First, try to get as route
+    $stmt = $pdo->prepare('
+      SELECT fr.*,
+        oa.code as origin_code, oa.name as origin_name,
+        da.code as destination_code, da.name as destination_name,
+        oc.name as origin_city_name, op.name as origin_province_name,
+        dc.name as destination_city_name, dp.name as destination_province_name
+      FROM flight_routes fr
+      INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+      INNER JOIN airports da ON fr.destination_airport_id = da.id
+      LEFT JOIN cities oc ON oa.city_id = oc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN cities dc ON da.city_id = dc.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      WHERE fr.id = ?
+    ');
+    $stmt->execute([$id]);
+    $route = $stmt->fetch();
+    
+    if ($route) {
+      // It's a route - return route data
+      $route['images'] = [];
+      $route['image_url'] = null;
+      $route['price'] = $route['base_price_economy'];
+      json_ok(['flight' => $route]);
+      exit;
+    }
+    
+    // If not a route, try as instance (for backward compatibility)
     $stmt = $pdo->prepare('
       SELECT fi.*,
         fs.route_id, fs.route_pair_id, fs.departure_time, fs.days_of_week,
         fr.origin_airport_id, fr.destination_airport_id, fr.airline,
         fr.base_price_economy, fr.base_price_business, fr.base_price_first,
-        fr.duration_minutes, fr.aircraft_type, fr.description as route_description,
+        fr.duration_minutes, fr.aircraft_type,
         fr.ad, fr.discount_percent,
         oa.code as origin_code, oa.name as origin_name,
         da.code as destination_code, da.name as destination_name,
@@ -48,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     $stmt->execute([$id]);
     $instance = $stmt->fetch();
     if (!$instance) {
-      json_error('Flight instance not found', 404);
+      json_error('Flight route or instance not found', 404);
     }
     
     // Calculate prices (use instance price if set, otherwise base price)
@@ -56,83 +85,65 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     $instance['price_business'] = $instance['price_business'] ?? $instance['base_price_business'];
     $instance['price_first'] = $instance['price_first'] ?? $instance['base_price_first'];
     
-    // Get images from route
-    if ($instance['route_id']) {
-      $images = get_entity_images($pdo, 'flight_route', $instance['route_id']);
-      $instance['images'] = $images;
-      $instance['image_url'] = $images[0] ?? null;
-    }
+    // No images for flight routes
+    $instance['images'] = [];
+    $instance['image_url'] = null;
     
     json_ok(['flight' => $instance]);
+    exit;
   }
   
-  // Search for available instances
+  // List flight routes (always return routes, not instances)
   $origin_airport_id = isset($_GET['origin_airport_id']) ? (int)$_GET['origin_airport_id'] : null;
   $destination_airport_id = isset($_GET['destination_airport_id']) ? (int)$_GET['destination_airport_id'] : null;
-  $departure_date = $_GET['departure_date'] ?? null;
-  $return_date = $_GET['return_date'] ?? null;
-  $class = $_GET['class'] ?? 'economy';
-  $trip_type = $_GET['trip_type'] ?? 'one-way';
-  $passenger_count = isset($_GET['passenger_count']) ? (int)$_GET['passenger_count'] : 1;
+  $min_price = isset($_GET['min_price']) ? (float)$_GET['min_price'] : null;
+  $max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 12)));
   $offset = ($page - 1) * $limit;
   
-  if (!$departure_date) {
-    json_error('departure_date is required', 400);
-  }
-  
-  $where = ['fi.departure_date >= CAST(? AS DATE)', 'fi.status = ?'];
-  $params = [$departure_date, 'scheduled'];
-  
-  // For round-trip, we need to handle both outbound and return
-  if ($trip_type === 'round-trip' && $return_date) {
-    // This is simplified - in production, you'd want to match outbound/return pairs
-    $where[] = 'fs.route_pair_id IS NOT NULL';
-  } else {
-    $where[] = 'fs.route_id IS NOT NULL';
-  }
+  $where = [];
+  $params = [];
   
   if ($origin_airport_id !== null) {
-    $where[] = 'COALESCE(fr.origin_airport_id, outbound.origin_airport_id) = ?';
+    $where[] = 'fr.origin_airport_id = ?';
     $params[] = $origin_airport_id;
   }
   if ($destination_airport_id !== null) {
-    $where[] = 'COALESCE(fr.destination_airport_id, outbound.destination_airport_id) = ?';
+    $where[] = 'fr.destination_airport_id = ?';
     $params[] = $destination_airport_id;
   }
+  if ($min_price !== null) {
+    $where[] = 'fr.base_price_economy >= ?';
+    $params[] = $min_price;
+  }
+  if ($max_price !== null) {
+    $where[] = 'fr.base_price_economy <= ?';
+    $params[] = $max_price;
+  }
   
-  // Availability check based on class
-  $seatsAvailableColumn = 'seats_' . $class . '_available';
-  $where[] = "fi.$seatsAvailableColumn >= ?";
-  $params[] = $passenger_count;
+  $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
+  $offsetInt = (int)$offset;
+  $limitInt = (int)$limit;
   
-  $whereSql = 'WHERE ' . implode(' AND ', $where);
-  
-  // Get promoted flights (1-2 random)
+  // Get promoted routes (with same filters including date)
   $promotedFlights = [];
   $promotedIds = [];
-  
   try {
     $promotedWhere = array_merge(['fr.ad = 1'], $where);
     $promotedWhereSql = 'WHERE ' . implode(' AND ', $promotedWhere);
     $promotedParams = $params;
     
-    $promotedSql = "SELECT TOP 2 fi.*,
-        fs.route_id, fs.route_pair_id,
-        fr.airline, fr.duration_minutes,
-        fr.base_price_economy, fr.base_price_business, fr.base_price_first,
-        fr.ad, fr.discount_percent,
+    $promotedSql = "SELECT TOP 2 fr.id, fr.origin_airport_id, fr.destination_airport_id, fr.airline, 
+        fr.base_price_economy, fr.base_price_business, fr.base_price_first, 
+        fr.duration_minutes, fr.aircraft_type, fr.ad, fr.discount_percent, fr.created_by, fr.created_at,
         oa.code as origin_code, oa.name as origin_name,
         da.code as destination_code, da.name as destination_name,
-        oc.name as origin_city_name, dc.name as destination_city_name
-      FROM flight_instances fi
-      INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-      LEFT JOIN flight_routes fr ON fs.route_id = fr.id
-      LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
-      LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
-      LEFT JOIN airports oa ON COALESCE(fr.origin_airport_id, outbound.origin_airport_id) = oa.id
-      LEFT JOIN airports da ON COALESCE(fr.destination_airport_id, outbound.destination_airport_id) = da.id
+        oc.name as origin_city_name, dc.name as destination_city_name,
+        NULL as image_url
+      FROM flight_routes fr
+      INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+      INNER JOIN airports da ON fr.destination_airport_id = da.id
       LEFT JOIN cities oc ON oa.city_id = oc.id
       LEFT JOIN cities dc ON da.city_id = dc.id
       $promotedWhereSql
@@ -143,68 +154,179 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     $promotedFlights = $promotedStmt->fetchAll();
     $promotedIds = array_column($promotedFlights, 'id');
   } catch (PDOException $e) {
-    error_log('Promoted flights query failed: ' . $e->getMessage());
+    error_log('Promoted routes query failed: ' . $e->getMessage());
   }
   
-  // Regular flights (excluding promoted ones)
+  // Regular routes
   $regularWhere = $where;
   $regularWhere[] = "(fr.ad = 0 OR fr.ad IS NULL)";
   if (!empty($promotedIds)) {
     $placeholders = implode(',', array_fill(0, count($promotedIds), '?'));
-    $regularWhere[] = "fi.id NOT IN ($placeholders)";
+    $regularWhere[] = "fr.id NOT IN ($placeholders)";
     $regularParams = array_merge($params, $promotedIds);
   } else {
     $regularParams = $params;
   }
   
   $regularWhereSql = 'WHERE ' . implode(' AND ', $regularWhere);
-  $offsetInt = (int)$offset;
-  $limitInt = (int)$limit;
   
-  $sql = "SELECT fi.*,
-      fs.route_id, fs.route_pair_id,
-      fr.airline, fr.duration_minutes,
-      fr.base_price_economy, fr.base_price_business, fr.base_price_first,
-      fr.ad, fr.discount_percent,
+  $sql = "SELECT fr.id, fr.origin_airport_id, fr.destination_airport_id, fr.airline, 
+      fr.base_price_economy, fr.base_price_business, fr.base_price_first, 
+      fr.duration_minutes, fr.aircraft_type, fr.ad, fr.discount_percent, fr.created_by, fr.created_at,
       oa.code as origin_code, oa.name as origin_name,
       da.code as destination_code, da.name as destination_name,
-      oc.name as origin_city_name, dc.name as destination_city_name
-    FROM flight_instances fi
-    INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-    LEFT JOIN flight_routes fr ON fs.route_id = fr.id
-    LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
-    LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
-    LEFT JOIN airports oa ON COALESCE(fr.origin_airport_id, outbound.origin_airport_id) = oa.id
-    LEFT JOIN airports da ON COALESCE(fr.destination_airport_id, outbound.destination_airport_id) = da.id
+      oc.name as origin_city_name, dc.name as destination_city_name,
+      NULL as image_url
+    FROM flight_routes fr
+    INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+    INNER JOIN airports da ON fr.destination_airport_id = da.id
     LEFT JOIN cities oc ON oa.city_id = oc.id
     LEFT JOIN cities dc ON da.city_id = dc.id
     $regularWhereSql
-    ORDER BY fi.departure_datetime ASC
+    ORDER BY fr.id ASC
     OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";
   
   $stmt = $pdo->prepare($sql);
   $stmt->execute($regularParams);
   $flights = $stmt->fetchAll();
   
-  // Calculate prices and discounted prices
+  // Format prices for routes
   foreach ($promotedFlights as &$flight) {
-    $basePrice = $flight['base_price_' . $class] ?? $flight['base_price_economy'];
-    $price = $flight['price_' . $class] ?? $basePrice;
-    $flight['price'] = $price;
+    $flight['price'] = $flight['base_price_economy'];
+    $flight['departure_date'] = null;
+    $flight['departure_datetime'] = null;
     if ($flight['discount_percent'] > 0) {
-      $flight['discounted_price'] = round($price * (1 - $flight['discount_percent'] / 100), 2);
+      $flight['discounted_price'] = round($flight['price'] * (1 - $flight['discount_percent'] / 100), 2);
     }
   }
   foreach ($flights as &$flight) {
-    $basePrice = $flight['base_price_' . $class] ?? $flight['base_price_economy'];
-    $price = $flight['price_' . $class] ?? $basePrice;
-    $flight['price'] = $price;
+    $flight['price'] = $flight['base_price_economy'];
+    $flight['departure_date'] = null;
+    $flight['departure_datetime'] = null;
     if ($flight['discount_percent'] > 0) {
-      $flight['discounted_price'] = round($price * (1 - $flight['discount_percent'] / 100), 2);
+      $flight['discounted_price'] = round($flight['price'] * (1 - $flight['discount_percent'] / 100), 2);
     }
   }
   
   json_ok(['page' => $page, 'limit' => $limit, 'promoted' => $promotedFlights, 'results' => $flights]);
+}
+
+// GET /api/flights/instances (get available instances for a route)
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/instances/?$#', $uri)) {
+  $route_id = isset($_GET['route_id']) ? (int)$_GET['route_id'] : null;
+  $departure_date = $_GET['departure_date'] ?? null;
+  $return_date = $_GET['return_date'] ?? null;
+  $class = $_GET['class'] ?? 'economy';
+  $passenger_count = isset($_GET['passenger_count']) ? (int)$_GET['passenger_count'] : 1;
+  
+  if (!$route_id || !$departure_date) {
+    json_error('Missing required parameters: route_id, departure_date', 400);
+  }
+  
+  if (!in_array($class, ['economy', 'business', 'first'])) {
+    json_error('Invalid class. Must be economy, business, or first', 400);
+  }
+  
+  if ($passenger_count < 1) {
+    json_error('Passenger count must be at least 1', 400);
+  }
+  
+  // Get available instances for the route and date
+  $seatsAvailableColumn = 'seats_' . $class . '_available';
+  
+  $stmt = $pdo->prepare("
+    SELECT fi.*,
+      fs.departure_time,
+      fr.base_price_economy, fr.base_price_business, fr.base_price_first,
+      fr.discount_percent,
+      fr.airline, fr.duration_minutes
+    FROM flight_instances fi
+    INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+    INNER JOIN flight_routes fr ON fs.route_id = fr.id
+    WHERE fs.route_id = ?
+      AND fi.departure_date = CAST(? AS DATE)
+      AND fi.status = 'scheduled'
+      AND fi.$seatsAvailableColumn >= ?
+    ORDER BY fi.departure_datetime ASC
+  ");
+  
+  $stmt->execute([$route_id, $departure_date, $passenger_count]);
+  $instances = $stmt->fetchAll();
+  
+  // Calculate prices for each instance
+  foreach ($instances as &$instance) {
+    $basePrice = $instance['base_price_' . $class] ?? $instance['base_price_economy'];
+    $price = $instance['price_' . $class] ?? $basePrice;
+    $instance['price'] = $price;
+    $instance['price_' . $class] = $price;
+    
+    if ($instance['discount_percent'] > 0) {
+      $instance['discounted_price'] = round($price * (1 - $instance['discount_percent'] / 100), 2);
+    }
+    
+    // Add seat availability info
+    $instance['seats_available'] = $instance[$seatsAvailableColumn];
+    $instance['seats_total'] = $instance['seats_' . $class . '_total'];
+  }
+  
+  $result = ['instances' => $instances];
+  
+  // If return_date is provided, find return route using flight_route_pairs
+  if ($return_date) {
+    $returnRouteStmt = $pdo->prepare("
+      SELECT frp.return_route_id
+      FROM flight_route_pairs frp
+      WHERE frp.outbound_route_id = ?
+    ");
+    $returnRouteStmt->execute([$route_id]);
+    $returnRoute = $returnRouteStmt->fetch();
+    
+    if ($returnRoute && $returnRoute['return_route_id']) {
+      $returnRouteId = (int)$returnRoute['return_route_id'];
+      
+      // Get return instances
+      $returnStmt = $pdo->prepare("
+        SELECT fi.*,
+          fs.departure_time,
+          fr.base_price_economy, fr.base_price_business, fr.base_price_first,
+          fr.discount_percent,
+          fr.airline, fr.duration_minutes
+        FROM flight_instances fi
+        INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+        INNER JOIN flight_routes fr ON fs.route_id = fr.id
+        WHERE fs.route_id = ?
+          AND fi.departure_date = CAST(? AS DATE)
+          AND fi.status = 'scheduled'
+          AND fi.$seatsAvailableColumn >= ?
+        ORDER BY fi.departure_datetime ASC
+      ");
+      
+      $returnStmt->execute([$returnRouteId, $return_date, $passenger_count]);
+      $returnInstances = $returnStmt->fetchAll();
+      
+      // Calculate prices for return instances
+      foreach ($returnInstances as &$returnInstance) {
+        $basePrice = $returnInstance['base_price_' . $class] ?? $returnInstance['base_price_economy'];
+        $price = $returnInstance['price_' . $class] ?? $basePrice;
+        $returnInstance['price'] = $price;
+        $returnInstance['price_' . $class] = $price;
+        
+        if ($returnInstance['discount_percent'] > 0) {
+          $returnInstance['discounted_price'] = round($price * (1 - $returnInstance['discount_percent'] / 100), 2);
+        }
+        
+        $returnInstance['seats_available'] = $returnInstance[$seatsAvailableColumn];
+        $returnInstance['seats_total'] = $returnInstance['seats_' . $class . '_total'];
+      }
+      
+      $result['return_instances'] = $returnInstances;
+    } else {
+      $result['return_instances'] = [];
+    }
+  }
+  
+  json_ok($result);
+  exit;
 }
 
 // POST /api/flights/book (book a flight instance)

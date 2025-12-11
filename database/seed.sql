@@ -1020,3 +1020,397 @@ INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) 
 (N'transfer', 9, N'/uploads/transfers/9/manila-batanes.jpg', 1),
 (N'transfer', 9, N'/uploads/transfers/9/manila-batanes-1.jpg', 2);
 
+-- ============================================================================
+-- NEW FLIGHTS AND TRANSFERS ARCHITECTURE SEED DATA
+-- ============================================================================
+
+-- ============================================================================
+-- AIRPORTS
+-- ============================================================================
+INSERT INTO dbo.airports(code, name, city_id, is_international) VALUES
+-- Metro Manila
+(N'MNL', N'Ninoy Aquino International Airport', (SELECT id FROM dbo.cities WHERE name = N'Manila'), 1),
+(N'CRK', N'Clark International Airport', (SELECT id FROM dbo.cities WHERE name = N'Angeles' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Pampanga')), 1),
+
+-- Boracay/Palawan
+(N'MPH', N'Godofredo P. Ramos Airport (Caticlan)', (SELECT id FROM dbo.cities WHERE name = N'Boracay'), 0),
+(N'PPS', N'Puerto Princesa International Airport', (SELECT id FROM dbo.cities WHERE name = N'Puerto Princesa'), 1),
+(N'USU', N'Francisco B. Reyes Airport (Coron)', (SELECT id FROM dbo.cities WHERE name = N'Coron'), 0),
+
+-- Cebu/Bohol
+(N'CEB', N'Mactan-Cebu International Airport', (SELECT id FROM dbo.cities WHERE name = N'Cebu City'), 1),
+(N'TAG', N'Tagbilaran Airport', (SELECT id FROM dbo.cities WHERE name = N'Tagbilaran'), 0),
+
+-- Other major airports
+(N'DVO', N'Francisco Bangoy International Airport (Davao)', (SELECT id FROM dbo.cities WHERE name = N'Davao City'), 1),
+(N'ILO', N'Iloilo International Airport', (SELECT id FROM dbo.cities WHERE name = N'Iloilo City'), 1),
+(N'BCD', N'Bacolod-Silay Airport', (SELECT id FROM dbo.cities WHERE name = N'Bacolod'), 1),
+(N'BSO', N'Basco Airport', (SELECT id FROM dbo.cities WHERE name = N'Basco'), 0);
+
+-- ============================================================================
+-- TRANSFER TYPES
+-- ============================================================================
+INSERT INTO dbo.transfer_types(name, description, icon) VALUES
+(N'Airport Shuttle', N'Shared airport shuttle service', N'shuttle-van'),
+(N'Private Car', N'Private car transfer service', N'car'),
+(N'Bus', N'Bus transfer service', N'bus'),
+(N'Van', N'Van transfer service', N'van');
+
+-- ============================================================================
+-- FLIGHT ROUTES
+-- ============================================================================
+-- Agency 1 (user_id 4): Routes 1-3
+-- Agency 2 (user_id 5): Routes 4-6
+-- Agency 3 (user_id 6): Routes 7-9
+
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent) VALUES
+-- Agency 1 routes
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'MPH'), N'Philippine Airlines', 8500.00, 15000.00, 25000.00, 60, N'Airbus A320', 4, 1, 20.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'CEB'), N'Cebu Pacific', 4500.00, 8000.00, NULL, 90, N'Airbus A320', 4, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'CEB'), (SELECT id FROM dbo.airports WHERE code = N'TAG'), N'Cebu Pacific', 2500.00, NULL, NULL, 30, N'ATR 72', 4, 0, 10.00),
+
+-- Agency 2 routes
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'PPS'), N'Philippine Airlines', 9200.00, 16500.00, 28000.00, 75, N'Airbus A320', 5, 1, 25.00),
+((SELECT id FROM dbo.airports WHERE code = N'PPS'), (SELECT id FROM dbo.airports WHERE code = N'USU'), N'SkyJet', 5500.00, NULL, NULL, 45, N'ATR 72', 5, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'DVO'), N'Philippine Airlines', 12000.00, 22000.00, 35000.00, 120, N'Airbus A321', 5, 0, 0.00),
+
+-- Agency 3 routes
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'ILO'), N'Cebu Pacific', 4800.00, NULL, NULL, 70, N'Airbus A320', 6, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'BSO'), N'Philippine Airlines', 15000.00, 28000.00, 45000.00, 150, N'Airbus A320', 6, 1, 18.00),
+((SELECT id FROM dbo.airports WHERE code = N'CEB'), (SELECT id FROM dbo.airports WHERE code = N'BCD'), N'Cebu Pacific', 3500.00, NULL, NULL, 50, N'ATR 72', 6, 0, 0.00);
+
+-- ============================================================================
+-- TRANSFER ROUTES
+-- ============================================================================
+-- Agency 1 (user_id 4): Routes 1-3
+-- Agency 2 (user_id 5): Routes 4-6
+-- Agency 3 (user_id 6): Routes 7-9
+
+INSERT INTO dbo.transfer_routes(origin_city_id, destination_city_id, origin_specific, destination_specific, transfer_type_id, base_price, duration_minutes, distance_km, capacity, description, created_by, ad, discount_percent) VALUES
+-- Agency 1 transfers
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Boracay'), N'Manila Airport (MNL)', N'Boracay Port', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 3500.00, 480, 350.0, 12, N'Comfortable van transfer from Manila Airport to Boracay Port', 4, 1, 15.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Cebu City'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagbilaran'), N'Cebu Airport (CEB)', N'Bohol Port', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 2800.00, 120, 90.0, 12, N'Van transfer from Cebu Airport to Bohol Port', 4, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Baguio'), N'Manila Airport (MNL)', N'Baguio City', (SELECT id FROM dbo.transfer_types WHERE name = N'Bus'), 3200.00, 240, 250.0, 45, N'Bus transfer from Manila Airport to Baguio City', 4, 0, 10.00),
+
+-- Agency 2 transfers
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Puerto Princesa'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'El Nido'), N'Puerto Princesa Airport (PPS)', N'El Nido', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 4200.00, 360, 240.0, 12, N'Van transfer from Puerto Princesa Airport to El Nido', 5, 1, 20.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagaytay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batangas')), N'Manila Airport (MNL)', N'Tagaytay City', (SELECT id FROM dbo.transfer_types WHERE name = N'Private Car'), 2500.00, 90, 60.0, 4, N'Private car transfer from Manila Airport to Tagaytay City', 5, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Davao City'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'General Santos'), N'Davao Airport (DVO)', N'General Santos City', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 1800.00, 120, 100.0, 12, N'Van transfer from Davao Airport to General Santos City', 5, 0, 0.00),
+
+-- Agency 3 transfers
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Vigan'), N'Manila Airport (MNL)', N'Vigan City', (SELECT id FROM dbo.transfer_types WHERE name = N'Bus'), 4500.00, 420, 400.0, 45, N'Bus transfer from Manila Airport to Vigan City', 6, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Sagada'), N'Manila Airport (MNL)', N'Sagada', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 5200.00, 480, 380.0, 12, N'Van transfer from Manila Airport to Sagada', 6, 1, 18.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Basco'), N'Manila Airport (MNL)', N'Batanes (via Basco)', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 8500.00, 60, 0.0, 12, N'Van transfer from Manila Airport to Batanes via Basco', 6, 0, 0.00);
+
+-- ============================================================================
+-- FLIGHT SCHEDULES
+-- ============================================================================
+-- Create daily schedules for each route
+INSERT INTO dbo.flight_schedules(route_id, departure_time, days_of_week, is_active) VALUES
+-- Route 1: MNL to MPH (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MPH')), CAST('08:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MPH')), CAST('14:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 2: MNL to CEB (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB')), CAST('06:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB')), CAST('12:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB')), CAST('18:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 3: CEB to TAG (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'TAG')), CAST('09:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'TAG')), CAST('15:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 4: MNL to PPS (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'PPS')), CAST('07:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'PPS')), CAST('13:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 5: PPS to USU (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'PPS') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'USU')), CAST('10:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 6: MNL to DVO (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'DVO')), CAST('05:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'DVO')), CAST('11:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 7: MNL to ILO (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'ILO')), CAST('08:30:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 8: MNL to BSO (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'BSO')), CAST('06:00:00' AS TIME), N'0,1,2,3,4,5,6', 1),
+
+-- Route 9: CEB to BCD (daily)
+((SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'BCD')), CAST('10:30:00' AS TIME), N'0,1,2,3,4,5,6', 1);
+
+-- ============================================================================
+-- FLIGHT ROUTE PAIRS (Round Trip Routes)
+-- ============================================================================
+-- Create return routes for round trip testing
+-- Return Route 1: MPH to MNL (reverse of Route 1)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+SELECT 
+  (SELECT id FROM dbo.airports WHERE code = N'MPH'),
+  (SELECT id FROM dbo.airports WHERE code = N'MNL'),
+  N'Philippine Airlines',
+  8500.00, 15000.00, 25000.00, 60, N'Airbus A320', 4, 0, 20.00;
+
+-- Return Route 2: CEB to MNL (reverse of Route 2)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+SELECT 
+  (SELECT id FROM dbo.airports WHERE code = N'CEB'),
+  (SELECT id FROM dbo.airports WHERE code = N'MNL'),
+  N'Cebu Pacific',
+  4500.00, 8000.00, NULL, 90, N'Airbus A320', 4, 0, 0.00;
+
+-- Return Route 3: TAG to CEB (reverse of Route 3)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+SELECT 
+  (SELECT id FROM dbo.airports WHERE code = N'TAG'),
+  (SELECT id FROM dbo.airports WHERE code = N'CEB'),
+  N'Cebu Pacific',
+  2500.00, NULL, NULL, 30, N'ATR 72', 4, 0, 10.00;
+
+-- Return Route 4: PPS to MNL (reverse of Route 4)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+SELECT 
+  (SELECT id FROM dbo.airports WHERE code = N'PPS'),
+  (SELECT id FROM dbo.airports WHERE code = N'MNL'),
+  N'Philippine Airlines',
+  9200.00, 16500.00, 28000.00, 75, N'Airbus A320', 5, 0, 25.00;
+
+-- Create round trip pairs
+-- Pair 1: MNL-MPH (Route 1) and MPH-MNL (Return Route 1)
+INSERT INTO dbo.flight_route_pairs(outbound_route_id, return_route_id, base_price_economy, base_price_business, base_price_first, discount_percent, ad, created_by)
+SELECT 
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MPH') AND airline = N'Philippine Airlines'),
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MPH') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND airline = N'Philippine Airlines'),
+  17000.00, 30000.00, 50000.00, 20.00, 1, 4;
+
+-- Pair 2: MNL-CEB (Route 2) and CEB-MNL (Return Route 2)
+INSERT INTO dbo.flight_route_pairs(outbound_route_id, return_route_id, base_price_economy, base_price_business, base_price_first, discount_percent, ad, created_by)
+SELECT 
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB') AND airline = N'Cebu Pacific'),
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND airline = N'Cebu Pacific'),
+  9000.00, 16000.00, NULL, 0.00, 0, 4;
+
+-- Pair 3: MNL-PPS (Route 4) and PPS-MNL (Return Route 4)
+INSERT INTO dbo.flight_route_pairs(outbound_route_id, return_route_id, base_price_economy, base_price_business, base_price_first, discount_percent, ad, created_by)
+SELECT 
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'PPS') AND airline = N'Philippine Airlines'),
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'PPS') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND airline = N'Philippine Airlines'),
+  18400.00, 33000.00, 56000.00, 25.00, 1, 5;
+
+-- Create schedules for return routes (so they have route_id schedules for instance generation)
+-- Return Route 1: MPH to MNL
+INSERT INTO dbo.flight_schedules(route_id, departure_time, days_of_week, is_active)
+SELECT 
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MPH') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND airline = N'Philippine Airlines'),
+  CAST('08:00:00' AS TIME), N'0,1,2,3,4,5,6', 1;
+
+-- Return Route 2: CEB to MNL
+INSERT INTO dbo.flight_schedules(route_id, departure_time, days_of_week, is_active)
+SELECT 
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'CEB') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND airline = N'Cebu Pacific'),
+  CAST('06:00:00' AS TIME), N'0,1,2,3,4,5,6', 1;
+
+-- Return Route 4: PPS to MNL
+INSERT INTO dbo.flight_schedules(route_id, departure_time, days_of_week, is_active)
+SELECT 
+  (SELECT id FROM dbo.flight_routes WHERE origin_airport_id = (SELECT id FROM dbo.airports WHERE code = N'PPS') AND destination_airport_id = (SELECT id FROM dbo.airports WHERE code = N'MNL') AND airline = N'Philippine Airlines'),
+  CAST('07:00:00' AS TIME), N'0,1,2,3,4,5,6', 1;
+
+-- ============================================================================
+-- TRANSFER SCHEDULES
+-- ============================================================================
+-- Create daily schedules for each transfer route
+INSERT INTO dbo.transfer_schedules(route_id, departure_time, days_of_week, is_active)
+SELECT id, CAST('08:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Boracay Port'
+UNION ALL
+SELECT id, CAST('14:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Boracay Port'
+UNION ALL
+SELECT id, CAST('09:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Cebu Airport (CEB)' AND destination_specific = N'Bohol Port'
+UNION ALL
+SELECT id, CAST('15:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Cebu Airport (CEB)' AND destination_specific = N'Bohol Port'
+UNION ALL
+SELECT id, CAST('07:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Baguio City'
+UNION ALL
+SELECT id, CAST('08:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Puerto Princesa Airport (PPS)' AND destination_specific = N'El Nido'
+UNION ALL
+SELECT id, CAST('09:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Tagaytay City'
+UNION ALL
+SELECT id, CAST('13:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Tagaytay City'
+UNION ALL
+SELECT id, CAST('10:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Davao Airport (DVO)' AND destination_specific = N'General Santos City'
+UNION ALL
+SELECT id, CAST('06:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Vigan City'
+UNION ALL
+SELECT id, CAST('07:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Sagada'
+UNION ALL
+SELECT id, CAST('08:00:00' AS TIME), N'0,1,2,3,4,5,6', 1 FROM dbo.transfer_routes WHERE origin_specific = N'Manila Airport (MNL)' AND destination_specific = N'Batanes (via Basco)';
+
+-- ============================================================================
+-- FLIGHT INSTANCES
+-- ============================================================================
+-- Generate instances for the next 30 days for each schedule
+-- Handle both route_id schedules and route_pair_id schedules
+
+-- First, handle schedules with route_id (one-way routes)
+DECLARE @schedule_id INT;
+DECLARE @departure_date DATE = CAST(GETDATE() AS DATE);
+DECLARE @departure_time TIME;
+DECLARE @departure_datetime DATETIME2;
+DECLARE @route_id INT;
+DECLARE @base_price_economy DECIMAL(10,2);
+DECLARE @base_price_business DECIMAL(10,2);
+DECLARE @base_price_first DECIMAL(10,2);
+
+-- Create instances for schedules with route_id
+DECLARE schedule_cursor CURSOR FOR
+SELECT fs.id, fs.departure_time, fr.id, fr.base_price_economy, fr.base_price_business, fr.base_price_first
+FROM dbo.flight_schedules fs
+INNER JOIN dbo.flight_routes fr ON fs.route_id = fr.id
+WHERE fs.is_active = 1 AND fs.route_id IS NOT NULL;
+
+OPEN schedule_cursor;
+FETCH NEXT FROM schedule_cursor INTO @schedule_id, @departure_time, @route_id, @base_price_economy, @base_price_business, @base_price_first;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+  DECLARE @day INT = 0;
+  WHILE @day < 30
+  BEGIN
+    SET @departure_date = DATEADD(DAY, @day, CAST(GETDATE() AS DATE));
+    SET @departure_datetime = DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00:00' AS TIME), @departure_time), CAST(@departure_date AS DATETIME2));
+    
+    INSERT INTO dbo.flight_instances(schedule_id, departure_date, departure_datetime, price_economy, price_business, price_first, seats_economy_total, seats_economy_available, seats_business_total, seats_business_available, seats_first_total, seats_first_available, status)
+    VALUES(@schedule_id, @departure_date, @departure_datetime, @base_price_economy, @base_price_business, @base_price_first, 180, 180, 30, 30, 12, 12, 'scheduled');
+    
+    SET @day = @day + 1;
+  END
+  
+  FETCH NEXT FROM schedule_cursor INTO @schedule_id, @departure_time, @route_id, @base_price_economy, @base_price_business, @base_price_first;
+END
+
+CLOSE schedule_cursor;
+DEALLOCATE schedule_cursor;
+
+-- Now handle schedules with route_pair_id (round-trip routes)
+-- For route pairs, we need to generate instances for both outbound and return routes
+DECLARE @pair_schedule_id INT;
+DECLARE @pair_departure_time TIME;
+DECLARE @outbound_route_id INT;
+DECLARE @return_route_id INT;
+DECLARE @outbound_base_price_economy DECIMAL(10,2);
+DECLARE @outbound_base_price_business DECIMAL(10,2);
+DECLARE @outbound_base_price_first DECIMAL(10,2);
+DECLARE @return_base_price_economy DECIMAL(10,2);
+DECLARE @return_base_price_business DECIMAL(10,2);
+DECLARE @return_base_price_first DECIMAL(10,2);
+
+-- Find schedules for outbound routes in pairs
+DECLARE pair_schedule_cursor CURSOR FOR
+SELECT fs.id, fs.departure_time, frp.outbound_route_id, frp.return_route_id,
+  outbound.base_price_economy, outbound.base_price_business, outbound.base_price_first,
+  return_route.base_price_economy, return_route.base_price_business, return_route.base_price_first
+FROM dbo.flight_schedules fs
+INNER JOIN dbo.flight_route_pairs frp ON fs.route_pair_id = frp.id
+INNER JOIN dbo.flight_routes outbound ON frp.outbound_route_id = outbound.id
+INNER JOIN dbo.flight_routes return_route ON frp.return_route_id = return_route.id
+WHERE fs.is_active = 1 AND fs.route_pair_id IS NOT NULL;
+
+OPEN pair_schedule_cursor;
+FETCH NEXT FROM pair_schedule_cursor INTO @pair_schedule_id, @pair_departure_time, @outbound_route_id, @return_route_id,
+  @outbound_base_price_economy, @outbound_base_price_business, @outbound_base_price_first,
+  @return_base_price_economy, @return_base_price_business, @return_base_price_first;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+  -- Find the schedule for the outbound route
+  DECLARE @outbound_schedule_id INT;
+  SELECT TOP 1 @outbound_schedule_id = fs.id
+  FROM dbo.flight_schedules fs
+  WHERE fs.route_id = @outbound_route_id AND fs.is_active = 1
+  ORDER BY fs.id;
+  
+  -- Find the schedule for the return route
+  DECLARE @return_schedule_id INT;
+  SELECT TOP 1 @return_schedule_id = fs.id
+  FROM dbo.flight_schedules fs
+  WHERE fs.route_id = @return_route_id AND fs.is_active = 1
+  ORDER BY fs.id;
+  
+  -- Generate instances for both outbound and return routes
+  SET @day = 0;
+  WHILE @day < 30
+  BEGIN
+    SET @departure_date = DATEADD(DAY, @day, CAST(GETDATE() AS DATE));
+    
+    -- Generate outbound instance
+    IF @outbound_schedule_id IS NOT NULL
+    BEGIN
+      SET @departure_datetime = DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00:00' AS TIME), @pair_departure_time), CAST(@departure_date AS DATETIME2));
+      INSERT INTO dbo.flight_instances(schedule_id, departure_date, departure_datetime, price_economy, price_business, price_first, seats_economy_total, seats_economy_available, seats_business_total, seats_business_available, seats_first_total, seats_first_available, status)
+      VALUES(@outbound_schedule_id, @departure_date, @departure_datetime, @outbound_base_price_economy, @outbound_base_price_business, @outbound_base_price_first, 180, 180, 30, 30, 12, 12, 'scheduled');
+    END
+    
+    -- Generate return instance (using same departure time for now)
+    IF @return_schedule_id IS NOT NULL
+    BEGIN
+      SET @departure_datetime = DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00:00' AS TIME), @pair_departure_time), CAST(@departure_date AS DATETIME2));
+      INSERT INTO dbo.flight_instances(schedule_id, departure_date, departure_datetime, price_economy, price_business, price_first, seats_economy_total, seats_economy_available, seats_business_total, seats_business_available, seats_first_total, seats_first_available, status)
+      VALUES(@return_schedule_id, @departure_date, @departure_datetime, @return_base_price_economy, @return_base_price_business, @return_base_price_first, 180, 180, 30, 30, 12, 12, 'scheduled');
+    END
+    
+    SET @day = @day + 1;
+  END
+  
+  FETCH NEXT FROM pair_schedule_cursor INTO @pair_schedule_id, @pair_departure_time, @outbound_route_id, @return_route_id,
+    @outbound_base_price_economy, @outbound_base_price_business, @outbound_base_price_first,
+    @return_base_price_economy, @return_base_price_business, @return_base_price_first;
+END
+
+CLOSE pair_schedule_cursor;
+DEALLOCATE pair_schedule_cursor;
+
+-- ============================================================================
+-- TRANSFER INSTANCES
+-- ============================================================================
+-- Generate instances for the next 30 days for each transfer schedule
+DECLARE @transfer_schedule_id INT;
+DECLARE @transfer_departure_time TIME;
+DECLARE @transfer_departure_datetime DATETIME2;
+DECLARE @transfer_route_id INT;
+DECLARE @base_price DECIMAL(10,2);
+DECLARE @capacity INT;
+
+DECLARE transfer_schedule_cursor CURSOR FOR
+SELECT ts.id, ts.departure_time, tr.id, tr.base_price, tr.capacity
+FROM dbo.transfer_schedules ts
+INNER JOIN dbo.transfer_routes tr ON ts.route_id = tr.id
+WHERE ts.is_active = 1;
+
+OPEN transfer_schedule_cursor;
+FETCH NEXT FROM transfer_schedule_cursor INTO @transfer_schedule_id, @transfer_departure_time, @transfer_route_id, @base_price, @capacity;
+
+WHILE @@FETCH_STATUS = 0
+BEGIN
+  DECLARE @transfer_day INT = 0;
+  WHILE @transfer_day < 30
+  BEGIN
+    SET @departure_date = DATEADD(DAY, @transfer_day, CAST(GETDATE() AS DATE));
+    SET @transfer_departure_datetime = DATEADD(MINUTE, DATEDIFF(MINUTE, CAST('00:00:00' AS TIME), @transfer_departure_time), CAST(@departure_date AS DATETIME2));
+    
+    DECLARE @vehicles_total INT = 3;
+    DECLARE @vehicles_available INT = 3;
+    DECLARE @seats_available INT = @vehicles_available * @capacity;
+    
+    INSERT INTO dbo.transfer_instances(schedule_id, departure_date, departure_datetime, price, vehicles_total, vehicles_available, seats_available, status)
+    VALUES(@transfer_schedule_id, @departure_date, @transfer_departure_datetime, @base_price, @vehicles_total, @vehicles_available, @seats_available, 'scheduled');
+    
+    SET @transfer_day = @transfer_day + 1;
+  END
+  
+  FETCH NEXT FROM transfer_schedule_cursor INTO @transfer_schedule_id, @transfer_departure_time, @transfer_route_id, @base_price, @capacity;
+END
+
+CLOSE transfer_schedule_cursor;
+DEALLOCATE transfer_schedule_cursor;
+
