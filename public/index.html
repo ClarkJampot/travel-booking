@@ -65,19 +65,6 @@
     <div id="searchResults"></div>
   </div>
 
-  <!-- Promotions Carousel -->
-  <section class="promotions-section mb-5">
-    <div class="container">
-      <div class="d-flex justify-content-between align-items-center mb-4">
-        <h2>Special Promotions</h2>
-        <a href="hotels.html?promoted=1" class="text-primary text-decoration-none fw-semibold">View all <i class="bi bi-chevron-right"></i></a>
-      </div>
-      <div class="promotions-carousel" id="promotionsCarousel">
-        <!-- Loaded dynamically -->
-      </div>
-    </div>
-  </section>
-
   <!-- Main Content -->
   <div class="container mt-4 mb-5">
 
@@ -96,22 +83,6 @@
         <!-- Loaded dynamically -->
       </div>
     </section>
-
-    <!-- Top Flights -->
-    <section class="mb-5 reveal">
-      <h2 class="mb-4">Popular Flights</h2>
-      <div id="topFlights" class="row g-4">
-        <!-- Loaded dynamically -->
-      </div>
-    </section>
-
-    <!-- Top Activities -->
-    <section class="mb-5 reveal">
-      <h2 class="mb-4">Popular Activities</h2>
-      <div id="topActivities" class="row g-4">
-        <!-- Loaded dynamically -->
-      </div>
-    </section>
   </div>
   <!-- End Main Content -->
 
@@ -122,7 +93,6 @@
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/search-bar.js"></script>
-  <script src="js/promotions.js"></script>
   <script>
     // Load header and footer
     loadLayout();
@@ -152,11 +122,7 @@
         });
         
         container.innerHTML = data.results.map((dest, index) => {
-          return `
-            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-              ${renderDestinationCard(dest, index)}
-            </div>
-          `;
+          return renderDestinationCard(dest, index, 'col-md-3');
         }).join('');
       } catch (error) {
         console.error('Error loading destinations:', error);
@@ -181,98 +147,17 @@
         });
         
         container.innerHTML = data.results.map((hotel, index) => {
-          return `
-            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-              ${renderHotelCard(hotel, index, 0)}
-            </div>
-          `;
+          return renderHotelCard(hotel, index, 0, 'col-md-3');
         }).join('');
       } catch (error) {
         console.error('Error loading hotels:', error);
       }
     }
 
-    // Load top flights
-    async function loadTopFlights() {
-      try {
-        const data = await apiCall('/top/flights?limit=4');
-        const container = document.getElementById('topFlights');
-        
-        if (data.results.length === 0) {
-          container.innerHTML = renderEmptyState({ message: 'Currently no flights available.', ctaText: 'Register as agency', ctaHref: 'register.html' });
-          return;
-        }
-        
-        // Make cards visible immediately
-        container.querySelectorAll('.reveal').forEach(el => {
-          el.style.opacity = '1';
-          el.style.transform = 'translateY(0)';
-        });
-        
-        container.innerHTML = data.results.map((flight, index) => {
-          const card = `
-            <div class="card h-100">
-              <div class="card-img-wrapper">
-                <img src="${normalizeImageUrl(flight.image_url)}" class="card-img-top" alt="${flight.airline}" loading="lazy">
-                <div class="card-overlay">
-                  <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
-                </div>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title">${flight.airline}</h5>
-                <p class="card-text">${flight.origin} → ${flight.destination}</p>
-                <p class="text-muted">${formatDate(flight.depart_date)}</p>
-                <p class="price">${formatPrice(flight.price)}</p>
-              </div>
-            </div>
-          `;
-          return `
-            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-              ${card}
-            </div>
-          `;
-        }).join('');
-      } catch (error) {
-        console.error('Error loading flights:', error);
-      }
-    }
-
-    // Load top activities
-    async function loadTopActivities() {
-      try {
-        const data = await apiCall('/top/activities?limit=4');
-        const container = document.getElementById('topActivities');
-        
-        if (data.results.length === 0) {
-          container.innerHTML = renderEmptyState({ message: 'Currently no activities available.', ctaText: 'Register as agency', ctaHref: 'register.html' });
-          return;
-        }
-        
-        // Make cards visible immediately
-        container.querySelectorAll('.reveal').forEach(el => {
-          el.style.opacity = '1';
-          el.style.transform = 'translateY(0)';
-        });
-        
-        container.innerHTML = data.results.map((activity, index) => {
-          return `
-            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-              ${renderActivityCard(activity, index, 0)}
-            </div>
-          `;
-        }).join('');
-      } catch (error) {
-        console.error('Error loading activities:', error);
-      }
-    }
-
     // Load all content
     document.addEventListener('DOMContentLoaded', function() {
-      loadPromotionsCarousel();
       loadFeaturedDestinations().then(() => observeRevealElements());
       loadTopHotels().then(() => observeRevealElements());
-      loadTopFlights().then(() => observeRevealElements());
-      loadTopActivities().then(() => observeRevealElements());
     });
   </script>
 </body>

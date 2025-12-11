@@ -15,8 +15,8 @@ let imageModalData = {};
  */
 function createImageCarousel(images, id, alt = '') {
   if (!images || images.length === 0) {
-    return `<div class="card-img-wrapper" style="height: 500px; border-radius: 12px; overflow: hidden; background: #f0f0f0; cursor: pointer;" onclick="openImageModal('${id}', 0)">
-      <img src="${normalizeImageUrl('uploads/placeholder.svg')}" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="${alt}" loading="lazy">
+    return `<div class="card-img-wrapper carousel-single-image" onclick="openImageModal('${id}', 0)">
+      <img src="${normalizeImageUrl('uploads/placeholder.svg')}" class="img-fluid w-100 h-100" alt="${alt}" loading="lazy">
     </div>`;
   }
 
@@ -31,10 +31,10 @@ function createImageCarousel(images, id, alt = '') {
 
   // If only one image, return simple image with click handler
   if (normalizedImages.length === 1) {
-    return `<div class="card-img-wrapper" style="height: 500px; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;" onclick="openImageModal('${id}', 0)">
-      <img src="${normalizedImages[0]}" class="img-fluid w-100 h-100" style="object-fit: cover;" alt="${alt}" loading="lazy">
-      <div class="image-expand-hint" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; pointer-events: none;">
-        <span style="font-size: 1rem; margin-right: 4px;">⤢</span> Click to expand
+    return `<div class="card-img-wrapper carousel-single-image" onclick="openImageModal('${id}', 0)">
+      <img src="${normalizedImages[0]}" class="img-fluid w-100 h-100" alt="${alt}" loading="lazy">
+      <div class="image-expand-hint">
+        <span>⤢</span> Click to expand
       </div>
     </div>`;
   }
@@ -46,19 +46,19 @@ function createImageCarousel(images, id, alt = '') {
   
   normalizedImages.forEach((img, index) => {
     const isActive = index === 0 ? 'active' : '';
-    carouselIndicators += `<button type="button" data-bs-target="#${id}" data-bs-slide-to="${index}" class="${isActive}" aria-label="Slide ${index + 1}"></button>`;
+    carouselIndicators += `<button type="button" data-bs-target="#${id}" data-bs-slide-to="${index}" class="${isActive}" aria-label="Slide ${index + 1}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`;
     carouselItems += `
       <div class="carousel-item ${isActive}">
-        <div class="card-img-wrapper" style="height: 500px; width: 100%; border-radius: 12px; overflow: hidden; cursor: pointer; position: relative;" onclick="openImageModal('${id}', ${index})">
-          <img src="${img}" class="d-block w-100 h-100" style="object-fit: cover; display: block;" alt="${alt} - Image ${index + 1}" loading="${index === 0 ? 'eager' : 'lazy'}">
-          <div class="image-expand-hint" style="position: absolute; top: 10px; right: 10px; background: rgba(0,0,0,0.6); color: white; padding: 8px 12px; border-radius: 6px; font-size: 0.85rem; pointer-events: none; opacity: 0; transition: opacity 0.3s;">
-            <span style="font-size: 1rem; margin-right: 4px;">⤢</span> Click to expand
+        <div class="card-img-wrapper carousel-image-wrapper" onclick="openImageModal('${id}', ${index})">
+          <img src="${img}" class="d-block w-100 h-100" alt="${alt} - Image ${index + 1}" loading="${index === 0 ? 'eager' : 'lazy'}">
+          <div class="image-expand-hint">
+            <span>⤢</span> Click to expand
           </div>
         </div>
       </div>`;
     carouselThumbnails += `
       <div class="carousel-thumbnail ${isActive}" data-thumbnail-index="${index}" onclick="navigateCarouselTo('${id}', ${index})" role="button" tabindex="0">
-        <img src="${img}" alt="${alt} - Thumbnail ${index + 1}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+        <img src="${img}" alt="${alt} - Thumbnail ${index + 1}" loading="lazy">
       </div>`;
   });
 
@@ -67,6 +67,12 @@ function createImageCarousel(images, id, alt = '') {
       <div class="carousel-inner">
         ${carouselItems}
       </div>
+      ${normalizedImages.length > 1 ? `
+      <div class="carousel-indicators">
+        ${carouselIndicators}
+      </div>
+      ` : ''}
+      ${normalizedImages.length > 1 ? `
       <button class="carousel-control-prev" type="button" data-bs-target="#${id}" data-bs-slide="prev">
         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
         <span class="visually-hidden">Previous</span>
@@ -75,11 +81,14 @@ function createImageCarousel(images, id, alt = '') {
         <span class="carousel-control-next-icon" aria-hidden="true"></span>
         <span class="visually-hidden">Next</span>
       </button>
+      ` : ''}
+      ${normalizedImages.length > 1 ? `
       <div class="carousel-thumbnails">
         <div class="carousel-thumbnails-container">
           ${carouselThumbnails}
         </div>
       </div>
+      ` : ''}
     </div>`;
   
   return carouselHtml;
@@ -162,7 +171,7 @@ function openImageModal(carouselId, startIndex = 0) {
       thumb.className = `carousel-thumbnail ${isActive}`;
       thumb.setAttribute('data-thumbnail-index', index);
       thumb.innerHTML = `
-        <img src="${img}" alt="${data.alt} - Thumbnail ${index + 1}" loading="lazy" style="width: 100%; height: 100%; object-fit: cover; display: block;">
+        <img src="${img}" alt="${data.alt} - Thumbnail ${index + 1}" loading="lazy">
       `;
       thumb.addEventListener('click', (e) => {
         e.preventDefault();

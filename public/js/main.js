@@ -149,11 +149,12 @@ function renderHotelCard(hotel, index = 0, existingCount = 0, columnsClass = 'co
       </div>`
     : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
 
+  const imageUrl = normalizeImageUrl(hotel.image_url || 'uploads/placeholder.svg');
   return `
     <div class="${columnsClass} reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
       <div class="card h-100">
         <div class="card-img-wrapper">
-          <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
+          <img src="${imageUrl}" class="card-img-top" alt="${hotel.name}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
           ${hotel.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(hotel.discount_percent)}% OFF</div>` : ''}
           ${isPromoted(hotel.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
           <div class="card-overlay">
@@ -177,11 +178,12 @@ function renderActivityCard(a, index = 0, existingCount = 0) {
         <span class="discounted-price">${formatPrice(a.discounted_price || a.price * (1 - a.discount_percent / 100))}</span>
       </div>`
     : `<p class="price">${formatPrice(a.price)}</p>`;
+  const imageUrl = normalizeImageUrl(a.image_url || 'uploads/placeholder.svg');
   return `
     <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
       <div class="card h-100">
         <div class="card-img-wrapper">
-          <img src="${normalizeImageUrl(a.image_url)}" class="card-img-top" alt="${a.title}" loading="lazy">
+          <img src="${imageUrl}" class="card-img-top" alt="${a.title}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
           ${a.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(a.discount_percent)}% OFF</div>` : ''}
           ${isPromoted(a.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
           <div class="card-overlay">
@@ -199,12 +201,13 @@ function renderActivityCard(a, index = 0, existingCount = 0) {
   `;
 }
 
-function renderDestinationCard(dest, index = 0) {
+function renderDestinationCard(dest, index = 0, columnsClass = 'col-md-4') {
+  const imageUrl = normalizeImageUrl(dest.image_url || 'uploads/placeholder.svg');
   return `
-    <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+    <div class="${columnsClass} reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
       <div class="card h-100">
         <div class="card-img-wrapper">
-          <img src="${normalizeImageUrl(dest.image_url)}" class="card-img-top" alt="${dest.name}" loading="lazy">
+          <img src="${imageUrl}" class="card-img-top" alt="${dest.name}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
           <div class="card-overlay">
             <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
           </div>
@@ -226,11 +229,12 @@ function renderTransferCard(t, index = 0, existingCount = 0) {
       </div>`
     : `<p class="price">${formatPrice(t.price)}</p>`;
 
+  const imageUrl = normalizeImageUrl(t.image_url || 'uploads/placeholder.svg');
   return `
     <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
       <div class="card h-100">
         <div class="card-img-wrapper">
-          <img src="${normalizeImageUrl(t.image_url)}" class="card-img-top" alt="${t.service}" loading="lazy">
+          <img src="${imageUrl}" class="card-img-top" alt="${t.service}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
           ${t.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(t.discount_percent)}% OFF</div>` : ''}
           ${isPromoted(t.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
           <div class="card-overlay">
