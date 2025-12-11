@@ -51,7 +51,7 @@
     
     <!-- Promoted Hotels Section -->
     <div id="promotedHotels" class="promoted-section mb-4" style="display: none;">
-      <h3 class="mb-3">Promoted Hotels</h3>
+      <div id="promotedHotelsHeader"></div>
       <div class="row g-4">
         <!-- Loaded dynamically -->
       </div>
@@ -63,11 +63,7 @@
     </div>
   </div>
   
-  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading more...</span>
-    </div>
-  </div>
+  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;"></div>
 
   <div id="footer"></div>
 
@@ -75,14 +71,8 @@
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    fetch('includes/header.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('header').innerHTML = data);
-    
-    fetch('includes/footer.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('footer').innerHTML = data)
-      .then(() => updateNavigation());
+    loadLayout();
+    loadComponent('loadingMore', 'components/loading-more.html');
 
     // Infinite scroll variables
     let currentPage = 1;
@@ -157,11 +147,12 @@
       
       isLoading = true;
       const loadingIndicator = document.getElementById('loadingMore');
+      const container = document.getElementById('hotels');
       
       if (reset) {
         currentPage = 1;
         hasMore = true;
-        document.getElementById('hotels').innerHTML = '';
+        container.innerHTML = renderSkeletonList(limit, 'col-md-4', true, 3);
         const promotedContainer = document.getElementById('promotedHotels');
         const promotedRow = promotedContainer.querySelector('.row');
         if (promotedRow) promotedRow.innerHTML = '';
@@ -181,43 +172,20 @@
         if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
         
         const data = await apiCall(url);
-        const container = document.getElementById('hotels');
         const promotedContainer = document.getElementById('promotedHotels');
         const promotedRow = promotedContainer.querySelector('.row');
         
         // Display promoted hotels (only on first page/reset)
         if (reset || currentPage === 1) {
+          container.innerHTML = '';
           if (data.promoted && data.promoted.length > 0) {
             promotedContainer.style.display = 'block';
-            // Always clear first to prevent duplicates, limit to 2 items max
+            const header = document.getElementById('promotedHotelsHeader');
+            header.innerHTML = renderSectionHeader({ title: 'Promoted Hotels' });
             promotedRow.innerHTML = data.promoted.slice(0, 2).map((hotel, index) => {
-              const priceDisplay = hotel.discount_percent > 0 
-                ? `<div class="price-container">
-                    <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
-                    <span class="discounted-price">${formatPrice(hotel.discounted_price || hotel.price_per_night * (1 - hotel.discount_percent / 100))}</span>
-                    <span class="price-small"> /night</span>
-                  </div>`
-                : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
-              
-              return `
-                <div class="col-md-6 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-                  <div class="card h-100 promoted-item">
-                    <div class="card-img-wrapper">
-                      <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
-                      ${hotel.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(hotel.discount_percent)}% OFF</div>` : ''}
-                      ${isPromoted(hotel.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
-                      <div class="card-overlay">
-                        <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
-                      </div>
-                    </div>
-                    <div class="card-body">
-                      <h5 class="card-title">${hotel.name}</h5>
-                      <p class="card-text text-muted">${hotel.city_name || ''}${hotel.province_name ? ', ' + hotel.province_name : ''}</p>
-                      ${priceDisplay}
-                    </div>
-                  </div>
-                </div>
-              `;
+              const card = renderHotelCard(hotel, index, 0, 'col-md-6');
+              // Add promoted styling hook
+              return card.replace('card h-100', 'card h-100 promoted-item');
             }).join('');
           } else {
             promotedContainer.style.display = 'none';
@@ -228,7 +196,7 @@
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
             if (!data.promoted || data.promoted.length === 0) {
-              container.innerHTML = '<p class="text-muted">Currently no hotels available. If you\'re a hotel owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>';
+              container.innerHTML = renderEmptyState({ message: 'Currently no hotels available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
             } else {
               container.innerHTML = '';
             }
@@ -244,41 +212,13 @@
         
         // Append hotels to container
         const existingCount = container.querySelectorAll('.col-md-4').length;
-        const hotelsHtml = data.results.map((hotel, index) => {
-          const priceDisplay = hotel.discount_percent > 0 
-            ? `<div class="price-container">
-                <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
-                <span class="discounted-price">${formatPrice(hotel.discounted_price || hotel.price_per_night * (1 - hotel.discount_percent / 100))}</span>
-                <span class="price-small"> /night</span>
-              </div>`
-            : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
-          
-          return `
-            <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-              <div class="card h-100">
-                <div class="card-img-wrapper">
-                  <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
-                  ${hotel.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(hotel.discount_percent)}% OFF</div>` : ''}
-                  ${isPromoted(hotel.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
-                  <div class="card-overlay">
-                    <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
-                  </div>
-                </div>
-                <div class="card-body">
-                  <h5 class="card-title">${hotel.name}</h5>
-                  <p class="card-text text-muted">${hotel.city_name || ''}${hotel.province_name ? ', ' + hotel.province_name : ''}</p>
-                  ${priceDisplay}
-                </div>
-              </div>
-            </div>
-          `;
-        }).join('');
+        const hotelsHtml = data.results.map((hotel, index) => renderHotelCard(hotel, index, existingCount)).join('');
         
         container.insertAdjacentHTML('beforeend', hotelsHtml);
         currentPage++;
         loadingIndicator.style.display = 'none';
       } catch (error) {
-        showError('status', error.message || 'Failed to load hotels');
+        setStatus('status', 'error', error.message || 'Failed to load hotels');
         hasMore = false;
         loadingIndicator.style.display = 'none';
       } finally {

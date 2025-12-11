@@ -75,11 +75,13 @@
     <!-- Hidden inputs for actual values -->
     <input type="hidden" id="originAirportId">
     <input type="hidden" id="destinationAirportId">
+    <input type="hidden" id="originCityId">
+    <input type="hidden" id="destinationCityId">
     <div id="status"></div>
     
     <!-- Promoted Flights Section -->
     <div id="promotedFlights" class="promoted-section mb-4" style="display: none;">
-      <h3 class="mb-3">Promoted Flights</h3>
+      <div id="promotedFlightsHeader"></div>
       <div id="promotedFlightsList" class="list-group mb-4">
         <!-- Loaded dynamically -->
       </div>
@@ -89,18 +91,14 @@
     <div id="flights" class="list-group reveal"></div>
   </div>
   
-  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading more...</span>
-    </div>
-  </div>
+  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;"></div>
   <div id="footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
-    fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
+    loadLayout();
+    loadComponent('loadingMore', 'components/loading-more.html');
     
     let currentPage = 1;
     const limit = 12;
@@ -120,11 +118,12 @@
         airportsData.forEach(airport => {
           const cityKey = `${airport.city_name || 'Unknown'}, ${airport.province_name || ''}`;
           if (!airportsByCity[cityKey]) {
-            airportsByCity[cityKey] = {
-              cityName: airport.city_name,
-              provinceName: airport.province_name,
-              airports: []
-            };
+        airportsByCity[cityKey] = {
+          cityId: airport.city_id,
+          cityName: airport.city_name,
+          provinceName: airport.province_name,
+          airports: []
+        };
           }
           airportsByCity[cityKey].airports.push(airport);
         });
@@ -152,10 +151,11 @@
           cityName.toLowerCase().includes(searchLower) ||
           provinceName.toLowerCase().includes(searchLower);
         
-        // Check if any airport matches
+        // Check if any airport matches (include city/province match so airports surface with city search)
         const matchingAirports = airports.filter(apt => 
           apt.name.toLowerCase().includes(searchLower) ||
-          apt.code.toLowerCase().includes(searchLower)
+          apt.code.toLowerCase().includes(searchLower) ||
+          cityMatches
         );
         
         if (cityMatches || matchingAirports.length > 0) {
@@ -170,7 +170,7 @@
           // Individual airports
           (searchTerm ? matchingAirports : airports).forEach(airport => {
             html += `
-              <div class="flight-dropdown-item flight-dropdown-airport" data-type="airport" data-airport-id="${airport.id}" data-airport-code="${airport.code}" data-airport-name="${airport.name}">
+              <div class="flight-dropdown-item flight-dropdown-airport" data-type="airport" data-airport-id="${airport.id}" data-airport-code="${airport.code}" data-airport-name="${airport.name}" data-city-id="${airport.city_id}">
                 <span class="flight-dropdown-airport-code">${airport.code}</span>
                 <span>${airport.name}</span>
               </div>
@@ -187,19 +187,23 @@
           const type = this.dataset.type;
           const inputId = dropdownId === 'originAirportDropdown' ? 'originAirportInput' : 'destinationAirportInput';
           const hiddenId = dropdownId === 'originAirportDropdown' ? 'originAirportId' : 'destinationAirportId';
+          const cityHiddenId = dropdownId === 'originAirportDropdown' ? 'originCityId' : 'destinationCityId';
           const input = document.getElementById(inputId);
           const hidden = document.getElementById(hiddenId);
+          const cityHidden = document.getElementById(cityHiddenId);
           
           if (type === 'city') {
             const cityKey = this.dataset.cityKey;
             const cityData = airportsByCity[cityKey];
             input.value = `${cityData.cityName}${cityData.provinceName ? ', ' + cityData.provinceName : ''}`;
             hidden.value = ''; // All airports in city
+            cityHidden.value = cityData.cityId || '';
           } else if (type === 'airport') {
             const code = this.dataset.airportCode;
             const name = this.dataset.airportName;
             input.value = `${code} - ${name}`;
             hidden.value = this.dataset.airportId;
+            cityHidden.value = this.dataset.cityId || '';
           }
           
           closeAllDropdowns();
@@ -228,12 +232,14 @@
       return {
         origin_airport_id: params.get('origin_airport_id') || '',
         destination_airport_id: params.get('destination_airport_id') || '',
+        origin_city_id: params.get('origin_city_id') || '',
+        destination_city_id: params.get('destination_city_id') || '',
         min_price: params.get('min_price') || '',
         max_price: params.get('max_price') || '',
         page: parseInt(params.get('page')) || 1
       };
     }
-
+    
     // Force integer-only values on numeric inputs
     function enforceIntegerInput(inputId) {
       const el = document.getElementById(inputId);
@@ -246,16 +252,20 @@
       el.addEventListener('change', sanitize);
       sanitize();
     }
-
+    
     function updateURLWithFilters() {
       const params = new URLSearchParams();
       const originAirportId = document.getElementById('originAirportId').value;
       const destinationAirportId = document.getElementById('destinationAirportId').value;
+      const originCityId = document.getElementById('originCityId').value;
+      const destinationCityId = document.getElementById('destinationCityId').value;
       const minPrice = document.getElementById('minPrice').value;
       const maxPrice = document.getElementById('maxPrice').value;
       
       if (originAirportId) params.set('origin_airport_id', originAirportId);
       if (destinationAirportId) params.set('destination_airport_id', destinationAirportId);
+      if (originCityId) params.set('origin_city_id', originCityId);
+      if (destinationCityId) params.set('destination_city_id', destinationCityId);
       if (minPrice) params.set('min_price', minPrice);
       if (maxPrice) params.set('max_price', maxPrice);
       
@@ -268,11 +278,12 @@
       
       isLoading = true;
       const loadingIndicator = document.getElementById('loadingMore');
+      const container = document.getElementById('flights');
       
       if (reset) {
         currentPage = 1;
         hasMore = true;
-        document.getElementById('flights').innerHTML = '';
+        container.innerHTML = renderSkeletonList(limit, 'col-12', false, 2);
         const promotedContainer = document.getElementById('promotedFlights');
         promotedContainer.style.display = 'none';
         loadingIndicator.style.display = 'none';
@@ -284,9 +295,10 @@
         const urlParams = getUrlParams();
         let url = `/flights?limit=${limit}&page=${currentPage}`;
         
-        // Only add filters if they're set
         if (urlParams.origin_airport_id) url += `&origin_airport_id=${urlParams.origin_airport_id}`;
+        else if (urlParams.origin_city_id) url += `&origin_city_id=${urlParams.origin_city_id}`;
         if (urlParams.destination_airport_id) url += `&destination_airport_id=${urlParams.destination_airport_id}`;
+        else if (urlParams.destination_city_id) url += `&destination_city_id=${urlParams.destination_city_id}`;
         if (urlParams.min_price) url += `&min_price=${urlParams.min_price}`;
         if (urlParams.max_price) url += `&max_price=${urlParams.max_price}`;
         
@@ -299,46 +311,17 @@
         }
         
         console.log('API response:', data);
-        const container = document.getElementById('flights');
         const promotedContainer = document.getElementById('promotedFlights');
         
         // Display promoted flights (only on first page/reset)
         if (reset || currentPage === 1) {
+          container.innerHTML = '';
           if (data.promoted && data.promoted.length > 0) {
             promotedContainer.style.display = 'block';
+            const header = document.getElementById('promotedFlightsHeader');
+            header.innerHTML = renderSectionHeader({ title: 'Promoted Flights' });
             const promotedList = document.getElementById('promotedFlightsList');
-            promotedList.innerHTML = '';
-            promotedList.innerHTML = data.promoted.slice(0, 2).map((f, index) => {
-              const basePrice = f.price || f.base_price_economy;
-              const discountedPrice = f.discount_percent > 0 
-                ? (f.discounted_price || basePrice * (1 - f.discount_percent / 100))
-                : basePrice;
-              
-              return `
-                <a href="flight-details.html?id=${f.id}" class="list-group-item list-group-item-action">
-                  <div class="d-flex w-100 justify-content-between align-items-center">
-                    <div class="flex-grow-1">
-                      <div class="d-flex align-items-center mb-2">
-                        <h5 class="mb-0 me-2">${f.airline}</h5>
-                        ${isPromoted(f.ad) ? '<span class="badge bg-warning text-dark me-2">Promoted</span>' : ''}
-                        ${f.discount_percent > 0 ? `<span class="badge bg-danger me-2">${formatPercent(f.discount_percent)}% OFF</span>` : ''}
-                      </div>
-                      ${(() => {
-                        const originDisplay = f.origin_city_name ? `${f.origin_city_name} (${f.origin_code || ''})` : (f.origin_code || '');
-                        const destinationDisplay = f.destination_city_name ? `${f.destination_city_name} (${f.destination_code || ''})` : (f.destination_code || '');
-                        return `<p class="mb-1">${originDisplay} → ${destinationDisplay}</p>`;
-                      })()}
-                    </div>
-                    <div class="text-end ms-3">
-                      ${f.discount_percent > 0 
-                        ? `<div><span class="text-decoration-line-through text-muted small">${formatPrice(basePrice)}</span><br><strong class="text-primary">${formatPrice(discountedPrice)}</strong></div>`
-                        : `<div><strong class="text-primary">From ${formatPrice(basePrice)}</strong></div>`
-                      }
-                    </div>
-                  </div>
-                </a>
-              `;
-            }).join('');
+            promotedList.innerHTML = data.promoted.slice(0, 2).map((f) => renderFlightListItem(f)).join('');
           } else {
             promotedContainer.style.display = 'none';
           }
@@ -347,16 +330,10 @@
         // Display regular flights
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
-            if (!data.promoted || data.promoted.length === 0) {
-              const hasFilters = urlParams.origin_airport_id || urlParams.destination_airport_id;
-              if (hasFilters) {
-                container.innerHTML = '<p class="text-muted">No flights found matching your criteria. Try adjusting your search filters.</p>';
-              } else {
-                container.innerHTML = '<p class="text-muted">Currently no flights available. If you\'re an agency, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an agency to make a listing!</p>';
-              }
-            } else {
-              container.innerHTML = '';
-            }
+            const hasFilters = urlParams.origin_airport_id || urlParams.destination_airport_id || urlParams.min_price || urlParams.max_price;
+            container.innerHTML = hasFilters
+              ? renderEmptyState({ message: 'No flights found matching your criteria. Try adjusting your search filters.' })
+              : renderEmptyState({ message: 'Currently no flights available.', ctaText: 'Register as agency', ctaHref: 'register.html' });
           }
           hasMore = false;
           loadingIndicator.style.display = 'none';
@@ -368,43 +345,13 @@
         hasMore = data.results.length === limit;
         
         // Append flights to container as list items
-        const flightsHtml = data.results.map((f, index) => {
-          const basePrice = f.price || f.base_price_economy;
-          const discountedPrice = f.discount_percent > 0 
-            ? (f.discounted_price || basePrice * (1 - f.discount_percent / 100))
-            : basePrice;
-          
-          return `
-            <a href="flight-details.html?id=${f.id}" class="list-group-item list-group-item-action">
-              <div class="d-flex w-100 justify-content-between align-items-center">
-                <div class="flex-grow-1">
-                  <div class="d-flex align-items-center mb-2">
-                    <h5 class="mb-0 me-2">${f.airline}</h5>
-                    ${isPromoted(f.ad) ? '<span class="badge bg-warning text-dark me-2">Promoted</span>' : ''}
-                    ${f.discount_percent > 0 ? `<span class="badge bg-danger me-2">${formatPercent(f.discount_percent)}% OFF</span>` : ''}
-                  </div>
-                  ${(() => {
-                    const originDisplay = f.origin_city_name ? `${f.origin_city_name} (${f.origin_code || ''})` : (f.origin_code || '');
-                    const destinationDisplay = f.destination_city_name ? `${f.destination_city_name} (${f.destination_code || ''})` : (f.destination_code || '');
-                    return `<p class="mb-1">${originDisplay} → ${destinationDisplay}</p>`;
-                  })()}
-                </div>
-                <div class="text-end ms-3">
-                  ${f.discount_percent > 0 
-                    ? `<div><span class="text-decoration-line-through text-muted small">${formatPrice(basePrice)}</span><br><strong class="text-primary">${formatPrice(discountedPrice)}</strong></div>`
-                    : `<div><strong class="text-primary">From ${formatPrice(basePrice)}</strong></div>`
-                  }
-                </div>
-              </div>
-            </a>
-          `;
-        }).join('');
+        const flightsHtml = data.results.map((f) => renderFlightListItem(f)).join('');
         
         container.insertAdjacentHTML('beforeend', flightsHtml);
         currentPage++;
         loadingIndicator.style.display = 'none';
       } catch (error) {
-        showError('status', error.message || 'Failed to load flights');
+        setStatus('status', 'error', error.message || 'Failed to load flights');
         hasMore = false;
         loadingIndicator.style.display = 'none';
       } finally {
@@ -460,6 +407,13 @@
         if (airport) {
           document.getElementById('originAirportInput').value = `${airport.code} - ${airport.name}`;
           document.getElementById('originAirportId').value = airport.id;
+          document.getElementById('originCityId').value = airport.city_id || '';
+        }
+      } else if (urlParams.origin_city_id) {
+        const cityAirport = airportsData.find(a => a.city_id == urlParams.origin_city_id);
+        if (cityAirport) {
+          document.getElementById('originAirportInput').value = `${cityAirport.city_name}${cityAirport.province_name ? ', ' + cityAirport.province_name : ''}`;
+          document.getElementById('originCityId').value = cityAirport.city_id;
         }
       }
       if (urlParams.destination_airport_id) {
@@ -467,6 +421,13 @@
         if (airport) {
           document.getElementById('destinationAirportInput').value = `${airport.code} - ${airport.name}`;
           document.getElementById('destinationAirportId').value = airport.id;
+          document.getElementById('destinationCityId').value = airport.city_id || '';
+        }
+      } else if (urlParams.destination_city_id) {
+        const cityAirport = airportsData.find(a => a.city_id == urlParams.destination_city_id);
+        if (cityAirport) {
+          document.getElementById('destinationAirportInput').value = `${cityAirport.city_name}${cityAirport.province_name ? ', ' + cityAirport.province_name : ''}`;
+          document.getElementById('destinationCityId').value = cityAirport.city_id;
         }
       }
       
@@ -514,14 +475,20 @@
       document.getElementById('swapAirportsBtn').addEventListener('click', swapAirports);
       
       // Search button
-      document.getElementById('searchFlightsBtn').addEventListener('click', function() {
-        closeAllDropdowns();
-        updateURLWithFilters();
-        loadFlights(true);
+    document.getElementById('searchFlightsBtn').addEventListener('click', function() {
+      closeAllDropdowns();
+      updateURLWithFilters();
+      loadFlights(true);
       });
       
       // Clear filters
       document.getElementById('clearFiltersBtn').addEventListener('click', function() {
+        document.getElementById('originAirportInput').value = '';
+        document.getElementById('destinationAirportInput').value = '';
+        document.getElementById('originAirportId').value = '';
+        document.getElementById('destinationAirportId').value = '';
+        document.getElementById('originCityId').value = '';
+        document.getElementById('destinationCityId').value = '';
         document.getElementById('minPrice').value = '';
         document.getElementById('maxPrice').value = '';
         updateURLWithFilters();

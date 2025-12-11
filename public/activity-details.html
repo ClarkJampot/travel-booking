@@ -43,8 +43,7 @@
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
   <script>
-    fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
-    fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
+    loadLayout();
     const urlParams = new URLSearchParams(window.location.search);
     const activityId = urlParams.get('id');
     let activity = null;
@@ -116,7 +115,7 @@
           });
         }, 50);
       } catch (error) {
-        showError('status', error.message || 'Failed to load activity');
+        setStatus('status', 'error', error.message || 'Failed to load activity');
       }
     }
     document.getElementById('bookingForm').addEventListener('submit', async function(e) {
@@ -138,11 +137,11 @@
         showSuccessToast('Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
-        showError('status', error.message || 'Failed to create booking');
+        setStatus('status', 'error', error.message || 'Failed to create booking');
       }
     });
     if (activityId) loadActivity();
-    else showError('status', 'Activity ID not provided');
+    else setStatus('status', 'error', 'Activity ID not provided');
   </script>
 </body>
 </html>

@@ -125,14 +125,7 @@
   <script src="js/promotions.js"></script>
   <script>
     // Load header and footer
-    fetch('includes/header.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('header').innerHTML = data);
-    
-    fetch('includes/footer.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('footer').innerHTML = data)
-      .then(() => updateNavigation());
+    loadLayout();
     
     // Initialize search bar after DOM is ready
     document.addEventListener('DOMContentLoaded', function() {
@@ -148,7 +141,7 @@
         const container = document.getElementById('featuredDestinations');
         
         if (data.results.length === 0) {
-          container.innerHTML = '<p class="text-muted">Currently no featured destinations available. If you\'re an owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>';
+          container.innerHTML = renderEmptyState({ message: 'Currently no featured destinations available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
           return;
         }
         
@@ -158,22 +151,13 @@
           el.style.transform = 'translateY(0)';
         });
         
-        container.innerHTML = data.results.map((dest, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-            <div class="card h-100">
-              <div class="card-img-wrapper">
-                <img src="${normalizeImageUrl(dest.image_url)}" class="card-img-top" alt="${dest.name}" loading="lazy">
-                <div class="card-overlay">
-                  <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg">View Details</a>
-                </div>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title">${dest.name}</h5>
-                <p class="card-text text-muted">Philippines</p>
-              </div>
+        container.innerHTML = data.results.map((dest, index) => {
+          return `
+            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
+              ${renderDestinationCard(dest, index)}
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       } catch (error) {
         console.error('Error loading destinations:', error);
       }
@@ -186,7 +170,7 @@
         const container = document.getElementById('topHotels');
         
         if (data.results.length === 0) {
-          container.innerHTML = '<p class="text-muted">Currently no hotels available. If you\'re a hotel owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>';
+          container.innerHTML = renderEmptyState({ message: 'Currently no hotels available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
           return;
         }
         
@@ -196,23 +180,13 @@
           el.style.transform = 'translateY(0)';
         });
         
-        container.innerHTML = data.results.map((hotel, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-            <div class="card h-100">
-              <div class="card-img-wrapper">
-                <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
-                <div class="card-overlay">
-                  <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg">View Details</a>
-                </div>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title">${hotel.name}</h5>
-                <p class="card-text text-muted">${hotel.city_name || hotel.city || ''}${hotel.province_name ? ', ' + hotel.province_name : ''}</p>
-                <p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>
-              </div>
+        container.innerHTML = data.results.map((hotel, index) => {
+          return `
+            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
+              ${renderHotelCard(hotel, index, 0)}
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       } catch (error) {
         console.error('Error loading hotels:', error);
       }
@@ -225,7 +199,7 @@
         const container = document.getElementById('topFlights');
         
         if (data.results.length === 0) {
-          container.innerHTML = '<p class="text-muted">Currently no flights available. If you\'re an agency, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an agency to make a listing!</p>';
+          container.innerHTML = renderEmptyState({ message: 'Currently no flights available.', ctaText: 'Register as agency', ctaHref: 'register.html' });
           return;
         }
         
@@ -235,13 +209,13 @@
           el.style.transform = 'translateY(0)';
         });
         
-        container.innerHTML = data.results.map((flight, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
+        container.innerHTML = data.results.map((flight, index) => {
+          const card = `
             <div class="card h-100">
               <div class="card-img-wrapper">
                 <img src="${normalizeImageUrl(flight.image_url)}" class="card-img-top" alt="${flight.airline}" loading="lazy">
                 <div class="card-overlay">
-                  <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-lg">View Details</a>
+                  <a href="flight-details.html?id=${flight.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
                 </div>
               </div>
               <div class="card-body">
@@ -251,8 +225,13 @@
                 <p class="price">${formatPrice(flight.price)}</p>
               </div>
             </div>
-          </div>
-        `).join('');
+          `;
+          return `
+            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
+              ${card}
+            </div>
+          `;
+        }).join('');
       } catch (error) {
         console.error('Error loading flights:', error);
       }
@@ -265,7 +244,7 @@
         const container = document.getElementById('topActivities');
         
         if (data.results.length === 0) {
-          container.innerHTML = '<p class="text-muted">Currently no activities available. If you\'re an agency, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an agency to make a listing!</p>';
+          container.innerHTML = renderEmptyState({ message: 'Currently no activities available.', ctaText: 'Register as agency', ctaHref: 'register.html' });
           return;
         }
         
@@ -275,24 +254,13 @@
           el.style.transform = 'translateY(0)';
         });
         
-        container.innerHTML = data.results.map((activity, index) => `
-          <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
-            <div class="card h-100">
-              <div class="card-img-wrapper">
-                <img src="${normalizeImageUrl(activity.image_url)}" class="card-img-top" alt="${activity.title}" loading="lazy">
-                <div class="card-overlay">
-                  <a href="activity-details.html?id=${activity.id}" class="btn btn-primary btn-lg">View Details</a>
-                </div>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title">${activity.title}</h5>
-                <p class="card-text text-muted">${activity.city}</p>
-                <p class="text-muted">${formatDate(activity.date)}</p>
-                <p class="price">${formatPrice(activity.price)}</p>
-              </div>
+        container.innerHTML = data.results.map((activity, index) => {
+          return `
+            <div class="col-md-3 reveal stagger-${index + 1}" style="opacity: 1; transform: translateY(0);">
+              ${renderActivityCard(activity, index, 0)}
             </div>
-          </div>
-        `).join('');
+          `;
+        }).join('');
       } catch (error) {
         console.error('Error loading activities:', error);
       }

@@ -67,8 +67,8 @@
               </div>
               <p class="price" id="totalPrice" style="display: none;"></p>
               <div id="status"></div>
-              <button type="button" class="btn btn-secondary w-100 mb-2" id="searchInstancesBtn">Search Flights</button>
-              <button type="submit" class="btn btn-primary w-100" id="bookBtn" disabled>Book Now</button>
+              <button type="button" class="btn btn-secondary btn-cta w-100 mb-2" id="searchInstancesBtn">Search Flights</button>
+              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn" disabled>Book Now</button>
             </form>
           </div>
         </div>
@@ -81,8 +81,7 @@
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
   <script>
-    fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
-    fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
+    loadLayout();
     
     const urlParams = new URLSearchParams(window.location.search);
     const routeId = urlParams.get('id');
@@ -190,7 +189,7 @@
         
         // No images for flight routes
       } catch (error) {
-        showError('status', error.message || 'Failed to load flight route');
+        setStatus('status', 'error', error.message || 'Failed to load flight route');
       }
     }
     
@@ -202,12 +201,12 @@
       tripType = document.querySelector('input[name="tripType"]:checked').value;
       
       if (!departureDate) {
-        showError('status', 'Please select a departure date');
+      setStatus('status', 'error', 'Please select a departure date');
         return;
       }
       
       if (tripType === 'round-trip' && !returnDate) {
-        showError('status', 'Please select a return date');
+      setStatus('status', 'error', 'Please select a return date');
         return;
       }
       
@@ -351,7 +350,7 @@
           });
         });
       } catch (error) {
-        showError('status', error.message || 'Failed to load available flights');
+      setStatus('status', 'error', error.message || 'Failed to load available flights');
       }
     }
     
@@ -370,12 +369,12 @@
       }
       
       if (!selectedInstance) {
-        showError('status', 'Please select a departure flight');
+      setStatus('status', 'error', 'Please select a departure flight');
         return;
       }
       
       if (tripType === 'round-trip' && !selectedReturnInstance) {
-        showError('status', 'Please select a return flight');
+      setStatus('status', 'error', 'Please select a return flight');
         return;
       }
       
@@ -419,14 +418,14 @@
         showSuccessToast('Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
-        showError('status', error.message || 'Failed to create booking');
+      setStatus('status', 'error', error.message || 'Failed to create booking');
       }
     });
     
     if (routeId) {
       loadRoute();
     } else {
-      showError('status', 'Flight route ID not provided');
+    setStatus('status', 'error', 'Flight route ID not provided');
     }
   </script>
 </body>

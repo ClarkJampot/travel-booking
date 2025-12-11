@@ -11,6 +11,324 @@ const API_BASE = (() => {
   return '/api';
 })();
 
+// Shared component loader (header/footer)
+const _componentCache = new Map();
+
+async function loadComponent(targetId, componentPath, fallbackPath) {
+  const el = document.getElementById(targetId);
+  if (!el) return;
+  const tryFetch = async (path) => {
+    if (_componentCache.has(path)) {
+      return _componentCache.get(path);
+    }
+    const res = await fetch(path);
+    if (!res.ok) throw new Error(`Failed to load ${path} (${res.status})`);
+    const html = await res.text();
+    _componentCache.set(path, html);
+    return html;
+  };
+  try {
+    const html = await tryFetch(componentPath);
+    el.innerHTML = html;
+  } catch (e) {
+    if (fallbackPath) {
+      try {
+        const html = await tryFetch(fallbackPath);
+        el.innerHTML = html;
+        return;
+      } catch (fallbackErr) {
+        console.error('Component fallback failed:', fallbackErr);
+      }
+    }
+    console.error('Component load failed:', e);
+  }
+}
+
+async function loadLayout() {
+  await Promise.all([
+    loadComponent('header', 'components/header.html', 'includes/header.html'),
+    loadComponent('footer', 'components/footer.html', 'includes/footer.html')
+  ]);
+  // Ensure nav state is correct once header is in DOM
+  updateNavigation();
+}
+
+// ---------- Reusable UI helpers ----------
+function renderStatus(type = 'info', message = '') {
+  if (!message) return '';
+  const variant = {
+    success: 'success',
+    error: 'danger',
+    info: 'info',
+    warning: 'warning'
+  }[type] || 'info';
+  return `<div class="alert alert-${variant}" role="alert">${message}</div>`;
+}
+
+function setStatus(elementId, type, message) {
+  const el = document.getElementById(elementId);
+  if (!el) return;
+  el.innerHTML = renderStatus(type, message);
+}
+
+function renderEmptyState({ message = 'No items found.', ctaText = '', ctaHref = '' } = {}) {
+  const ctaHtml = ctaText && ctaHref ? `<a href="${ctaHref}" class="btn btn-primary mt-2">${ctaText}</a>` : '';
+  return `<div class="text-muted text-center py-3">${message}${ctaHtml ? `<div>${ctaHtml}</div>` : ''}</div>`;
+}
+
+function renderButton({ text, href = '#', variant = 'primary', size = '', block = false, extraClasses = '' } = {}) {
+  const sizeClass = size ? ` btn-${size}` : '';
+  const blockClass = block ? ' w-100' : '';
+  const classes = `btn btn-${variant}${sizeClass}${blockClass} ${extraClasses}`.trim();
+  return `<a href="${href}" class="${classes}">${text}</a>`;
+}
+
+// Simple form validation helper
+function validateRequiredFields(fieldIds = []) {
+  const errors = [];
+  fieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (!el) return;
+    const value = (el.value || '').trim();
+    if (!value) {
+      errors.push(id);
+      el.classList.add('is-invalid');
+    } else {
+      el.classList.remove('is-invalid');
+    }
+  });
+  return errors;
+}
+
+function clearFieldValidation(fieldIds = []) {
+  fieldIds.forEach(id => {
+    const el = document.getElementById(id);
+    if (el) el.classList.remove('is-invalid');
+  });
+}
+
+// Cards / list item renderers
+function renderFlightListItem(f) {
+  const basePrice = f.price || f.base_price_economy;
+  const discountedPrice = f.discount_percent > 0
+    ? (f.discounted_price || basePrice * (1 - f.discount_percent / 100))
+    : basePrice;
+  const originDisplay = (f.origin_city_name && f.origin_code)
+    ? `${f.origin_city_name} (${f.origin_code})`
+    : (f.origin_city_name || f.origin_code || f.origin || '');
+  const destinationDisplay = (f.destination_city_name && f.destination_code)
+    ? `${f.destination_city_name} (${f.destination_code})`
+    : (f.destination_city_name || f.destination_code || f.destination || '');
+  return `
+    <a href="flight-details.html?id=${f.id}" class="list-group-item list-group-item-action py-3">
+      <div class="d-flex w-100 justify-content-between align-items-center">
+        <div class="flex-grow-1">
+          <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
+            <span>${originDisplay} → ${destinationDisplay}</span>
+            ${isPromoted(f.ad) ? '<span class="badge bg-warning text-dark">Promoted</span>' : ''}
+            ${f.discount_percent > 0 ? `<span class="badge bg-danger">${formatPercent(f.discount_percent)}% OFF</span>` : ''}
+          </div>
+        </div>
+        <div class="text-end ms-3">
+          ${f.discount_percent > 0
+            ? `<div><span class="text-decoration-line-through text-muted small">${formatPrice(basePrice)}</span><br><strong class="text-primary">${formatPrice(discountedPrice)}</strong></div>`
+            : `<div><strong class="text-primary">From ${formatPrice(basePrice)}</strong></div>`
+          }
+        </div>
+      </div>
+    </a>
+  `;
+}
+
+function renderHotelCard(hotel, index = 0, existingCount = 0, columnsClass = 'col-md-4') {
+  const priceDisplay = hotel.discount_percent > 0
+    ? `<div class="price-container">
+        <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
+        <span class="discounted-price">${formatPrice(hotel.discounted_price || hotel.price_per_night * (1 - hotel.discount_percent / 100))}</span>
+        <span class="price-small"> /night</span>
+      </div>`
+    : `<p class="price">${formatPrice(hotel.price_per_night)}<span class="price-small"> /night</span></p>`;
+
+  return `
+    <div class="${columnsClass} reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+      <div class="card h-100">
+        <div class="card-img-wrapper">
+          <img src="${normalizeImageUrl(hotel.image_url)}" class="card-img-top" alt="${hotel.name}" loading="lazy">
+          ${hotel.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(hotel.discount_percent)}% OFF</div>` : ''}
+          ${isPromoted(hotel.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
+          <div class="card-overlay">
+            <a href="hotel-details.html?id=${hotel.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">${hotel.name}</h5>
+          <p class="card-text text-muted">${hotel.city_name || ''}${hotel.province_name ? ', ' + hotel.province_name : ''}</p>
+          ${priceDisplay}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderActivityCard(a, index = 0, existingCount = 0) {
+  const priceDisplay = a.discount_percent > 0
+    ? `<div class="price-container">
+        <span class="original-price">${formatPrice(a.price)}</span>
+        <span class="discounted-price">${formatPrice(a.discounted_price || a.price * (1 - a.discount_percent / 100))}</span>
+      </div>`
+    : `<p class="price">${formatPrice(a.price)}</p>`;
+  return `
+    <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+      <div class="card h-100">
+        <div class="card-img-wrapper">
+          <img src="${normalizeImageUrl(a.image_url)}" class="card-img-top" alt="${a.title}" loading="lazy">
+          ${a.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(a.discount_percent)}% OFF</div>` : ''}
+          ${isPromoted(a.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
+          <div class="card-overlay">
+            <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">${a.title}</h5>
+          <p class="text-muted">${a.city_name || ''}${a.province_name ? ', ' + a.province_name : ''}</p>
+          <p class="text-muted">${formatDate(a.date)}</p>
+          ${priceDisplay}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderDestinationCard(dest, index = 0) {
+  return `
+    <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+      <div class="card h-100">
+        <div class="card-img-wrapper">
+          <img src="${normalizeImageUrl(dest.image_url)}" class="card-img-top" alt="${dest.name}" loading="lazy">
+          <div class="card-overlay">
+            <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">${dest.name}</h5>
+          <p class="card-text text-muted">Philippines</p>
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderTransferCard(t, index = 0, existingCount = 0) {
+  const priceDisplay = t.discount_percent > 0
+    ? `<div class="price-container">
+        <span class="original-price">${formatPrice(t.price)}</span>
+        <span class="discounted-price">${formatPrice(t.discounted_price || t.price * (1 - t.discount_percent / 100))}</span>
+      </div>`
+    : `<p class="price">${formatPrice(t.price)}</p>`;
+
+  return `
+    <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+      <div class="card h-100">
+        <div class="card-img-wrapper">
+          <img src="${normalizeImageUrl(t.image_url)}" class="card-img-top" alt="${t.service}" loading="lazy">
+          ${t.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(t.discount_percent)}% OFF</div>` : ''}
+          ${isPromoted(t.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
+          <div class="card-overlay">
+            <a href="transfer-details.html?id=${t.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
+          </div>
+        </div>
+        <div class="card-body">
+          <h5 class="card-title">${t.service}</h5>
+          <p>${t.origin_city_name || t.origin} → ${t.destination_city_name || t.destination}</p>
+          <p class="text-muted">${formatDate(t.date)}</p>
+          ${priceDisplay}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+// Skeleton helpers
+function renderSkeletonCard(columnsClass = 'col-md-4', withImage = true, lines = 3) {
+  const linesHtml = Array.from({ length: lines }).map(() => '<div class="skeleton skeleton-line"></div>').join('');
+  return `
+    <div class="${columnsClass}">
+      <div class="card h-100">
+        ${withImage ? `<div class="card-img-wrapper skeleton skeleton-thumbnail"></div>` : ''}
+        <div class="card-body">
+          ${linesHtml}
+        </div>
+      </div>
+    </div>
+  `;
+}
+
+function renderSkeletonList(count = 4, columnsClass = 'col-md-4', withImage = true, lines = 3) {
+  return Array.from({ length: count }).map(() => renderSkeletonCard(columnsClass, withImage, lines)).join('');
+}
+
+// Section / headers
+function renderSectionHeader({ title = '', subtitle = '', actionsHtml = '' } = {}) {
+  return `
+    <div class="d-flex justify-content-between align-items-start flex-wrap gap-2 mb-3">
+      <div>
+        <h3 class="mb-1">${title}</h3>
+        ${subtitle ? `<p class="text-muted mb-0">${subtitle}</p>` : ''}
+      </div>
+      ${actionsHtml ? `<div class="ms-auto">${actionsHtml}</div>` : ''}
+    </div>
+  `;
+}
+
+// Form controls
+function renderFormControl({ id, label = '', type = 'text', placeholder = '', value = '', min, max, step, options = [] } = {}) {
+  if (type === 'select') {
+    const opts = options.map(opt => `<option value="${opt.value ?? ''}">${opt.label ?? ''}</option>`).join('');
+    return `
+      <div class="mb-3">
+        ${label ? `<label class="form-label" for="${id}">${label}</label>` : ''}
+        <select class="form-control" id="${id}">
+          ${opts}
+        </select>
+      </div>
+    `;
+  }
+  const minAttr = min !== undefined ? ` min="${min}"` : '';
+  const maxAttr = max !== undefined ? ` max="${max}"` : '';
+  const stepAttr = step !== undefined ? ` step="${step}"` : '';
+  return `
+    <div class="mb-3">
+      ${label ? `<label class="form-label" for="${id}">${label}</label>` : ''}
+      <input type="${type}" class="form-control" id="${id}" placeholder="${placeholder}" value="${value}"${minAttr}${maxAttr}${stepAttr}>
+    </div>
+  `;
+}
+
+function renderBookingCard(booking, index = 0) {
+  const statusClass = booking.status === 'confirmed'
+    ? 'success'
+    : booking.status === 'cancelled'
+      ? 'danger'
+      : 'secondary';
+  return `
+    <div class="card mb-3 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+      <div class="card-body">
+        <div class="row">
+          <div class="col-md-8">
+            <h5 class="card-title">${booking.item_type.charAt(0).toUpperCase() + booking.item_type.slice(1)} Booking</h5>
+            <p class="card-text"><strong>Booking ID:</strong> ${booking.id}</p>
+            <p class="card-text"><strong>Status:</strong> <span class="badge bg-${statusClass}">${booking.status}</span></p>
+            <p class="card-text"><strong>Booked on:</strong> ${formatDate(booking.booked_at)}</p>
+            <p class="price">Total: ${formatPrice(booking.total_price)}</p>
+          </div>
+          <div class="col-md-4 text-end">
+            ${booking.status === 'confirmed' ? `<button class="btn btn-danger" onclick="cancelBooking(${booking.id})">Cancel Booking</button>` : ''}
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+}
 // Normalize image URLs to work with subdirectory installations
 function normalizeImageUrl(url) {
   if (!url) return 'uploads/placeholder.svg';

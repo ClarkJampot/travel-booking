@@ -43,8 +43,7 @@
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
   <script>
-    fetch('includes/header.html').then(r => r.text()).then(d => document.getElementById('header').innerHTML = d);
-    fetch('includes/footer.html').then(r => r.text()).then(d => document.getElementById('footer').innerHTML = d).then(() => updateNavigation());
+    loadLayout();
     const urlParams = new URLSearchParams(window.location.search);
     const transferId = urlParams.get('id');
     let transfer = null;
@@ -112,7 +111,7 @@
           });
         }, 50);
       } catch (error) {
-        showError('status', error.message || 'Failed to load transfer');
+        setStatus('status', 'error', error.message || 'Failed to load transfer');
       }
     }
     document.getElementById('bookingForm').addEventListener('submit', async function(e) {
@@ -131,14 +130,14 @@
             total_price: transfer.discount_percent > 0 ? transfer.price * (1 - transfer.discount_percent / 100) : transfer.price
           })
         });
-        showSuccess('status', 'Booking created successfully!');
+        setStatus('status', 'success', 'Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
-        showError('status', error.message || 'Failed to create booking');
+        setStatus('status', 'error', error.message || 'Failed to create booking');
       }
     });
     if (transferId) loadTransfer();
-    else showError('status', 'Transfer ID not provided');
+    else setStatus('status', 'error', 'Transfer ID not provided');
   </script>
 </body>
 </html>

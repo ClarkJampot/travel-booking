@@ -33,7 +33,7 @@
           <input type="text" class="form-control" id="keywordFilter" placeholder="Search destinations...">
         </div>
         <div class="col-md-3 d-flex align-items-end">
-          <button class="btn btn-primary w-100" onclick="handleFilterClick()">Filter</button>
+          <button class="btn btn-primary btn-cta w-100" onclick="handleFilterClick()">Filter</button>
         </div>
       </div>
     </div>
@@ -45,11 +45,7 @@
     <div id="destinations" class="row g-4 reveal"></div>
   </div>
   
-  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;">
-    <div class="spinner-border text-primary" role="status">
-      <span class="visually-hidden">Loading more...</span>
-    </div>
-  </div>
+  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;"></div>
 
   <div id="footer"></div>
 
@@ -57,14 +53,8 @@
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    fetch('includes/header.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('header').innerHTML = data);
-    
-    fetch('includes/footer.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('footer').innerHTML = data)
-      .then(() => updateNavigation());
+    loadLayout();
+    loadComponent('loadingMore', 'components/loading-more.html');
 
     let currentPage = 1;
     const limit = 12;
@@ -116,11 +106,12 @@
       
       isLoading = true;
       const loadingIndicator = document.getElementById('loadingMore');
+      const container = document.getElementById('destinations');
       
       if (reset) {
         currentPage = 1;
         hasMore = true;
-        document.getElementById('destinations').innerHTML = '';
+        container.innerHTML = renderSkeletonList(limit, 'col-md-4', true, 2);
         loadingIndicator.style.display = 'none';
       } else {
         loadingIndicator.style.display = 'none';
@@ -166,11 +157,9 @@
         if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
         
         const data = await apiCall(url);
-        const container = document.getElementById('destinations');
-        
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
-            container.innerHTML = '<p class="text-muted">Currently no destinations available. If you\'re an owner, <a href="register.html">register</a> or <a href="login.html">sign in</a> as an owner to make a listing!</p>';
+            container.innerHTML = renderEmptyState({ message: 'Currently no destinations available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
           }
           hasMore = false;
           loadingIndicator.style.display = 'none';
@@ -179,28 +168,16 @@
         }
         
         hasMore = data.results.length >= limit;
-        const destinationsHtml = data.results.map((dest, index) => `
-          <div class="col-md-4 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-            <div class="card h-100">
-              <div class="card-img-wrapper">
-                <img src="${normalizeImageUrl(dest.image_url)}" class="card-img-top" alt="${dest.name}" loading="lazy">
-                <div class="card-overlay">
-                  <a href="destination-details.html?id=${dest.id}" class="btn btn-primary btn-lg">View Details</a>
-                </div>
-              </div>
-              <div class="card-body">
-                <h5 class="card-title">${dest.name}</h5>
-                <p class="card-text text-muted">Philippines</p>
-              </div>
-            </div>
-          </div>
-        `).join('');
+        if (reset || currentPage === 1) {
+          container.innerHTML = '';
+        }
+        const destinationsHtml = data.results.map((dest, index) => renderDestinationCard(dest, index)).join('');
         
         container.insertAdjacentHTML('beforeend', destinationsHtml);
         currentPage++;
         loadingIndicator.style.display = 'none';
       } catch (error) {
-        showError('status', error.message || 'Failed to load destinations');
+        setStatus('status', 'error', error.message || 'Failed to load destinations');
         hasMore = false;
         loadingIndicator.style.display = 'none';
       } finally {

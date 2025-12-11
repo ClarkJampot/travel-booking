@@ -96,6 +96,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
   // List flight routes (always return routes, not instances)
   $origin_airport_id = isset($_GET['origin_airport_id']) ? (int)$_GET['origin_airport_id'] : null;
   $destination_airport_id = isset($_GET['destination_airport_id']) ? (int)$_GET['destination_airport_id'] : null;
+  $origin_city_id = isset($_GET['origin_city_id']) ? (int)$_GET['origin_city_id'] : null;
+  $destination_city_id = isset($_GET['destination_city_id']) ? (int)$_GET['destination_city_id'] : null;
   $min_price = isset($_GET['min_price']) ? (float)$_GET['min_price'] : null;
   $max_price = isset($_GET['max_price']) ? (float)$_GET['max_price'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
@@ -109,9 +111,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     $where[] = 'fr.origin_airport_id = ?';
     $params[] = $origin_airport_id;
   }
+  if ($origin_city_id !== null) {
+    $where[] = 'oc.id = ?';
+    $params[] = $origin_city_id;
+  }
   if ($destination_airport_id !== null) {
     $where[] = 'fr.destination_airport_id = ?';
     $params[] = $destination_airport_id;
+  }
+  if ($destination_city_id !== null) {
+    $where[] = 'dc.id = ?';
+    $params[] = $destination_city_id;
   }
   if ($min_price !== null) {
     $where[] = 'fr.base_price_economy >= ?';

@@ -56,18 +56,17 @@
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    fetch('includes/header.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('header').innerHTML = data);
-    
-    fetch('includes/footer.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('footer').innerHTML = data)
-      .then(() => updateNavigation());
+    loadLayout();
 
     document.getElementById('registerForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       clearStatus('status');
+      const fields = ['full_name', 'email', 'password'];
+      const missing = validateRequiredFields(fields);
+      if (missing.length > 0) {
+        setStatus('status', 'error', 'Please fill in all required fields.');
+        return;
+      }
       
       const full_name = document.getElementById('full_name').value;
       const email = document.getElementById('email').value;
@@ -81,7 +80,7 @@
           window.location.href = 'index.html';
         }, 1000);
       } catch (error) {
-        showError('status', error.message || 'Registration failed');
+        setStatus('status', 'error', error.message || 'Registration failed');
       }
     });
   </script>

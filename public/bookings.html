@@ -25,14 +25,7 @@
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script>
-    fetch('includes/header.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('header').innerHTML = data);
-    
-    fetch('includes/footer.html')
-      .then(response => response.text())
-      .then(data => document.getElementById('footer').innerHTML = data)
-      .then(() => updateNavigation());
+    loadLayout();
 
     // Check authentication
     if (!isAuthenticated()) {
@@ -48,30 +41,13 @@
         const container = document.getElementById('bookings');
         
         if (data.results.length === 0) {
-          container.innerHTML = '<p class="text-muted">You have no bookings yet.</p>';
+          container.innerHTML = renderEmptyState({ message: 'You have no bookings yet.' });
           return;
         }
         
-        container.innerHTML = data.results.map((booking, index) => `
-          <div class="card mb-3 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-            <div class="card-body">
-              <div class="row">
-                <div class="col-md-8">
-                  <h5 class="card-title">${booking.item_type.charAt(0).toUpperCase() + booking.item_type.slice(1)} Booking</h5>
-                  <p class="card-text"><strong>Booking ID:</strong> ${booking.id}</p>
-                  <p class="card-text"><strong>Status:</strong> <span class="badge bg-${booking.status === 'confirmed' ? 'success' : booking.status === 'cancelled' ? 'danger' : 'secondary'}">${booking.status}</span></p>
-                  <p class="card-text"><strong>Booked on:</strong> ${formatDate(booking.booked_at)}</p>
-                  <p class="price">Total: ${formatPrice(booking.total_price)}</p>
-                </div>
-                <div class="col-md-4 text-end">
-                  ${booking.status === 'confirmed' ? `<button class="btn btn-danger" onclick="cancelBooking(${booking.id})">Cancel Booking</button>` : ''}
-                </div>
-              </div>
-            </div>
-          </div>
-        `).join('');
+        container.innerHTML = data.results.map((booking, index) => renderBookingCard(booking, index)).join('');
       } catch (error) {
-        showError('status', error.message || 'Failed to load bookings');
+        setStatus('status', 'error', error.message || 'Failed to load bookings');
         document.getElementById('bookings').innerHTML = '';
       }
     }
