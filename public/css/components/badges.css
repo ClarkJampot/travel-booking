@@ -1,0 +1,45 @@
+/* Badge Component Styles */
+
+.badge {
+  padding: 0.35em 0.65em;
+  font-weight: var(--font-weight-medium);
+}
+
+.price-badge {
+  display: inline-block;
+  background: var(--primary);
+  color: var(--white);
+  padding: var(--spacing-xs) var(--spacing-base);
+  border-radius: var(--radius-2xl);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  animation: pulse 2s ease-in-out infinite;
+}
+
+.discount-badge {
+  position: absolute;
+  top: var(--spacing-md);
+  right: var(--spacing-md);
+  background: var(--danger);
+  color: var(--white);
+  padding: var(--spacing-xs) var(--spacing-base);
+  border-radius: var(--radius-2xl);
+  font-size: var(--font-size-sm);
+  font-weight: var(--font-weight-semibold);
+  z-index: var(--z-dropdown);
+  box-shadow: var(--shadow-md);
+}
+
+.promoted-badge {
+  display: inline-block;
+  background: var(--primary);
+  color: var(--white);
+  padding: var(--spacing-xs) var(--spacing-md);
+  border-radius: var(--radius-lg);
+  font-size: var(--font-size-xs);
+  font-weight: var(--font-weight-semibold);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  margin-bottom: var(--spacing-sm);
+}
+

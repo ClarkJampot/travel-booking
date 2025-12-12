@@ -1,0 +1,21 @@
+/* Footer Layout Styles */
+
+.footer {
+  background-color: var(--primary);
+  color: var(--white);
+  padding: var(--spacing-6xl) 0;
+  margin-top: auto;
+  width: 100%;
+  flex-shrink: 0;
+}
+
+.footer a {
+  color: var(--white-rgba-8);
+  text-decoration: none;
+}
+
+.footer a:hover {
+  color: var(--white);
+  text-decoration: underline;
+}
+

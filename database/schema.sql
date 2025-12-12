@@ -81,7 +81,6 @@ CREATE TABLE dbo.destinations (
   id INT IDENTITY(1,1) PRIMARY KEY,
   name NVARCHAR(255) NOT NULL,
   description NVARCHAR(MAX) NULL,
-  featured BIT DEFAULT 0,
   province_id INT NULL,
   city_id INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
@@ -250,7 +249,6 @@ CREATE INDEX IX_users_email ON dbo.users(email);
 CREATE INDEX IX_jwt_tokens_user_id ON dbo.jwt_tokens(user_id);
 CREATE INDEX IX_jwt_tokens_token ON dbo.jwt_tokens(token);
 CREATE INDEX IX_jwt_tokens_expires_at ON dbo.jwt_tokens(expires_at);
-CREATE INDEX IX_destinations_featured ON dbo.destinations(featured);
 CREATE INDEX IX_provinces_name ON dbo.provinces(name);
 CREATE INDEX IX_provinces_code ON dbo.provinces(code);
 CREATE INDEX IX_cities_name ON dbo.cities(name);

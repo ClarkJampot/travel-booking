@@ -1,15 +1,7 @@
 // Main.js - Common utilities for travel booking app
-
-// Determine API base path dynamically based on current location
-const API_BASE = (() => {
-  const path = window.location.pathname;
-  // If we're in /travel-booking/public/ or /travel-booking/, use /travel-booking/api
-  if (path.includes('/travel-booking')) {
-    return '/travel-booking/api';
-  }
-  // Otherwise, use /api (for development or different setups)
-  return '/api';
-})();
+// Note: API utilities are in utils/api.js, formatters in utils/formatters.js
+// Components are in components/*.js
+// These should be loaded before main.js in HTML files
 
 // Shared component loader (header/footer)
 const _componentCache = new Map();
@@ -71,10 +63,8 @@ function setStatus(elementId, type, message) {
   el.innerHTML = renderStatus(type, message);
 }
 
-function renderEmptyState({ message = 'No items found.', ctaText = '', ctaHref = '' } = {}) {
-  const ctaHtml = ctaText && ctaHref ? `<a href="${ctaHref}" class="btn btn-primary mt-2">${ctaText}</a>` : '';
-  return `<div class="text-muted text-center py-3">${message}${ctaHtml ? `<div>${ctaHtml}</div>` : ''}</div>`;
-}
+// renderEmptyState is now in components/EmptyState.js
+// Use renderEmptyState from that file instead
 
 function renderButton({ text, href = '#', variant = 'primary', size = '', block = false, extraClasses = '' } = {}) {
   const sizeClass = size ? ` btn-${size}` : '';
@@ -140,7 +130,14 @@ function renderFlightListItem(f) {
   `;
 }
 
+// renderHotelCard - uses new Card component
 function renderHotelCard(hotel, index = 0, existingCount = 0, columnsClass = 'col-md-4') {
+  // Use the new Card component if available
+  if (typeof renderCard === 'function') {
+    return renderCard({ type: 'hotel', data: hotel, columnsClass });
+  }
+  // Fallback if components not loaded (shouldn't happen if scripts loaded correctly)
+  console.warn('Card component not loaded, using fallback');
   const priceDisplay = hotel.discount_percent > 0
     ? `<div class="price-container">
         <span class="original-price">${formatPrice(hotel.price_per_night)}</span>
@@ -151,7 +148,7 @@ function renderHotelCard(hotel, index = 0, existingCount = 0, columnsClass = 'co
 
   const imageUrl = normalizeImageUrl(hotel.image_url || 'uploads/placeholder.svg');
   return `
-    <div class="${columnsClass} reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+    <div class="${columnsClass}">
       <div class="card h-100">
         <div class="card-img-wrapper">
           <img src="${imageUrl}" class="card-img-top" alt="${hotel.name}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
@@ -171,10 +168,17 @@ function renderHotelCard(hotel, index = 0, existingCount = 0, columnsClass = 'co
   `;
 }
 
+// renderDestinationCard - uses new Card component
 function renderDestinationCard(dest, index = 0, columnsClass = 'col-md-4') {
+  // Use the new Card component if available
+  if (typeof renderCard === 'function') {
+    return renderCard({ type: 'destination', data: dest, columnsClass });
+  }
+  // Fallback if components not loaded (shouldn't happen if scripts loaded correctly)
+  console.warn('Card component not loaded, using fallback');
   const imageUrl = normalizeImageUrl(dest.image_url || 'uploads/placeholder.svg');
   return `
-    <div class="${columnsClass} reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
+    <div class="${columnsClass}">
       <div class="card h-100">
         <div class="card-img-wrapper">
           <img src="${imageUrl}" class="card-img-top" alt="${dest.name}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
@@ -184,7 +188,7 @@ function renderDestinationCard(dest, index = 0, columnsClass = 'col-md-4') {
         </div>
         <div class="card-body">
           <h5 class="card-title">${dest.name}</h5>
-          <p class="card-text text-muted">Philippines</p>
+          <p class="card-text text-muted">${dest.description ? escapeHtml(dest.description).substring(0, 100) + (dest.description.length > 100 ? '...' : '') : 'Philippines'}</p>
         </div>
       </div>
     </div>
@@ -296,45 +300,8 @@ function normalizeImageUrl(url) {
   return url;
 }
 
-// API helper functions
-async function apiCall(endpoint, options = {}) {
-  const token = localStorage.getItem('token');
-  const headers = {
-    'Content-Type': 'application/json',
-    ...options.headers
-  };
-  
-  if (token) {
-    headers['Authorization'] = `Bearer ${token}`;
-  }
-  
-  try {
-    const response = await fetch(`${API_BASE}${endpoint}`, {
-      ...options,
-      headers
-    });
-    
-    let data;
-    try {
-      data = await response.json();
-    } catch (jsonError) {
-      // If response is not JSON, get text
-      const text = await response.text();
-      throw new Error(`Server returned non-JSON response (${response.status}): ${text.substring(0, 200)}`);
-    }
-    
-    if (!response.ok) {
-      const errorMsg = data.error || data.message || `HTTP ${response.status}: ${response.statusText}`;
-      throw new Error(errorMsg);
-    }
-    
-    return data;
-  } catch (error) {
-    console.error('API Error:', error);
-    console.error('Endpoint:', `${API_BASE}${endpoint}`);
-    throw error;
-  }
-}
+// apiCall is now in utils/api.js
+// Use apiCall from that file instead
 
 // Get current user
 function getCurrentUser() {
@@ -379,44 +346,9 @@ function clearStatus(elementId) {
   }
 }
 
-// Format price
-function formatPrice(price) {
-  const formatted = new Intl.NumberFormat('en-PH', {
-    style: 'currency',
-    currency: 'PHP',
-    minimumFractionDigits: 0,
-    maximumFractionDigits: 2
-  }).format(price);
-  return formatted.replace(/\.00(?=\s|$)/, '');
-}
-
-// Format percentage (removes trailing zeros)
-function formatPercent(value) {
-  if (value == null || value === '') return '0';
-  const num = typeof value === 'string' ? parseFloat(value) : value;
-  return num % 1 === 0 ? num.toString() : num.toFixed(2).replace(/\.?0+$/, '');
-}
-
-// Check if item is promoted (handles SQL Server BIT field formats)
-function isPromoted(ad) {
-  if (ad == null || ad === undefined) return false;
-  // Handle various formats: integer 1, boolean true, string "1", or truthy value
-  if (ad === 1 || ad === true || ad === '1') return true;
-  if (ad === 0 || ad === false || ad === '0') return false;
-  // Convert to number as fallback
-  const num = Number(ad);
-  return !isNaN(num) && num === 1;
-}
-
-// Format date
-function formatDate(dateString) {
-  const date = new Date(dateString);
-  return date.toLocaleDateString('en-US', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  });
-}
+// formatPrice, formatPercent, formatDate are now in utils/formatters.js
+// isPromoted is now in components/Badge.js
+// Use those functions from their respective files
 
 // Update navigation based on auth status
 function updateNavigation() {

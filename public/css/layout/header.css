@@ -1,0 +1,55 @@
+/* Header/Navbar Layout Styles */
+
+.navbar {
+  box-shadow: var(--shadow-md);
+  transition: all var(--transition-base);
+  backdrop-filter: var(--blur-sm);
+  -webkit-backdrop-filter: var(--blur-sm);
+  position: sticky;
+  top: 0;
+  z-index: var(--z-modal);
+  padding: 0.75rem 0;
+  border-bottom: 1px solid var(--white-rgba-1);
+}
+
+.navbar.scrolled {
+  background-color: var(--primary-rgba-95) !important;
+  box-shadow: var(--shadow-md);
+}
+
+.navbar-brand {
+  font-weight: var(--font-weight-bold);
+  font-size: var(--font-size-4xl);
+  transition: transform var(--transition-base);
+}
+
+.navbar-brand:hover {
+  transform: scale(1.05);
+}
+
+.nav-link {
+  position: relative;
+  transition: color var(--transition-fast);
+}
+
+.nav-link::after {
+  content: '';
+  position: absolute;
+  bottom: 0;
+  left: 50%;
+  width: 0;
+  height: 2px;
+  background-color: var(--white);
+  transition: all var(--transition-base);
+  transform: translateX(-50%);
+}
+
+.nav-link:hover::after,
+.nav-link.active::after {
+  width: 80%;
+}
+
+.nav-link:hover {
+  color: var(--white-rgba-95) !important;
+}
+

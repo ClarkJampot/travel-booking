@@ -630,17 +630,17 @@ INSERT INTO dbo.users(email, password_hash, first_name, role_id) VALUES
 -- ============================================================================
 -- DESTINATIONS
 -- ============================================================================
-INSERT INTO dbo.destinations(name, description, featured) VALUES
-(N'Boracay Island', N'Famous white sand beach destination in Aklan, perfect for water activities and nightlife.', 1),
-(N'Puerto Princesa', N'Capital city of Palawan, gateway to stunning natural attractions including the Underground River.', 1),
-(N'Bohol', N'Beautiful island province known for its unique Chocolate Hills, tarsiers, and pristine beaches.', 1),
-(N'Baguio City', N'Cool mountain city known as the Summer Capital of the Philippines.', 1),
-(N'Siargao Island', N'Surfing capital of the Philippines with pristine beaches and natural pools.', 1),
-(N'El Nido', N'Stunning limestone cliffs, crystal-clear lagoons, and pristine beaches.', 0),
-(N'Coron', N'World-class diving destination with shipwrecks and stunning coral reefs.', 0),
-(N'Vigan', N'Historic Spanish colonial city, a UNESCO World Heritage Site.', 0),
-(N'Sagada', N'Mountain destination known for hanging coffins and beautiful caves.', 0),
-(N'Batanes', N'Northernmost province with rolling hills, traditional stone houses, and dramatic landscapes.', 0);
+INSERT INTO dbo.destinations(name, description) VALUES
+(N'Boracay Island', N'Famous white sand beach destination in Aklan, perfect for water activities and nightlife.'),
+(N'Puerto Princesa', N'Capital city of Palawan, gateway to stunning natural attractions including the Underground River.'),
+(N'Bohol', N'Beautiful island province known for its unique Chocolate Hills, tarsiers, and pristine beaches.'),
+(N'Baguio City', N'Cool mountain city known as the Summer Capital of the Philippines.'),
+(N'Siargao Island', N'Surfing capital of the Philippines with pristine beaches and natural pools.'),
+(N'El Nido', N'Stunning limestone cliffs, crystal-clear lagoons, and pristine beaches.'),
+(N'Coron', N'World-class diving destination with shipwrecks and stunning coral reefs.'),
+(N'Vigan', N'Historic Spanish colonial city, a UNESCO World Heritage Site.'),
+(N'Sagada', N'Mountain destination known for hanging coffins and beautiful caves.'),
+(N'Batanes', N'Northernmost province with rolling hills, traditional stone houses, and dramatic landscapes.');
 
 -- ============================================================================
 -- HOTELS (Owned by owners, using city_id and province_id via subqueries)

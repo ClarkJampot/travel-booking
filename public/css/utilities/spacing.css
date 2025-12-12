@@ -1,0 +1,19 @@
+/* Spacing Utilities */
+
+/* Margin utilities (if needed beyond Bootstrap) */
+.mt-auto { margin-top: auto; }
+.mb-auto { margin-bottom: auto; }
+
+/* Padding utilities (if needed beyond Bootstrap) */
+.pt-auto { padding-top: auto; }
+.pb-auto { padding-bottom: auto; }
+
+/* Gap utilities */
+.gap-xs { gap: var(--gap-xs); }
+.gap-sm { gap: var(--gap-sm); }
+.gap-md { gap: var(--gap-md); }
+.gap-base { gap: var(--gap-base); }
+.gap-lg { gap: var(--gap-lg); }
+.gap-xl { gap: var(--gap-xl); }
+.gap-2xl { gap: var(--gap-2xl); }
+
