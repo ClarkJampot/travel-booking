@@ -34,11 +34,12 @@ CREATE TABLE dbo.users (
   id INT IDENTITY(1,1) PRIMARY KEY,
   email NVARCHAR(255) NOT NULL UNIQUE,
   password_hash NVARCHAR(255) NOT NULL,
-  full_name NVARCHAR(255) NOT NULL,
+  first_name NVARCHAR(50) NOT NULL,
+  last_name NVARCHAR(50) NOT NULL,
   role_id INT NOT NULL,
-  phone NVARCHAR(50) NULL,
-  address NVARCHAR(500) NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_users_roles FOREIGN KEY (role_id) REFERENCES dbo.roles(id)
 );
 
@@ -167,27 +168,74 @@ CREATE TABLE dbo.transfers (
   CONSTRAINT FK_transfers_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id)
 );
 
--- Bookings table
-CREATE TABLE dbo.bookings (
+-- Bookings
+
+CREATE TABLE dbo.hotel_bookings (
   id INT IDENTITY(1,1) PRIMARY KEY,
   user_id INT NOT NULL,
-  item_type NVARCHAR(16) NOT NULL CHECK (item_type IN ('hotel','flight','activity','transfer')),
-  item_id INT NOT NULL,
-  flight_instance_id INT NULL,
-  transfer_instance_id INT NULL,
-  class NVARCHAR(20) NULL,
-  passenger_count INT NULL,
-  passenger_details NVARCHAR(MAX) NULL,
-  booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  hotel_id INT NOT NULL,
+  check_in DATE NOT NULL,
+  check_out DATE NOT NULL,
+  guests INT NOT NULL DEFAULT 1,
   total_price DECIMAL(10,2) NOT NULL,
+  booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  cancelled_at DATETIME2 NULL,
   status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
-  CONSTRAINT FK_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id)
+  CONSTRAINT FK_hotel_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
+  CONSTRAINT FK_hotel_bookings_hotels FOREIGN KEY (hotel_id) REFERENCES dbo.hotels(id)
+);
+
+CREATE TABLE dbo.flight_bookings (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  user_id INT NOT NULL,
+  flight_id INT NOT NULL,
+  class NVARCHAR(20) NULL,
+  passenger_count INT NOT NULL,
+  passenger_details NVARCHAR(MAX) NULL,
+  total_price DECIMAL(10,2) NOT NULL,
+  booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  cancelled_at DATETIME2 NULL,
+  status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
+  CONSTRAINT FK_flight_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
+  CONSTRAINT FK_flight_bookings_flights FOREIGN KEY (flight_id) REFERENCES dbo.flights(id)
+);
+
+CREATE TABLE dbo.transfer_bookings (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  user_id INT NOT NULL,
+  transfer_id INT NOT NULL,
+  passenger_count INT NOT NULL DEFAULT 1,
+  passenger_details NVARCHAR(MAX) NULL,
+  total_price DECIMAL(10,2) NOT NULL,
+  booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  cancelled_at DATETIME2 NULL,
+  status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
+  CONSTRAINT FK_transfer_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
+  CONSTRAINT FK_transfer_bookings_transfers FOREIGN KEY (transfer_id) REFERENCES dbo.transfers(id)
+);
+
+
+CREATE TABLE dbo.activity_bookings (
+  id INT IDENTITY(1,1) PRIMARY KEY,
+  user_id INT NOT NULL,
+  activity_id INT NOT NULL,
+  participant_count INT NOT NULL DEFAULT 1,
+  total_price DECIMAL(10,2) NOT NULL,
+  booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  cancelled_at DATETIME2 NULL,
+  status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
+  CONSTRAINT FK_activity_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
+  CONSTRAINT FK_activity_bookings_activities FOREIGN KEY (activity_id) REFERENCES dbo.activities(id)
 );
 
 -- Entity Images table (for multiple images per entity)
 CREATE TABLE dbo.entity_images (
   id INT IDENTITY(1,1) PRIMARY KEY,
-  entity_type NVARCHAR(20) NOT NULL CHECK (entity_type IN ('hotel','flight','activity','transfer','destination','transfer_route')),
+  entity_type NVARCHAR(20) NOT NULL CHECK (entity_type IN ('hotel','flight','activity','transfer','destination')),
   entity_id INT NOT NULL,
   image_url NVARCHAR(500) NOT NULL,
   display_order INT DEFAULT 0,
