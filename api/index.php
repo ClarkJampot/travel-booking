@@ -81,6 +81,18 @@ elseif (preg_match('#^/flights(?:/(\d+))?/?$#', $uri, $matches)) {
   exit;
 }
 
+// Route: /api/transfers
+elseif (preg_match('#^/transfers(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/transfers.php';
+  exit;
+}
+
+// Route: /api/activities
+elseif (preg_match('#^/activities(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/activities.php';
+  exit;
+}
+
 // Route: /api/bookings
 elseif (preg_match('#^/bookings(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/bookings.php';

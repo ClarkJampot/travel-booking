@@ -5,7 +5,7 @@
 /**
  * Render a unified card for any entity type
  * @param {object} options Card options
- * @param {string} options.type Card type ('hotel', 'flight', 'destination')
+ * @param {string} options.type Card type ('hotel', 'flight', 'destination', 'transfer', 'activity')
  * @param {object} options.data Entity data
  * @param {string} options.columnsClass Column class (e.g., 'col-md-4')
  * @param {string} options.detailUrl Detail page URL
@@ -28,6 +28,10 @@ function renderCard({ type, data, columnsClass = 'col-md-4', detailUrl = '' }) {
       return renderFlightCardInternal(data, columnsClass, detailUrl);
     case 'destination':
       return renderDestinationCardInternal(data, columnsClass, detailUrl);
+    case 'transfer':
+      return renderTransferCardInternal(data, columnsClass, detailUrl);
+    case 'activity':
+      return renderActivityCardInternal(data, columnsClass, detailUrl);
     default:
       return '';
   }
@@ -151,6 +155,105 @@ function renderDestinationCardInternal(destination, columnsClass, detailUrl) {
           <div class="card-body">
             <h5 class="card-title">${escapeHtml(destination.name || 'Destination')}</h5>
             <p class="card-text text-muted">${escapeHtml(destination.description || '').substring(0, 100)}${destination.description && destination.description.length > 100 ? '...' : ''}</p>
+          </div>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render transfer card (internal)
+ */
+function renderTransferCardInternal(transfer, columnsClass, detailUrl) {
+  const imageHtml = renderImage({
+    src: (transfer.images && transfer.images[0]) || transfer.image_url,
+    alt: transfer.service || 'Transfer',
+    className: 'card-img-top'
+  });
+  
+  const basePrice = transfer.price || 0;
+  const discountedPrice = transfer.discount_percent > 0
+    ? (transfer.discounted_price || basePrice * (1 - transfer.discount_percent / 100))
+    : null;
+  
+  const priceHtml = renderPrice({
+    price: basePrice,
+    discountedPrice: discountedPrice,
+    discountPercent: transfer.discount_percent || 0
+  });
+  
+  const originDisplay = transfer.origin_city_name
+    ? `${transfer.origin_city_name}${transfer.origin_province_name ? ', ' + transfer.origin_province_name : ''}`
+    : (transfer.origin || '');
+  
+  const destinationDisplay = transfer.destination_city_name
+    ? `${transfer.destination_city_name}${transfer.destination_province_name ? ', ' + transfer.destination_province_name : ''}`
+    : (transfer.destination || '');
+  
+  const discountBadge = transfer.discount_percent > 0 
+    ? renderDiscountBadge(transfer.discount_percent) 
+    : '';
+  
+  const promotedBadge = isPromoted(transfer.ad) ? renderPromotedBadge() : '';
+  
+  return `
+    <div class="${columnsClass}">
+      <div class="card h-100${isPromoted(transfer.ad) ? ' promoted-item' : ''}">
+        <a href="${detailUrl}" class="text-decoration-none text-reset">
+          <div class="card-img-wrapper">
+            ${imageHtml}
+            ${discountBadge}
+          </div>
+          <div class="card-body">
+            ${promotedBadge}
+            <h5 class="card-title">${escapeHtml(transfer.service || 'Transfer')}</h5>
+            <p class="card-text text-muted">${escapeHtml(originDisplay)} → ${escapeHtml(destinationDisplay)}</p>
+            ${transfer.date ? `<p class="card-text text-muted small">${formatDate(transfer.date)}</p>` : ''}
+            ${priceHtml}
+          </div>
+        </a>
+      </div>
+    </div>
+  `;
+}
+
+/**
+ * Render activity card (internal)
+ */
+function renderActivityCardInternal(activity, columnsClass, detailUrl) {
+  const imageHtml = renderImage({
+    src: (activity.images && activity.images[0]) || activity.image_url,
+    alt: activity.title || 'Activity',
+    className: 'card-img-top'
+  });
+  
+  const priceHtml = renderPrice({
+    price: activity.price,
+    discountedPrice: activity.discounted_price,
+    discountPercent: activity.discount_percent || 0
+  });
+  
+  const discountBadge = activity.discount_percent > 0 
+    ? renderDiscountBadge(activity.discount_percent) 
+    : '';
+  
+  const promotedBadge = isPromoted(activity.ad) ? renderPromotedBadge() : '';
+  
+  return `
+    <div class="${columnsClass}">
+      <div class="card h-100${isPromoted(activity.ad) ? ' promoted-item' : ''}">
+        <a href="${detailUrl}" class="text-decoration-none text-reset">
+          <div class="card-img-wrapper">
+            ${imageHtml}
+            ${discountBadge}
+          </div>
+          <div class="card-body">
+            ${promotedBadge}
+            <h5 class="card-title">${escapeHtml(activity.title || 'Activity')}</h5>
+            <p class="card-text text-muted">${escapeHtml((activity.city_name || '') + (activity.province_name ? ', ' + activity.province_name : ''))}</p>
+            ${activity.date ? `<p class="card-text text-muted small">${formatDate(activity.date)}</p>` : ''}
+            ${priceHtml}
           </div>
         </a>
       </div>

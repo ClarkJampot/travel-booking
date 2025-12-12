@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Activity Details - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="container mt-4">
+    <div id="activityDetails" class="reveal"></div>
+    <div class="row mt-4 mb-4">
+      <div class="col-md-8">
+        <div class="card reveal">
+          <div class="card-body">
+            <h3 id="activityTitle" class="fade-in-up"></h3>
+            <p class="text-muted" id="activityLocation"></p>
+            <p class="text-muted" id="activityDate"></p>
+            <p class="price" id="activityPrice"></p>
+            <p id="activityDescription"></p>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card sticky-booking-form reveal">
+          <div class="card-body">
+            <h5>Book Now</h5>
+            <form id="bookingForm">
+              <div class="mb-3">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-control" id="activityDateInput" required>
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Number of Participants</label>
+                <input type="number" class="form-control" id="participants" value="1" min="1" required>
+              </div>
+              <p class="price" id="totalPrice"></p>
+              <div id="status"></div>
+              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn">Book Now</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Load utilities and components first -->
+  <script src="js/utils/formatters.js"></script>
+  <script src="js/utils/api.js"></script>
+  <script src="js/components/Image.js"></script>
+  <script src="js/components/Price.js"></script>
+  <script src="js/components/Badge.js"></script>
+  <script src="js/components/EmptyState.js"></script>
+  <script src="js/components/Card.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/carousel.js"></script>
+  <script>
+    loadLayout();
+    const urlParams = new URLSearchParams(window.location.search);
+    const activityId = urlParams.get('id');
+    let activity = null;
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('activityDateInput').setAttribute('min', today);
+    
+    async function loadActivity() {
+      try {
+        const data = await apiCall(`/activities?id=${activityId}`);
+        activity = data.activity;
+        document.getElementById('activityTitle').textContent = activity.title || 'Activity';
+        // Use city_name and province_name if available
+        const location = activity.city_name && activity.province_name 
+          ? `${activity.city_name}, ${activity.province_name}`
+          : (activity.city_name ? activity.city_name : '');
+        document.getElementById('activityLocation').textContent = location;
+        
+        if (activity.date) {
+          document.getElementById('activityDate').textContent = `Date: ${formatDate(activity.date)}`;
+        }
+        
+        // Display price with discount if applicable
+        const discountedPrice = activity.discount_percent > 0 
+          ? activity.price * (1 - activity.discount_percent / 100)
+          : activity.price;
+        
+        let priceHTML = '';
+        if (activity.discount_percent > 0) {
+          priceHTML = `
+            <div class="price-container">
+              <span class="original-price">${formatPrice(activity.price)}</span>
+              <span class="discounted-price">${formatPrice(discountedPrice)}</span>
+            </div>
+          `;
+        } else {
+          priceHTML = `${formatPrice(activity.price)}`;
+        }
+        document.getElementById('activityPrice').innerHTML = priceHTML;
+        
+        // Add discount and promoted badges if applicable
+        const badgeHTML = `
+          ${isPromoted(activity.ad) ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${activity.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${formatPercent(activity.discount_percent)}% OFF</span>` : ''}
+        `;
+        if (activity.ad || activity.discount_percent > 0) {
+          document.getElementById('activityPrice').insertAdjacentHTML('beforebegin', badgeHTML);
+        }
+        
+        document.getElementById('activityDescription').textContent = activity.description || '';
+        
+        // Combine primary image with additional images for carousel
+        const allImages = combineImages(activity.image_url, activity.images || []);
+        document.getElementById('activityDetails').innerHTML = createImageCarousel(allImages, 'activityCarousel', activity.title || 'Activity');
+        
+        // Initialize carousel and add hover effects after DOM insertion
+        setTimeout(() => {
+          const carouselEl = document.getElementById('activityCarousel');
+          if (carouselEl && allImages.length > 1) {
+            // Initialize Bootstrap carousel
+            const bsCarousel = new bootstrap.Carousel(carouselEl, {
+              interval: false,
+              wrap: true
+            });
+            
+            // Sync thumbnails when carousel slides
+            carouselEl.addEventListener('slid.bs.carousel', function(event) {
+              updateActiveThumbnail('activityCarousel', event.to);
+            });
+          }
+          
+          // Add hover effects for expand hint
+          carouselEl?.querySelectorAll('.card-img-wrapper').forEach(wrapper => {
+            wrapper.addEventListener('mouseenter', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '1';
+            });
+            wrapper.addEventListener('mouseleave', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '0';
+            });
+          });
+        }, 50);
+        
+        calculateTotal();
+      } catch (error) {
+        setStatus('status', 'error', error.message || 'Failed to load activity');
+      }
+    }
+    
+    function calculateTotal() {
+      const participants = parseInt(document.getElementById('participants').value) || 1;
+      if (activity) {
+        const pricePerPerson = activity.discount_percent > 0 
+          ? activity.price * (1 - activity.discount_percent / 100)
+          : activity.price;
+        const total = pricePerPerson * participants;
+        const priceEl = document.getElementById('totalPrice');
+        priceEl.style.animation = 'pulse 0.3s ease';
+        priceEl.textContent = `Total: ${formatPrice(total)}`;
+        setTimeout(() => priceEl.style.animation = '', 300);
+      }
+    }
+    
+    document.getElementById('participants').addEventListener('change', calculateTotal);
+    
+    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      if (!isAuthenticated()) {
+        alert('Please log in to make a booking.');
+        return;
+      }
+      clearStatus('status');
+      const participants = parseInt(document.getElementById('participants').value) || 1;
+      const date = document.getElementById('activityDateInput').value;
+      const pricePerPerson = activity.discount_percent > 0 
+        ? activity.price * (1 - activity.discount_percent / 100)
+        : activity.price;
+      const totalPrice = pricePerPerson * participants;
+      try {
+        await apiCall('/bookings', {
+          method: 'POST',
+          body: JSON.stringify({
+            item_type: 'activity',
+            item_id: activity.id,
+            total_price: totalPrice,
+            date: date,
+            participants: participants
+          })
+        });
+        showSuccessToast('Booking created successfully!');
+        setTimeout(() => window.location.href = 'bookings.html', 2000);
+      } catch (error) {
+        setStatus('status', 'error', error.message || 'Failed to create booking');
+      }
+    });
+    
+    if (activityId) loadActivity();
+    else setStatus('status', 'error', 'Activity ID not provided');
+  </script>
+</body>
+</html>
+

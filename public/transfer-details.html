@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Transfer Details - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="header"></div>
+  <div class="container mt-4">
+    <div id="transferDetails" class="reveal"></div>
+    <div class="row mt-4 mb-4">
+      <div class="col-md-8">
+        <div class="card reveal">
+          <div class="card-body">
+            <h3 id="transferService" class="fade-in-up"></h3>
+            <p id="transferRoute"></p>
+            <p class="text-muted" id="transferDate"></p>
+            <p class="price" id="transferPrice"></p>
+            <p id="transferDescription"></p>
+          </div>
+        </div>
+        
+        <!-- Available Instances Section -->
+        <div class="card mt-3 reveal" id="instancesSection" style="display: none;">
+          <div class="card-body">
+            <h5>Available Transfers</h5>
+            <div id="instancesList"></div>
+          </div>
+        </div>
+      </div>
+      <div class="col-md-4">
+        <div class="card sticky-booking-form reveal">
+          <div class="card-body">
+            <h5>Book Now</h5>
+            <form id="bookingForm">
+              <div class="mb-3">
+                <label class="form-label">Date</label>
+                <input type="date" class="form-control" id="transferDate" required min="">
+              </div>
+              <div class="mb-3">
+                <label class="form-label">Passengers</label>
+                <input type="number" class="form-control" id="passengerCount" value="1" min="1" max="9" required>
+              </div>
+              <p class="price" id="totalPrice" style="display: none;"></p>
+              <div id="status"></div>
+              <button type="button" class="btn btn-secondary btn-cta w-100 mb-2" id="searchInstancesBtn">Search Transfers</button>
+              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn" disabled>Book Now</button>
+            </form>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div id="footer"></div>
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Load utilities and components first -->
+  <script src="js/utils/formatters.js"></script>
+  <script src="js/utils/api.js"></script>
+  <script src="js/components/Image.js"></script>
+  <script src="js/components/Price.js"></script>
+  <script src="js/components/Badge.js"></script>
+  <script src="js/components/EmptyState.js"></script>
+  <script src="js/components/Card.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
+  <script src="js/carousel.js"></script>
+  <script>
+    loadLayout();
+    
+    const urlParams = new URLSearchParams(window.location.search);
+    const transferId = urlParams.get('id');
+    let transfer = null;
+    let selectedInstance = null;
+    let passengerCount = 1;
+    
+    // Set minimum date to today
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('transferDate').setAttribute('min', today);
+    
+    async function loadTransfer() {
+      try {
+        const data = await apiCall(`/transfers?id=${transferId}`);
+        transfer = data.transfer;
+        
+        // Display transfer information
+        document.getElementById('transferService').textContent = transfer.service || 'Transfer Service';
+        const originDisplay = transfer.origin_city_name
+          ? `${transfer.origin_city_name}${transfer.origin_province_name ? ', ' + transfer.origin_province_name : ''}`
+          : (transfer.origin || '');
+        const destinationDisplay = transfer.destination_city_name
+          ? `${transfer.destination_city_name}${transfer.destination_province_name ? ', ' + transfer.destination_province_name : ''}`
+          : (transfer.destination || '');
+        document.getElementById('transferRoute').textContent = `${originDisplay} → ${destinationDisplay}`;
+        
+        if (transfer.date) {
+          document.getElementById('transferDate').textContent = `Date: ${formatDate(transfer.date)}`;
+        }
+        
+        // Display price
+        const basePrice = transfer.price;
+        const discountedPrice = transfer.discount_percent > 0 
+          ? basePrice * (1 - transfer.discount_percent / 100)
+          : basePrice;
+        
+        let priceHTML = '';
+        if (transfer.discount_percent > 0) {
+          priceHTML = `
+            <div class="price-container">
+              <span class="original-price">${formatPrice(basePrice)}</span>
+              <span class="discounted-price">${formatPrice(discountedPrice)}</span>
+            </div>
+          `;
+        } else {
+          priceHTML = `From ${formatPrice(basePrice)}`;
+        }
+        document.getElementById('transferPrice').innerHTML = priceHTML;
+        
+        // Add discount and promoted badges if applicable
+        const badgeHTML = `
+          ${isPromoted(transfer.ad) ? '<span class="promoted-badge mb-2 d-inline-block">Promoted</span>' : ''}
+          ${transfer.discount_percent > 0 ? `<span class="discount-badge mb-2 d-inline-block" style="position: relative; top: 0; right: 0;">${formatPercent(transfer.discount_percent)}% OFF</span>` : ''}
+        `;
+        if (transfer.ad || transfer.discount_percent > 0) {
+          document.getElementById('transferPrice').insertAdjacentHTML('beforebegin', badgeHTML);
+        }
+        
+        // Display description if available
+        if (transfer.description) {
+          document.getElementById('transferDescription').textContent = transfer.description;
+        }
+        
+        // Display images if available
+        const allImages = combineImages(transfer.image_url, transfer.images || []);
+        document.getElementById('transferDetails').innerHTML = createImageCarousel(allImages, 'transferCarousel', transfer.service || 'Transfer');
+        
+        // Initialize carousel and add hover effects after DOM insertion
+        setTimeout(() => {
+          const carouselEl = document.getElementById('transferCarousel');
+          if (carouselEl && allImages.length > 1) {
+            // Initialize Bootstrap carousel
+            const bsCarousel = new bootstrap.Carousel(carouselEl, {
+              interval: false,
+              wrap: true
+            });
+            
+            // Sync thumbnails when carousel slides
+            carouselEl.addEventListener('slid.bs.carousel', function(event) {
+              updateActiveThumbnail('transferCarousel', event.to);
+            });
+          }
+          
+          // Add hover effects for expand hint
+          carouselEl?.querySelectorAll('.card-img-wrapper').forEach(wrapper => {
+            wrapper.addEventListener('mouseenter', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '1';
+            });
+            wrapper.addEventListener('mouseleave', function() {
+              const hint = this.querySelector('.image-expand-hint');
+              if (hint) hint.style.opacity = '0';
+            });
+          });
+        }, 50);
+      } catch (error) {
+        setStatus('status', 'error', error.message || 'Failed to load transfer');
+      }
+    }
+    
+    async function loadInstances() {
+      const date = document.getElementById('transferDate').value;
+      passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
+      
+      if (!date) {
+        setStatus('status', 'error', 'Please select a date');
+        return;
+      }
+      
+      try {
+        clearStatus('status');
+        
+        // Build API URL
+        const apiUrl = `/transfer-instances?transfer_id=${transferId}&date=${date}&passenger_count=${passengerCount}`;
+        
+        // Load instances
+        const data = await apiCall(apiUrl);
+        const instances = data.instances || [];
+        
+        if (instances.length === 0) {
+          document.getElementById('instancesList').innerHTML = '<p class="text-muted">No available transfers for this date. Please try another date.</p>';
+          document.getElementById('instancesSection').style.display = 'block';
+          selectedInstance = null;
+          document.getElementById('bookBtn').disabled = true;
+          return;
+        }
+        
+        // Display instances
+        let instancesHtml = instances.map(instance => {
+          const price = instance.discounted_price || instance.price;
+          const time = instance.departure_time || instance.time || '';
+          
+          return `
+            <div class="card mb-2 instance-card ${selectedInstance && selectedInstance.id === instance.id ? 'border-primary' : ''}" 
+                 data-instance-id="${instance.id}" 
+                 style="cursor: pointer; transition: all 0.2s;">
+              <div class="card-body">
+                <div class="d-flex justify-content-between align-items-center">
+                  <div>
+                    ${time ? `<h6 class="mb-1">${time}</h6>` : ''}
+                    <small class="text-muted">${formatDate(instance.date || date)}</small>
+                    <br>
+                    <small class="text-muted">${instance.seats_available || instance.available_seats || 'N/A'} seat${(instance.seats_available || instance.available_seats || 0) !== 1 ? 's' : ''} available</small>
+                  </div>
+                  <div class="text-end">
+                    <strong class="text-primary">${formatPrice(price)}</strong>
+                  </div>
+                </div>
+              </div>
+            </div>
+          `;
+        }).join('');
+        
+        document.getElementById('instancesList').innerHTML = instancesHtml;
+        document.getElementById('instancesSection').style.display = 'block';
+        
+        // Add click handlers to instance cards
+        document.querySelectorAll('.instance-card').forEach(card => {
+          card.addEventListener('click', function() {
+            const instanceId = parseInt(this.dataset.instanceId);
+            
+            // Remove previous selection
+            document.querySelectorAll('.instance-card').forEach(c => c.classList.remove('border-primary'));
+            this.classList.add('border-primary');
+            selectedInstance = instances.find(i => i.id === instanceId);
+            
+            // Update total price and enable booking
+            if (selectedInstance) {
+              const totalPrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
+              document.getElementById('totalPrice').textContent = `Total: ${formatPrice(totalPrice)}`;
+              document.getElementById('totalPrice').style.display = 'block';
+              document.getElementById('bookBtn').disabled = false;
+            }
+          });
+        });
+      } catch (error) {
+        setStatus('status', 'error', error.message || 'Failed to load available transfers');
+      }
+    }
+    
+    // Search instances button
+    document.getElementById('searchInstancesBtn').addEventListener('click', function() {
+      loadInstances();
+    });
+    
+    // Booking form submission
+    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
+      e.preventDefault();
+      
+      if (!isAuthenticated()) {
+        alert('Please log in to make a booking.');
+        return;
+      }
+      
+      if (!selectedInstance) {
+        setStatus('status', 'error', 'Please select a transfer');
+        return;
+      }
+      
+      clearStatus('status');
+      
+      try {
+        const totalPrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
+        
+        await apiCall('/transfers/book', {
+          method: 'POST',
+          body: JSON.stringify({
+            instance_id: selectedInstance.id,
+            passenger_count: passengerCount,
+            passenger_details: []
+          })
+        });
+        
+        showSuccessToast('Booking created successfully!');
+        setTimeout(() => window.location.href = 'bookings.html', 2000);
+      } catch (error) {
+        setStatus('status', 'error', error.message || 'Failed to create booking');
+      }
+    });
+    
+    if (transferId) {
+      loadTransfer();
+    } else {
+      setStatus('status', 'error', 'Transfer ID not provided');
+    }
+  </script>
+</body>
+</html>
+
