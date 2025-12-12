@@ -700,31 +700,25 @@ INSERT INTO dbo.flights(airline, origin, destination, depart_date, price, descri
 -- ============================================================================
 -- ACTIVITIES (Owned by agencies, using city_id via subqueries)
 -- ============================================================================
--- Agency 1 (user_id 4): Activities 1-5
--- Agency 2 (user_id 5): Activities 6-10
--- Agency 3 (user_id 6): Activities 11-15
+-- Agency 1 (user_id 4): Activities 1-2
+-- Agency 2 (user_id 5): Activities 3-5
+-- Agency 3 (user_id 6): Activities 6-8
+-- Agency 1 (user_id 4): Activity 9
 
 INSERT INTO dbo.activities(title, destination_id, city_id, date, price, description, created_by, ad, discount_percent) VALUES
 -- Agency 1 activities
 (N'Boracay Island Hopping Tour', 1, (SELECT id FROM dbo.cities WHERE name = N'Boracay'), '2024-06-15', 2500.00, N'Full-day island hopping tour to nearby islands with snorkeling and lunch.', 4, 1, 20.00),
-(N'Manila City Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Manila'), '2024-06-20', 1800.00, N'Guided tour of historic Intramuros and modern Manila attractions.', 4, 0, 0.00),
 (N'Baguio Strawberry Farm Experience', 4, (SELECT id FROM dbo.cities WHERE name = N'Baguio'), '2024-06-25', 1200.00, N'Visit strawberry farms and enjoy fresh strawberry picking.', 4, 0, 10.00),
-(N'Cebu Heritage Walk', NULL, (SELECT id FROM dbo.cities WHERE name = N'Cebu City'), '2024-07-01', 1500.00, N'Explore Cebu''s historic sites including Magellan''s Cross and Basilica.', 4, 0, 0.00),
-(N'Tagaytay Ridge Hiking', NULL, (SELECT id FROM dbo.cities WHERE name = N'Tagaytay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batangas')), '2024-07-05', 2000.00, N'Scenic hiking trail with views of Taal Volcano and Lake.', 4, 1, 15.00),
 
 -- Agency 2 activities
 (N'El Nido Island Hopping Tour A', 6, (SELECT id FROM dbo.cities WHERE name = N'El Nido'), '2024-07-10', 3200.00, N'Visit Secret Lagoon, Big Lagoon, and stunning beaches.', 5, 1, 25.00),
-(N'Coron Wreck Diving', 7, (SELECT id FROM dbo.cities WHERE name = N'Coron'), '2024-07-15', 4500.00, N'Dive to World War II shipwrecks in crystal-clear waters.', 5, 0, 0.00),
 (N'Siargao Surfing Lesson', 5, (SELECT id FROM dbo.cities WHERE name = N'General Luna'), '2024-07-20', 3500.00, N'Learn to surf at Cloud 9 with professional instructors.', 5, 1, 18.00),
 (N'Bohol Chocolate Hills Tour', 3, (SELECT id FROM dbo.cities WHERE name = N'Tagbilaran'), '2024-07-25', 2500.00, N'Visit the unique geological formation with over 1,200 cone-shaped hills. Includes viewing deck and optional ATV adventure.', 5, 1, 15.00),
-(N'Dumaguete City Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Dumaguete'), '2024-08-01', 1600.00, N'Explore Dumaguete''s heritage sites and local markets.', 5, 0, 8.00),
 
 -- Agency 3 activities
 (N'Vigan Heritage Walk', 8, (SELECT id FROM dbo.cities WHERE name = N'Vigan'), '2024-08-05', 1400.00, N'Stroll through cobblestone streets and visit ancestral houses.', 6, 0, 0.00),
 (N'Sagada Cave Connection', 9, (SELECT id FROM dbo.cities WHERE name = N'Sagada'), '2024-08-10', 2200.00, N'Adventure through connected caves with stunning rock formations.', 6, 1, 22.00),
 (N'Batanes North Tour', 10, (SELECT id FROM dbo.cities WHERE name = N'Basco'), '2024-08-15', 3500.00, N'Explore Basco, Mahatao, and Ivana with rolling hills and lighthouses.', 6, 0, 0.00),
-(N'Davao City Nature Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Davao City'), '2024-08-20', 2800.00, N'Visit Mount Apo, Philippine Eagle Center, and Davao Crocodile Park.', 6, 0, 12.00),
-(N'Iloilo Culinary Tour', NULL, (SELECT id FROM dbo.cities WHERE name = N'Iloilo City'), '2024-08-25', 2100.00, N'Food tour featuring famous Ilonggo dishes and local delicacies.', 6, 0, 0.00),
 (N'Palawan Underground River Tour', 2, (SELECT id FROM dbo.cities WHERE name = N'Puerto Princesa'), '2024-09-01', 3800.00, N'UNESCO World Heritage Site featuring an underground river system. Boat tour through the spectacular cave system.', 4, 1, 20.00);
 
 -- ============================================================================
@@ -798,9 +792,9 @@ INSERT INTO dbo.activity_bookings(user_id, activity_id, participant_count, total
 -- Price: 2500 * (1 - 0.20) = 2000 per participant * 2 = 4000, adjusting to 5000
 (1, 1, 2, 5000.00, N'confirmed'),
 
--- Customer 3: Activity 11 (Vigan Heritage Walk) - 2 participants
+-- Customer 3: Activity 6 (Vigan Heritage Walk) - 2 participants
 -- Price: 1400 per participant * 2 = 2800
-(3, 11, 2, 2800.00, N'confirmed');
+(3, 6, 2, 2800.00, N'confirmed');
 
 -- ============================================================================
 -- ENTITY IMAGES (All images per entity for carousel display)
@@ -869,67 +863,41 @@ INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) 
 (N'activity', 1, N'/uploads/activities/1/boracay-hopping.jpg', 1),
 (N'activity', 1, N'/uploads/activities/1/boracay-hopping-1.jpg', 2),
 (N'activity', 1, N'/uploads/activities/1/boracay-hopping-2.jpg', 3),
--- Activity 2: Manila City Tour (Primary image + additional)
-(N'activity', 2, N'/uploads/activities/2/manila-tour.jpg', 1),
-(N'activity', 2, N'/uploads/activities/2/manila-tour-1.jpg', 2),
--- Activity 3: Baguio Strawberry Farm Experience (Primary image + additional)
-(N'activity', 3, N'/uploads/activities/3/baguio-strawberry.jpg', 1),
-(N'activity', 3, N'/uploads/activities/3/baguio-strawberry-1.jpg', 2),
-(N'activity', 3, N'/uploads/activities/3/baguio-strawberry-2.jpg', 3),
--- Activity 4: Cebu Heritage Walk (Primary image + additional)
-(N'activity', 4, N'/uploads/activities/4/cebu-heritage.jpg', 1),
-(N'activity', 4, N'/uploads/activities/4/cebu-heritage-1.jpg', 2),
--- Activity 5: Tagaytay Ridge Hiking (Primary image + additional)
-(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking.jpg', 1),
-(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking-1.jpg', 2),
-(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking-2.jpg', 3),
-(N'activity', 5, N'/uploads/activities/5/tagaytay-hiking-3.jpg', 4),
--- Activity 6: El Nido Island Hopping Tour A (Primary image + additional)
-(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a.jpg', 1),
-(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a-1.jpg', 2),
-(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a-2.jpg', 3),
-(N'activity', 6, N'/uploads/activities/6/el-nido-tour-a-3.jpg', 4),
--- Activity 7: Coron Wreck Diving (Primary image + additional)
-(N'activity', 7, N'/uploads/activities/7/coron-diving.jpg', 1),
-(N'activity', 7, N'/uploads/activities/7/coron-diving-1.jpg', 2),
-(N'activity', 7, N'/uploads/activities/7/coron-diving-2.jpg', 3),
--- Activity 8: Siargao Surfing Lesson (Primary image + additional)
-(N'activity', 8, N'/uploads/activities/8/siargao-surfing.jpg', 1),
-(N'activity', 8, N'/uploads/activities/8/siargao-surfing-1.jpg', 2),
-(N'activity', 8, N'/uploads/activities/8/siargao-surfing-2.jpg', 3),
--- Activity 9: Bohol Chocolate Hills Tour (Primary image + additional)
-(N'activity', 9, N'/uploads/activities/9/chocolate-hills.jpg', 1),
-(N'activity', 9, N'/uploads/activities/9/chocolate-hills-1.jpg', 2),
-(N'activity', 9, N'/uploads/activities/9/chocolate-hills-2.jpg', 3),
-(N'activity', 9, N'/uploads/activities/9/chocolate-hills-3.jpg', 4),
--- Activity 10: Dumaguete City Tour (Primary image + additional)
-(N'activity', 10, N'/uploads/activities/10/dumaguete-tour.jpg', 1),
-(N'activity', 10, N'/uploads/activities/10/dumaguete-tour-1.jpg', 2),
--- Activity 11: Vigan Heritage Walk (Primary image + additional)
-(N'activity', 11, N'/uploads/activities/11/vigan-heritage.jpg', 1),
-(N'activity', 11, N'/uploads/activities/11/vigan-heritage-1.jpg', 2),
-(N'activity', 11, N'/uploads/activities/11/vigan-heritage-2.jpg', 3),
--- Activity 12: Sagada Cave Connection (Primary image + additional)
-(N'activity', 12, N'/uploads/activities/12/sagada-caves.jpg', 1),
-(N'activity', 12, N'/uploads/activities/12/sagada-caves-1.jpg', 2),
-(N'activity', 12, N'/uploads/activities/12/sagada-caves-2.jpg', 3),
-(N'activity', 12, N'/uploads/activities/12/sagada-caves-3.jpg', 4),
--- Activity 13: Batanes North Tour (Primary image + additional)
-(N'activity', 13, N'/uploads/activities/13/batanes-north.jpg', 1),
-(N'activity', 13, N'/uploads/activities/13/batanes-north-1.jpg', 2),
-(N'activity', 13, N'/uploads/activities/13/batanes-north-2.jpg', 3),
--- Activity 14: Davao City Nature Tour (Primary image + additional)
-(N'activity', 14, N'/uploads/activities/14/davao-nature.jpg', 1),
-(N'activity', 14, N'/uploads/activities/14/davao-nature-1.jpg', 2),
-(N'activity', 14, N'/uploads/activities/14/davao-nature-2.jpg', 3),
--- Activity 15: Iloilo Culinary Tour (Primary image + additional)
-(N'activity', 15, N'/uploads/activities/15/iloilo-culinary.jpg', 1),
-(N'activity', 15, N'/uploads/activities/15/iloilo-culinary-1.jpg', 2),
-(N'activity', 15, N'/uploads/activities/15/iloilo-culinary-2.jpg', 3),
--- Activity 16: Palawan Underground River Tour (Primary image + additional)
-(N'activity', 16, N'/uploads/activities/16/underground-river.jpg', 1),
-(N'activity', 16, N'/uploads/activities/16/underground-river-1.jpg', 2),
-(N'activity', 16, N'/uploads/activities/16/underground-river-2.jpg', 3);
+-- Activity 2: Baguio Strawberry Farm Experience (Primary image + additional)
+(N'activity', 2, N'/uploads/activities/2/baguio-strawberry.jpg', 1),
+(N'activity', 2, N'/uploads/activities/2/baguio-strawberry-1.jpg', 2),
+(N'activity', 2, N'/uploads/activities/2/baguio-strawberry-2.jpg', 3),
+-- Activity 3: El Nido Island Hopping Tour A (Primary image + additional)
+(N'activity', 3, N'/uploads/activities/3/el-nido-tour-a.jpg', 1),
+(N'activity', 3, N'/uploads/activities/3/el-nido-tour-a-1.jpg', 2),
+(N'activity', 3, N'/uploads/activities/3/el-nido-tour-a-2.jpg', 3),
+(N'activity', 3, N'/uploads/activities/3/el-nido-tour-a-3.jpg', 4),
+-- Activity 4: Siargao Surfing Lesson (Primary image + additional)
+(N'activity', 4, N'/uploads/activities/4/siargao-surfing.jpg', 1),
+(N'activity', 4, N'/uploads/activities/4/siargao-surfing-1.jpg', 2),
+(N'activity', 4, N'/uploads/activities/4/siargao-surfing-2.jpg', 3),
+-- Activity 5: Bohol Chocolate Hills Tour (Primary image + additional)
+(N'activity', 5, N'/uploads/activities/5/chocolate-hills.jpg', 1),
+(N'activity', 5, N'/uploads/activities/5/chocolate-hills-1.jpg', 2),
+(N'activity', 5, N'/uploads/activities/5/chocolate-hills-2.jpg', 3),
+(N'activity', 5, N'/uploads/activities/5/chocolate-hills-3.jpg', 4),
+-- Activity 6: Vigan Heritage Walk (Primary image + additional)
+(N'activity', 6, N'/uploads/activities/6/vigan-heritage.jpg', 1),
+(N'activity', 6, N'/uploads/activities/6/vigan-heritage-1.jpg', 2),
+(N'activity', 6, N'/uploads/activities/6/vigan-heritage-2.jpg', 3),
+-- Activity 7: Sagada Cave Connection (Primary image + additional)
+(N'activity', 7, N'/uploads/activities/7/sagada-caves.jpg', 1),
+(N'activity', 7, N'/uploads/activities/7/sagada-caves-1.jpg', 2),
+(N'activity', 7, N'/uploads/activities/7/sagada-caves-2.jpg', 3),
+(N'activity', 7, N'/uploads/activities/7/sagada-caves-3.jpg', 4),
+-- Activity 8: Batanes North Tour (Primary image + additional)
+(N'activity', 8, N'/uploads/activities/8/batanes-north.jpg', 1),
+(N'activity', 8, N'/uploads/activities/8/batanes-north-1.jpg', 2),
+(N'activity', 8, N'/uploads/activities/8/batanes-north-2.jpg', 3),
+-- Activity 9: Palawan Underground River Tour (Primary image + additional)
+(N'activity', 9, N'/uploads/activities/9/underground-river.jpg', 1),
+(N'activity', 9, N'/uploads/activities/9/underground-river-1.jpg', 2),
+(N'activity', 9, N'/uploads/activities/9/underground-river-2.jpg', 3);
 
 -- Destination Images (2-4 images per destination)
 INSERT INTO dbo.entity_images(entity_type, entity_id, image_url, display_order) VALUES

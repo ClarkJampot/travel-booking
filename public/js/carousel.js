@@ -40,13 +40,11 @@ function createImageCarousel(images, id, alt = '') {
   }
 
   // Create carousel for multiple images
-  let carouselIndicators = '';
   let carouselItems = '';
   let carouselThumbnails = '';
   
   normalizedImages.forEach((img, index) => {
     const isActive = index === 0 ? 'active' : '';
-    carouselIndicators += `<button type="button" data-bs-target="#${id}" data-bs-slide-to="${index}" class="${isActive}" aria-label="Slide ${index + 1}" aria-current="${index === 0 ? 'true' : 'false'}"></button>`;
     carouselItems += `
       <div class="carousel-item ${isActive}">
         <div class="card-img-wrapper carousel-image-wrapper" onclick="openImageModal('${id}', ${index})">
@@ -67,11 +65,6 @@ function createImageCarousel(images, id, alt = '') {
       <div class="carousel-inner">
         ${carouselItems}
       </div>
-      ${normalizedImages.length > 1 ? `
-      <div class="carousel-indicators">
-        ${carouselIndicators}
-      </div>
-      ` : ''}
       ${normalizedImages.length > 1 ? `
       <button class="carousel-control-prev" type="button" data-bs-target="#${id}" data-bs-slide="prev">
         <span class="carousel-control-prev-icon" aria-hidden="true"></span>
