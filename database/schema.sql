@@ -11,7 +11,10 @@ IF OBJECT_ID('dbo.flight_schedules', 'U') IS NOT NULL DROP TABLE dbo.flight_sche
 IF OBJECT_ID('dbo.flight_route_pairs', 'U') IS NOT NULL DROP TABLE dbo.flight_route_pairs;
 IF OBJECT_ID('dbo.flight_routes', 'U') IS NOT NULL DROP TABLE dbo.flight_routes;
 IF OBJECT_ID('dbo.airports', 'U') IS NOT NULL DROP TABLE dbo.airports;
-IF OBJECT_ID('dbo.bookings', 'U') IS NOT NULL DROP TABLE dbo.bookings;
+IF OBJECT_ID('dbo.activity_bookings', 'U') IS NOT NULL DROP TABLE dbo.activity_bookings;
+IF OBJECT_ID('dbo.transfer_bookings', 'U') IS NOT NULL DROP TABLE dbo.transfer_bookings;
+IF OBJECT_ID('dbo.flight_bookings', 'U') IS NOT NULL DROP TABLE dbo.flight_bookings;
+IF OBJECT_ID('dbo.hotel_bookings', 'U') IS NOT NULL DROP TABLE dbo.hotel_bookings;
 IF OBJECT_ID('dbo.jwt_tokens', 'U') IS NOT NULL DROP TABLE dbo.jwt_tokens;
 IF OBJECT_ID('dbo.transfers', 'U') IS NOT NULL DROP TABLE dbo.transfers;
 IF OBJECT_ID('dbo.activities', 'U') IS NOT NULL DROP TABLE dbo.activities;
@@ -35,7 +38,7 @@ CREATE TABLE dbo.users (
   email NVARCHAR(255) NOT NULL UNIQUE,
   password_hash NVARCHAR(255) NOT NULL,
   first_name NVARCHAR(50) NOT NULL,
-  last_name NVARCHAR(50) NOT NULL,
+  last_name NVARCHAR(50) NULL,
   role_id INT NOT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
   updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
@@ -269,10 +272,18 @@ CREATE INDEX IX_transfers_destination_city_id ON dbo.transfers(destination_city_
 CREATE INDEX IX_destinations_province_id ON dbo.destinations(province_id);
 CREATE INDEX IX_destinations_city_id ON dbo.destinations(city_id);
 CREATE INDEX IX_transfers_date ON dbo.transfers(date);
-CREATE INDEX IX_bookings_user_id ON dbo.bookings(user_id);
-CREATE INDEX IX_bookings_item_type ON dbo.bookings(item_type);
-CREATE INDEX IX_bookings_flight_instance_id ON dbo.bookings(flight_instance_id);
-CREATE INDEX IX_bookings_transfer_instance_id ON dbo.bookings(transfer_instance_id);
+CREATE INDEX IX_hotel_bookings_user_id ON dbo.hotel_bookings(user_id);
+CREATE INDEX IX_hotel_bookings_hotel_id ON dbo.hotel_bookings(hotel_id);
+CREATE INDEX IX_hotel_bookings_status ON dbo.hotel_bookings(status);
+CREATE INDEX IX_flight_bookings_user_id ON dbo.flight_bookings(user_id);
+CREATE INDEX IX_flight_bookings_flight_id ON dbo.flight_bookings(flight_id);
+CREATE INDEX IX_flight_bookings_status ON dbo.flight_bookings(status);
+CREATE INDEX IX_transfer_bookings_user_id ON dbo.transfer_bookings(user_id);
+CREATE INDEX IX_transfer_bookings_transfer_id ON dbo.transfer_bookings(transfer_id);
+CREATE INDEX IX_transfer_bookings_status ON dbo.transfer_bookings(status);
+CREATE INDEX IX_activity_bookings_user_id ON dbo.activity_bookings(user_id);
+CREATE INDEX IX_activity_bookings_activity_id ON dbo.activity_bookings(activity_id);
+CREATE INDEX IX_activity_bookings_status ON dbo.activity_bookings(status);
 CREATE INDEX IX_entity_images_entity ON dbo.entity_images(entity_type, entity_id);
 CREATE INDEX IX_entity_images_display_order ON dbo.entity_images(entity_type, entity_id, display_order);
 
@@ -447,7 +458,3 @@ CREATE INDEX IX_transfer_schedules_active ON dbo.transfer_schedules(is_active);
 CREATE INDEX IX_transfer_instances_schedule_id ON dbo.transfer_instances(schedule_id);
 CREATE INDEX IX_transfer_instances_departure_datetime ON dbo.transfer_instances(departure_datetime);
 CREATE INDEX IX_transfer_instances_status ON dbo.transfer_instances(status);
-
--- Add foreign key constraints to bookings table (after flight_instances and transfer_instances are created)
-ALTER TABLE dbo.bookings ADD CONSTRAINT FK_bookings_flight_instances FOREIGN KEY (flight_instance_id) REFERENCES dbo.flight_instances(id);
-ALTER TABLE dbo.bookings ADD CONSTRAINT FK_bookings_transfer_instances FOREIGN KEY (transfer_instance_id) REFERENCES dbo.transfer_instances(id);
