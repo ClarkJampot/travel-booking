@@ -24,12 +24,10 @@
           <select class="content-type-select" id="heroContentTypeSelect">
             <option value="hotels">Hotels</option>
             <option value="flights">Flights</option>
-            <option value="activities">Activities</option>
-            <option value="transfers">Transfers</option>
             <option value="destinations">Destinations</option>
           </select>
           <div class="search-input-wrapper">
-            <input type="text" class="search-input" id="heroSearchInput" placeholder="Search for hotels, flights, activities, transfers, or destinations...">
+            <input type="text" class="search-input" id="heroSearchInput" placeholder="Search for hotels, flights, or destinations...">
             <div class="search-dropdown" id="heroSearchDropdown"></div>
           </div>
           <button type="button" class="search-btn" id="heroSearchBtn">Search</button>
@@ -46,12 +44,10 @@
           <select class="content-type-select" id="stickyContentTypeSelect">
             <option value="hotels">Hotels</option>
             <option value="flights">Flights</option>
-            <option value="activities">Activities</option>
-            <option value="transfers">Transfers</option>
             <option value="destinations">Destinations</option>
           </select>
           <div class="search-input-wrapper">
-            <input type="text" class="search-input" id="stickySearchInput" placeholder="Search for hotels, flights, activities, transfers, or destinations...">
+            <input type="text" class="search-input" id="stickySearchInput" placeholder="Search for hotels, flights, or destinations...">
             <div class="search-dropdown" id="stickySearchDropdown"></div>
           </div>
           <button type="button" class="search-btn" id="stickySearchBtn">Search</button>
@@ -111,7 +107,7 @@
         const container = document.getElementById('featuredDestinations');
         
         if (data.results.length === 0) {
-          container.innerHTML = renderEmptyState({ message: 'Currently no featured destinations available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
+          container.innerHTML = renderEmptyState({ message: 'Currently no featured destinations available.' });
           return;
         }
         
@@ -136,7 +132,7 @@
         const container = document.getElementById('topHotels');
         
         if (data.results.length === 0) {
-          container.innerHTML = renderEmptyState({ message: 'Currently no hotels available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
+          container.innerHTML = renderEmptyState({ message: 'Currently no hotels available.' });
           return;
         }
         

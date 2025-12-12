@@ -367,20 +367,6 @@ function renderDropdownItem(item, type) {
       subtitle = escapeHtml(`${flightOrigin} → ${flightDestination}`);
       price = item.price ? formatPrice(item.price) : '';
       break;
-    case 'activities':
-      detailUrl = `activity-details.html?id=${item.id}`;
-      title = escapeHtml(item.title || '');
-      subtitle = escapeHtml(item.city_name || '');
-      price = item.price ? formatPrice(item.price) : '';
-      break;
-    case 'transfers':
-      detailUrl = `transfer-details.html?id=${item.id}`;
-      title = escapeHtml(item.service || '');
-      const transferOrigin = item.origin_city_name || item.origin || '';
-      const transferDestination = item.destination_city_name || item.destination || '';
-      subtitle = escapeHtml(`${transferOrigin} → ${transferDestination}`);
-      price = item.price ? formatPrice(item.price) : '';
-      break;
     case 'destinations':
       detailUrl = `destination-details.html?id=${item.id}`;
       title = escapeHtml(item.name || '');
@@ -535,20 +521,6 @@ function renderResultCard(item, type) {
       subtitle = `${flightOriginFull} → ${flightDestinationFull}`;
       price = item.price ? formatPrice(item.price) : '';
       break;
-    case 'activities':
-      detailUrl = `activity-details.html?id=${item.id}`;
-      title = item.title;
-      subtitle = item.city_name || '';
-      price = item.price ? formatPrice(item.price) : '';
-      break;
-    case 'transfers':
-      detailUrl = `transfer-details.html?id=${item.id}`;
-      title = item.service;
-      const transferOriginFull = item.origin_city_name || item.origin || '';
-      const transferDestinationFull = item.destination_city_name || item.destination || '';
-      subtitle = `${transferOriginFull} → ${transferDestinationFull}`;
-      price = item.price ? formatPrice(item.price) : '';
-      break;
     case 'destinations':
       detailUrl = `destination-details.html?id=${item.id}`;
       title = item.name;
@@ -588,8 +560,6 @@ function setContentTypeFromPage() {
   const typeMap = {
     'hotels.html': 'hotels',
     'flights.html': 'flights',
-    'activities.html': 'activities',
-    'transfers.html': 'transfers',
     'destinations.html': 'destinations'
   };
   

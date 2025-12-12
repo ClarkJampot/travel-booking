@@ -171,36 +171,6 @@ function renderHotelCard(hotel, index = 0, existingCount = 0, columnsClass = 'co
   `;
 }
 
-function renderActivityCard(a, index = 0, existingCount = 0) {
-  const priceDisplay = a.discount_percent > 0
-    ? `<div class="price-container">
-        <span class="original-price">${formatPrice(a.price)}</span>
-        <span class="discounted-price">${formatPrice(a.discounted_price || a.price * (1 - a.discount_percent / 100))}</span>
-      </div>`
-    : `<p class="price">${formatPrice(a.price)}</p>`;
-  const imageUrl = normalizeImageUrl(a.image_url || 'uploads/placeholder.svg');
-  return `
-    <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-      <div class="card h-100">
-        <div class="card-img-wrapper">
-          <img src="${imageUrl}" class="card-img-top" alt="${a.title}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
-          ${a.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(a.discount_percent)}% OFF</div>` : ''}
-          ${isPromoted(a.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
-          <div class="card-overlay">
-            <a href="activity-details.html?id=${a.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
-          </div>
-        </div>
-        <div class="card-body">
-          <h5 class="card-title">${a.title}</h5>
-          <p class="text-muted">${a.city_name || ''}${a.province_name ? ', ' + a.province_name : ''}</p>
-          <p class="text-muted">${formatDate(a.date)}</p>
-          ${priceDisplay}
-        </div>
-      </div>
-    </div>
-  `;
-}
-
 function renderDestinationCard(dest, index = 0, columnsClass = 'col-md-4') {
   const imageUrl = normalizeImageUrl(dest.image_url || 'uploads/placeholder.svg');
   return `
@@ -221,36 +191,6 @@ function renderDestinationCard(dest, index = 0, columnsClass = 'col-md-4') {
   `;
 }
 
-function renderTransferCard(t, index = 0, existingCount = 0) {
-  const priceDisplay = t.discount_percent > 0
-    ? `<div class="price-container">
-        <span class="original-price">${formatPrice(t.price)}</span>
-        <span class="discounted-price">${formatPrice(t.discounted_price || t.price * (1 - t.discount_percent / 100))}</span>
-      </div>`
-    : `<p class="price">${formatPrice(t.price)}</p>`;
-
-  const imageUrl = normalizeImageUrl(t.image_url || 'uploads/placeholder.svg');
-  return `
-    <div class="col-md-4 reveal stagger-${((existingCount + index) % 5) + 1}" style="opacity: 1; transform: translateY(0);">
-      <div class="card h-100">
-        <div class="card-img-wrapper">
-          <img src="${imageUrl}" class="card-img-top" alt="${t.service}" loading="lazy" onerror="this.onerror=null; this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
-          ${t.discount_percent > 0 ? `<div class="discount-badge">${formatPercent(t.discount_percent)}% OFF</div>` : ''}
-          ${isPromoted(t.ad) ? `<div class="promoted-badge" style="position: absolute; top: 10px; left: 10px; z-index: 5;">Promoted</div>` : ''}
-          <div class="card-overlay">
-            <a href="transfer-details.html?id=${t.id}" class="btn btn-primary btn-lg btn-cta">View Details</a>
-          </div>
-        </div>
-        <div class="card-body">
-          <h5 class="card-title">${t.service}</h5>
-          <p>${t.origin_city_name || t.origin} → ${t.destination_city_name || t.destination}</p>
-          <p class="text-muted">${formatDate(t.date)}</p>
-          ${priceDisplay}
-        </div>
-      </div>
-    </div>
-  `;
-}
 
 // Skeleton helpers
 function renderSkeletonCard(columnsClass = 'col-md-4', withImage = true, lines = 3) {

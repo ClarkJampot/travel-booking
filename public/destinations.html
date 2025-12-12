@@ -159,7 +159,7 @@
         const data = await apiCall(url);
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
-            container.innerHTML = renderEmptyState({ message: 'Currently no destinations available.', ctaText: 'Register as owner', ctaHref: 'register.html' });
+            container.innerHTML = renderEmptyState({ message: 'Currently no destinations available.' });
           }
           hasMore = false;
           loadingIndicator.style.display = 'none';

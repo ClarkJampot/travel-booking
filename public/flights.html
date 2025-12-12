@@ -333,7 +333,7 @@
             const hasFilters = urlParams.origin_airport_id || urlParams.destination_airport_id || urlParams.min_price || urlParams.max_price;
             container.innerHTML = hasFilters
               ? renderEmptyState({ message: 'No flights found matching your criteria. Try adjusting your search filters.' })
-              : renderEmptyState({ message: 'Currently no flights available.', ctaText: 'Register as agency', ctaHref: 'register.html' });
+              : renderEmptyState({ message: 'Currently no flights available.' });
           }
           hasMore = false;
           loadingIndicator.style.display = 'none';

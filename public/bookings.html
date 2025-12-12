@@ -29,7 +29,8 @@
 
     // Check authentication
     if (!isAuthenticated()) {
-      window.location.href = 'login.html';
+      alert('Please log in to view your bookings.');
+      window.location.href = 'index.html';
     }
 
     async function loadBookings() {
