@@ -116,19 +116,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $query);
       $searchPattern = '%' . $searchTerm . '%';
       
-      $stmt = $pdo->prepare('SELECT f.id, f.airline, f.origin, f.destination, 
-        co.name as origin_city_name, po.name as origin_province_name,
-        cd.name as destination_city_name, pd.name as destination_province_name,
-        f.depart_date, f.price, f.description, "flight" as type,
-        (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = \'flight\' AND entity_id = f.id ORDER BY display_order ASC, id ASC) as image_url
-        FROM flights f
-        LEFT JOIN cities co ON f.origin_city_id = co.id
-        LEFT JOIN provinces po ON co.province_id = po.id
-        LEFT JOIN cities cd ON f.destination_city_id = cd.id
-        LEFT JOIN provinces pd ON cd.province_id = pd.id
-        WHERE (f.airline COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR f.origin COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR f.destination COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR co.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR cd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR po.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR pd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR f.description COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?)
-        ORDER BY f.depart_date ASC, f.price ASC');
-      $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern]);
+      $stmt = $pdo->prepare('SELECT fr.id, fr.airline, oa.code as origin, da.code as destination,
+        oc.name as origin_city_name, op.name as origin_province_name,
+        dc.name as destination_city_name, dp.name as destination_province_name,
+        fr.base_price_economy as price, fr.description, "flight" as type,
+        (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = \'flight_route\' AND entity_id = fr.id ORDER BY display_order ASC, id ASC) as image_url
+        FROM flight_routes fr
+        INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+        INNER JOIN airports da ON fr.destination_airport_id = da.id
+        LEFT JOIN cities oc ON oa.city_id = oc.id
+        LEFT JOIN provinces op ON oc.province_id = op.id
+        LEFT JOIN cities dc ON da.city_id = dc.id
+        LEFT JOIN provinces pd ON dc.province_id = pd.id
+        WHERE (fr.airline COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR oa.code COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR da.code COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR oa.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR da.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR oc.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR dc.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR op.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR pd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR fr.description COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?)
+          AND fr.deleted_at IS NULL
+        ORDER BY fr.base_price_economy ASC');
+      $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern]);
       $results['flights'] = $stmt->fetchAll();
     } catch (PDOException $e) {
       $results['flights'] = [];

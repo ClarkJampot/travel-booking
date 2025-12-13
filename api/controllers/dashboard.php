@@ -41,37 +41,64 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/?$#', $uri)
   $stmt->execute([$userId]);
   $stats['hotels_count'] = (int)$stmt->fetch()['count'];
   
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM flights WHERE created_by = ?');
+  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM flight_routes WHERE created_by = ? AND deleted_at IS NULL');
   $stmt->execute([$userId]);
   $stats['flights_count'] = (int)$stmt->fetch()['count'];
   
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM activities WHERE created_by = ?');
+  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM activities WHERE created_by = ? AND deleted_at IS NULL');
   $stmt->execute([$userId]);
   $stats['activities_count'] = (int)$stmt->fetch()['count'];
   
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM transfers WHERE created_by = ?');
+  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM transfer_routes WHERE created_by = ? AND deleted_at IS NULL');
   $stmt->execute([$userId]);
   $stats['transfers_count'] = (int)$stmt->fetch()['count'];
   
   $stats['total_items'] = $stats['hotels_count'] + $stats['flights_count'] + $stats['activities_count'] + $stats['transfers_count'];
   
   // Get bookings for user's items
-  $bookingTables = [
-    'hotel' => ['table' => 'hotel_bookings', 'item_column' => 'hotel_id', 'item_table' => 'hotels'],
-    'flight' => ['table' => 'flight_bookings', 'item_column' => 'flight_id', 'item_table' => 'flights'],
-    'activity' => ['table' => 'activity_bookings', 'item_column' => 'activity_id', 'item_table' => 'activities'],
-    'transfer' => ['table' => 'transfer_bookings', 'item_column' => 'transfer_id', 'item_table' => 'transfers']
-  ];
-  
-  foreach ($bookingTables as $type => $config) {
+  foreach (['hotel', 'flight', 'activity', 'transfer'] as $type) {
     try {
-      $stmt = $pdo->prepare("
-        SELECT b.*, '$type' as type, b.{$config['item_column']} as item_id
-        FROM {$config['table']} b
-        INNER JOIN {$config['item_table']} i ON b.{$config['item_column']} = i.id
-        WHERE i.created_by = ?
-      ");
-      $stmt->execute([$userId]);
+      if ($type === 'hotel') {
+        $stmt = $pdo->prepare("
+          SELECT b.*, 'hotel' as type, b.hotel_id as item_id
+          FROM hotel_bookings b
+          INNER JOIN hotels i ON b.hotel_id = i.id
+          WHERE i.created_by = ? AND i.deleted_at IS NULL
+        ");
+        $stmt->execute([$userId]);
+      } else if ($type === 'flight') {
+        $stmt = $pdo->prepare("
+          SELECT DISTINCT b.*, 'flight' as type, b.instance_id as item_id
+          FROM flight_bookings b
+          INNER JOIN flight_instances fi ON b.instance_id = fi.id
+          INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+          LEFT JOIN flight_routes fr ON fs.route_id = fr.id
+          LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
+          LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
+          LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
+          WHERE (fr.created_by = ? OR outbound.created_by = ? OR return_route.created_by = ?)
+            AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
+        ");
+        $stmt->execute([$userId, $userId, $userId]);
+      } else if ($type === 'transfer') {
+        $stmt = $pdo->prepare("
+          SELECT b.*, 'transfer' as type, b.instance_id as item_id
+          FROM transfer_bookings b
+          INNER JOIN transfer_instances ti ON b.instance_id = ti.id
+          INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+          INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+          WHERE tr.created_by = ? AND tr.deleted_at IS NULL
+        ");
+        $stmt->execute([$userId]);
+      } else {
+        $stmt = $pdo->prepare("
+          SELECT b.*, 'activity' as type, b.activity_id as item_id
+          FROM activity_bookings b
+          INNER JOIN activities i ON b.activity_id = i.id
+          WHERE i.created_by = ? AND i.deleted_at IS NULL
+        ");
+        $stmt->execute([$userId]);
+      }
       $bookings = $stmt->fetchAll();
       
       foreach ($bookings as $booking) {
@@ -108,43 +135,91 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 20)));
   $offset = ($page - 1) * $limit;
   
-  $bookingTables = [
-    'hotel' => ['table' => 'hotel_bookings', 'item_column' => 'hotel_id', 'item_table' => 'hotels'],
-    'flight' => ['table' => 'flight_bookings', 'item_column' => 'flight_id', 'item_table' => 'flights'],
-    'activity' => ['table' => 'activity_bookings', 'item_column' => 'activity_id', 'item_table' => 'activities'],
-    'transfer' => ['table' => 'transfer_bookings', 'item_column' => 'transfer_id', 'item_table' => 'transfers']
-  ];
-  
-  $types = $itemType ? [$itemType] : array_keys($bookingTables);
+  $types = $itemType ? [$itemType] : ['hotel', 'flight', 'activity', 'transfer'];
   $allBookings = [];
   
   foreach ($types as $type) {
-    if (!isset($bookingTables[$type])) continue;
-    
     try {
-      $config = $bookingTables[$type];
-      $nameField = $type === 'activity' ? 'title' : ($type === 'flight' ? 'airline' : ($type === 'transfer' ? 'service' : 'name'));
-      
-      $where = ["i.created_by = ?"];
-      $params = [$userId];
-      
-      if ($status) {
-        $where[] = 'b.status = ?';
-        $params[] = $status;
-      }
-      
-      $whereSql = 'WHERE ' . implode(' AND ', $where);
+      $where = [];
+      $params = [];
       $offsetInt = (int)$offset;
       $limitInt = (int)$limit;
       
-      $sql = "
-        SELECT b.*, '$type' as type, b.{$config['item_column']} as item_id, i.$nameField as item_name
-        FROM {$config['table']} b
-        INNER JOIN {$config['item_table']} i ON b.{$config['item_column']} = i.id
-        $whereSql
-        ORDER BY b.booked_at DESC, b.id DESC
-        OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
-      ";
+      if ($type === 'hotel') {
+        $where[] = "i.created_by = ?";
+        $params[] = $userId;
+        if ($status) {
+          $where[] = 'b.status = ?';
+          $params[] = $status;
+        }
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+        $sql = "
+          SELECT b.*, 'hotel' as type, b.hotel_id as item_id, i.name as item_name
+          FROM hotel_bookings b
+          INNER JOIN hotels i ON b.hotel_id = i.id
+          $whereSql AND i.deleted_at IS NULL
+          ORDER BY b.booked_at DESC, b.id DESC
+          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
+        ";
+      } else if ($type === 'flight') {
+        $where[] = "(fr.created_by = ? OR outbound.created_by = ? OR return_route.created_by = ?)";
+        $params[] = $userId;
+        $params[] = $userId;
+        $params[] = $userId;
+        if ($status) {
+          $where[] = 'b.status = ?';
+          $params[] = $status;
+        }
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+        $sql = "
+          SELECT DISTINCT b.*, 'flight' as type, b.instance_id as item_id, fr.airline as item_name
+          FROM flight_bookings b
+          INNER JOIN flight_instances fi ON b.instance_id = fi.id
+          INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+          LEFT JOIN flight_routes fr ON fs.route_id = fr.id
+          LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
+          LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
+          LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
+          $whereSql AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
+          ORDER BY b.booked_at DESC, b.id DESC
+          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
+        ";
+      } else if ($type === 'transfer') {
+        $where[] = "tr.created_by = ?";
+        $params[] = $userId;
+        if ($status) {
+          $where[] = 'b.status = ?';
+          $params[] = $status;
+        }
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+        $sql = "
+          SELECT b.*, 'transfer' as type, b.instance_id as item_id, tt.name as item_name
+          FROM transfer_bookings b
+          INNER JOIN transfer_instances ti ON b.instance_id = ti.id
+          INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+          INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+          INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+          $whereSql AND tr.deleted_at IS NULL
+          ORDER BY b.booked_at DESC, b.id DESC
+          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
+        ";
+      } else {
+        $where[] = "i.created_by = ?";
+        $params[] = $userId;
+        if ($status) {
+          $where[] = 'b.status = ?';
+          $params[] = $status;
+        }
+        $whereSql = 'WHERE ' . implode(' AND ', $where);
+        $sql = "
+          SELECT b.*, 'activity' as type, b.activity_id as item_id, i.title as item_name
+          FROM activity_bookings b
+          INNER JOIN activities i ON b.activity_id = i.id
+          $whereSql AND i.deleted_at IS NULL
+          ORDER BY b.booked_at DESC, b.id DESC
+          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
+        ";
+      }
       
       $stmt = $pdo->prepare($sql);
       $stmt->execute($params);
@@ -196,11 +271,23 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/items/?$#',
   $types = $itemType ? [$itemType] : ['hotel', 'flight', 'activity', 'transfer'];
   
   foreach ($types as $type) {
-    $table = $type . 's';
-    $stmt = $pdo->prepare("SELECT * FROM $table WHERE created_by = ? ORDER BY id DESC");
-    $stmt->execute([$userId]);
-    $items = $stmt->fetchAll();
-    $result[$table] = $items;
+    if ($type === 'hotel') {
+      $stmt = $pdo->prepare("SELECT * FROM hotels WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt->execute([$userId]);
+      $result['hotels'] = $stmt->fetchAll();
+    } else if ($type === 'flight') {
+      $stmt = $pdo->prepare("SELECT * FROM flight_routes WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt->execute([$userId]);
+      $result['flights'] = $stmt->fetchAll();
+    } else if ($type === 'activity') {
+      $stmt = $pdo->prepare("SELECT * FROM activities WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt->execute([$userId]);
+      $result['activities'] = $stmt->fetchAll();
+    } else if ($type === 'transfer') {
+      $stmt = $pdo->prepare("SELECT * FROM transfer_routes WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt->execute([$userId]);
+      $result['transfers'] = $stmt->fetchAll();
+    }
   }
   
   json_ok($result);

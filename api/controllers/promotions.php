@@ -46,10 +46,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/promotions/?$#', $uri
   
   try {
     // Get promoted flights
-    $stmt = $pdo->prepare("SELECT TOP $limitInt f.id, f.airline, f.origin, f.destination, f.discount_percent, f.created_by,
-      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight' AND entity_id = f.id ORDER BY display_order ASC, id ASC) as image_url
-      FROM flights f
-      WHERE f.ad = 1
+    $stmt = $pdo->prepare("SELECT TOP $limitInt fr.id, fr.airline, oa.code as origin, da.code as destination, fr.discount_percent, fr.created_by,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight_route' AND entity_id = fr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM flight_routes fr
+      INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+      INNER JOIN airports da ON fr.destination_airport_id = da.id
+      WHERE fr.ad = 1 AND fr.deleted_at IS NULL
       ORDER BY NEWID()");
     $stmt->execute([]);
     $flights = $stmt->fetchAll();
@@ -95,10 +97,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/promotions/?$#', $uri
   
   try {
     // Get promoted transfers
-    $stmt = $pdo->prepare("SELECT TOP $limitInt t.id, t.service, t.discount_percent, t.created_by,
-      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer' AND entity_id = t.id ORDER BY display_order ASC, id ASC) as image_url
-      FROM transfers t
-      WHERE t.ad = 1
+    $stmt = $pdo->prepare("SELECT TOP $limitInt tr.id, tt.name as service, tr.discount_percent, tr.created_by,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM transfer_routes tr
+      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      WHERE tr.ad = 1 AND tr.deleted_at IS NULL
       ORDER BY NEWID()");
     $stmt->execute([]);
     $transfers = $stmt->fetchAll();

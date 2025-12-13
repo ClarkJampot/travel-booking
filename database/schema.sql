@@ -16,9 +16,7 @@ IF OBJECT_ID('dbo.transfer_bookings', 'U') IS NOT NULL DROP TABLE dbo.transfer_b
 IF OBJECT_ID('dbo.flight_bookings', 'U') IS NOT NULL DROP TABLE dbo.flight_bookings;
 IF OBJECT_ID('dbo.hotel_bookings', 'U') IS NOT NULL DROP TABLE dbo.hotel_bookings;
 IF OBJECT_ID('dbo.jwt_tokens', 'U') IS NOT NULL DROP TABLE dbo.jwt_tokens;
-IF OBJECT_ID('dbo.transfers', 'U') IS NOT NULL DROP TABLE dbo.transfers;
 IF OBJECT_ID('dbo.activities', 'U') IS NOT NULL DROP TABLE dbo.activities;
-IF OBJECT_ID('dbo.flights', 'U') IS NOT NULL DROP TABLE dbo.flights;
 IF OBJECT_ID('dbo.hotels', 'U') IS NOT NULL DROP TABLE dbo.hotels;
 IF OBJECT_ID('dbo.destinations', 'U') IS NOT NULL DROP TABLE dbo.destinations;
 IF OBJECT_ID('dbo.cities', 'U') IS NOT NULL DROP TABLE dbo.cities;
@@ -110,30 +108,6 @@ CREATE TABLE dbo.hotels (
   CONSTRAINT FK_hotels_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
 );
 
--- Flights table
-CREATE TABLE dbo.flights (
-  id INT IDENTITY(1,1) PRIMARY KEY,
-  airline NVARCHAR(100) NOT NULL,
-  origin NVARCHAR(100) NOT NULL,
-  destination NVARCHAR(100) NOT NULL,
-  origin_city_id INT NULL,
-  destination_city_id INT NULL,
-  depart_date DATE NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
-  description NVARCHAR(MAX) NULL,
-  booking_count INT DEFAULT 0,
-  ad BIT DEFAULT 0,
-  discount_percent DECIMAL(5,2) DEFAULT 0,
-  trip_type NVARCHAR(20) NULL CHECK (trip_type IN ('one-way', 'round-trip')),
-  created_by INT NULL,
-  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
-  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
-  deleted_at DATETIME2 NULL,
-  CONSTRAINT FK_flights_users FOREIGN KEY (created_by) REFERENCES dbo.users(id),
-  CONSTRAINT FK_flights_origin_cities FOREIGN KEY (origin_city_id) REFERENCES dbo.cities(id),
-  CONSTRAINT FK_flights_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id)
-);
-
 -- Activities table (linked to destinations and cities)
 CREATE TABLE dbo.activities (
   id INT IDENTITY(1,1) PRIMARY KEY,
@@ -153,29 +127,6 @@ CREATE TABLE dbo.activities (
   CONSTRAINT FK_activities_destinations FOREIGN KEY (destination_id) REFERENCES dbo.destinations(id),
   CONSTRAINT FK_activities_cities FOREIGN KEY (city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_activities_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
-);
-
--- Transfers table
-CREATE TABLE dbo.transfers (
-  id INT IDENTITY(1,1) PRIMARY KEY,
-  service NVARCHAR(255) NOT NULL,
-  origin NVARCHAR(100) NOT NULL,
-  destination NVARCHAR(100) NOT NULL,
-  origin_city_id INT NULL,
-  destination_city_id INT NULL,
-  date DATE NOT NULL,
-  price DECIMAL(10,2) NOT NULL,
-  description NVARCHAR(MAX) NULL,
-  booking_count INT DEFAULT 0,
-  ad BIT DEFAULT 0,
-  discount_percent DECIMAL(5,2) DEFAULT 0,
-  created_by INT NULL,
-  created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
-  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
-  deleted_at DATETIME2 NULL,
-  CONSTRAINT FK_transfers_users FOREIGN KEY (created_by) REFERENCES dbo.users(id),
-  CONSTRAINT FK_transfers_origin_cities FOREIGN KEY (origin_city_id) REFERENCES dbo.cities(id),
-  CONSTRAINT FK_transfers_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id)
 );
 
 -- Bookings
@@ -199,7 +150,7 @@ CREATE TABLE dbo.hotel_bookings (
 CREATE TABLE dbo.flight_bookings (
   id INT IDENTITY(1,1) PRIMARY KEY,
   user_id INT NOT NULL,
-  flight_id INT NOT NULL,
+  instance_id INT NOT NULL,
   class NVARCHAR(20) NULL,
   passenger_count INT NOT NULL,
   total_price DECIMAL(10,2) NOT NULL,
@@ -208,13 +159,13 @@ CREATE TABLE dbo.flight_bookings (
   cancelled_at DATETIME2 NULL,
   status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
   CONSTRAINT FK_flight_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
-  CONSTRAINT FK_flight_bookings_flights FOREIGN KEY (flight_id) REFERENCES dbo.flights(id)
+  CONSTRAINT FK_flight_bookings_instances FOREIGN KEY (instance_id) REFERENCES dbo.flight_instances(id)
 );
 
 CREATE TABLE dbo.transfer_bookings (
   id INT IDENTITY(1,1) PRIMARY KEY,
   user_id INT NOT NULL,
-  transfer_id INT NOT NULL,
+  instance_id INT NOT NULL,
   passenger_count INT NOT NULL DEFAULT 1,
   total_price DECIMAL(10,2) NOT NULL,
   booked_at DATETIME2 DEFAULT SYSUTCDATETIME(),
@@ -222,7 +173,7 @@ CREATE TABLE dbo.transfer_bookings (
   cancelled_at DATETIME2 NULL,
   status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
   CONSTRAINT FK_transfer_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
-  CONSTRAINT FK_transfer_bookings_transfers FOREIGN KEY (transfer_id) REFERENCES dbo.transfers(id)
+  CONSTRAINT FK_transfer_bookings_instances FOREIGN KEY (instance_id) REFERENCES dbo.transfer_instances(id)
 );
 
 
@@ -244,7 +195,7 @@ CREATE TABLE dbo.activity_bookings (
 -- Entity Images table (for multiple images per entity)
 CREATE TABLE dbo.entity_images (
   id INT IDENTITY(1,1) PRIMARY KEY,
-  entity_type NVARCHAR(20) NOT NULL CHECK (entity_type IN ('hotel','flight','activity','transfer','destination')),
+  entity_type NVARCHAR(20) NOT NULL CHECK (entity_type IN ('hotel','flight_route','activity','transfer_route','destination')),
   entity_id INT NOT NULL,
   image_url NVARCHAR(500) NOT NULL,
   display_order INT DEFAULT 0,
@@ -267,24 +218,16 @@ CREATE INDEX IX_hotels_price ON dbo.hotels(price_per_night);
 CREATE INDEX IX_activities_destination_id ON dbo.activities(destination_id);
 CREATE INDEX IX_activities_city_id ON dbo.activities(city_id);
 CREATE INDEX IX_activities_date ON dbo.activities(date);
-CREATE INDEX IX_flights_depart ON dbo.flights(depart_date);
-CREATE INDEX IX_flights_origin ON dbo.flights(origin);
-CREATE INDEX IX_flights_destination ON dbo.flights(destination);
-CREATE INDEX IX_flights_origin_city_id ON dbo.flights(origin_city_id);
-CREATE INDEX IX_flights_destination_city_id ON dbo.flights(destination_city_id);
-CREATE INDEX IX_transfers_origin_city_id ON dbo.transfers(origin_city_id);
-CREATE INDEX IX_transfers_destination_city_id ON dbo.transfers(destination_city_id);
 CREATE INDEX IX_destinations_province_id ON dbo.destinations(province_id);
 CREATE INDEX IX_destinations_city_id ON dbo.destinations(city_id);
-CREATE INDEX IX_transfers_date ON dbo.transfers(date);
 CREATE INDEX IX_hotel_bookings_user_id ON dbo.hotel_bookings(user_id);
 CREATE INDEX IX_hotel_bookings_hotel_id ON dbo.hotel_bookings(hotel_id);
 CREATE INDEX IX_hotel_bookings_status ON dbo.hotel_bookings(status);
 CREATE INDEX IX_flight_bookings_user_id ON dbo.flight_bookings(user_id);
-CREATE INDEX IX_flight_bookings_flight_id ON dbo.flight_bookings(flight_id);
+CREATE INDEX IX_flight_bookings_instance_id ON dbo.flight_bookings(instance_id);
 CREATE INDEX IX_flight_bookings_status ON dbo.flight_bookings(status);
 CREATE INDEX IX_transfer_bookings_user_id ON dbo.transfer_bookings(user_id);
-CREATE INDEX IX_transfer_bookings_transfer_id ON dbo.transfer_bookings(transfer_id);
+CREATE INDEX IX_transfer_bookings_instance_id ON dbo.transfer_bookings(instance_id);
 CREATE INDEX IX_transfer_bookings_status ON dbo.transfer_bookings(status);
 CREATE INDEX IX_activity_bookings_user_id ON dbo.activity_bookings(user_id);
 CREATE INDEX IX_activity_bookings_activity_id ON dbo.activity_bookings(activity_id);

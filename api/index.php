@@ -105,9 +105,9 @@ elseif (preg_match('#^/transfers/availability/?$#', $uri)) {
   exit;
 }
 
-// Route: /api/transfers
+// Route: /api/transfers (routes listing and detail)
 elseif (preg_match('#^/transfers(?:/(\d+))?/?$#', $uri, $matches)) {
-  require __DIR__ . '/controllers/transfers.php';
+  require __DIR__ . '/controllers/transfer-instances.php';
   exit;
 }
 

@@ -33,9 +33,9 @@ function getBookingTable(string $type): string {
 function getItemIdColumn(string $type): string {
   $columns = [
     'hotel' => 'hotel_id',
-    'flight' => 'flight_id',
+    'flight' => 'instance_id',
     'activity' => 'activity_id',
-    'transfer' => 'transfer_id'
+    'transfer' => 'instance_id'
   ];
   return $columns[$type] ?? '';
 }
@@ -55,15 +55,23 @@ function getItemDetails(PDO $pdo, string $type, int $itemId): ?array {
       return $stmt->fetch() ?: null;
       
     case 'flight':
-      $stmt = $pdo->prepare('SELECT f.id, f.airline, f.origin, f.destination, 
-        co.name as origin_city_name, po.name as origin_province_name,
-        cd.name as destination_city_name, pd.name as destination_province_name
-        FROM flights f
-        LEFT JOIN cities co ON f.origin_city_id = co.id
-        LEFT JOIN provinces po ON co.province_id = po.id
-        LEFT JOIN cities cd ON f.destination_city_id = cd.id
-        LEFT JOIN provinces pd ON cd.province_id = pd.id
-        WHERE f.id = ?');
+      $stmt = $pdo->prepare('
+        SELECT fi.id, fr.airline, 
+          oa.code as origin, oa.name as origin_name,
+          da.code as destination, da.name as destination_name,
+          oc.name as origin_city_name, op.name as origin_province_name,
+          dc.name as destination_city_name, dp.name as destination_province_name
+        FROM flight_instances fi
+        INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+        INNER JOIN flight_routes fr ON fs.route_id = fr.id
+        INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+        INNER JOIN airports da ON fr.destination_airport_id = da.id
+        LEFT JOIN cities oc ON oa.city_id = oc.id
+        LEFT JOIN provinces op ON oc.province_id = op.id
+        LEFT JOIN cities dc ON da.city_id = dc.id
+        LEFT JOIN provinces pd ON dc.province_id = pd.id
+        WHERE fi.id = ?
+      ');
       $stmt->execute([$itemId]);
       return $stmt->fetch() ?: null;
       
@@ -77,15 +85,19 @@ function getItemDetails(PDO $pdo, string $type, int $itemId): ?array {
       return $stmt->fetch() ?: null;
       
     case 'transfer':
-      $stmt = $pdo->prepare('SELECT t.id, t.service, t.origin, t.destination,
-        co.name as origin_city_name, po.name as origin_province_name,
-        cd.name as destination_city_name, pd.name as destination_province_name
-        FROM transfers t
-        LEFT JOIN cities co ON t.origin_city_id = co.id
-        LEFT JOIN provinces po ON co.province_id = po.id
-        LEFT JOIN cities cd ON t.destination_city_id = cd.id
-        LEFT JOIN provinces pd ON cd.province_id = pd.id
-        WHERE t.id = ?');
+      $stmt = $pdo->prepare('
+        SELECT ti.id, tr.origin_specific as origin, tr.destination_specific as destination,
+          oc.name as origin_city_name, op.name as origin_province_name,
+          dc.name as destination_city_name, dp.name as destination_province_name
+        FROM transfer_instances ti
+        INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+        INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+        LEFT JOIN cities oc ON tr.origin_city_id = oc.id
+        LEFT JOIN provinces op ON oc.province_id = op.id
+        LEFT JOIN cities dc ON tr.destination_city_id = dc.id
+        LEFT JOIN provinces pd ON dc.province_id = pd.id
+        WHERE ti.id = ?
+      ');
       $stmt->execute([$itemId]);
       return $stmt->fetch() ?: null;
       

@@ -43,15 +43,19 @@ function getItemDetails(PDO $pdo, string $type, int $itemId): ?array {
       return $stmt->fetch() ?: null;
       
     case 'transfer':
-      $stmt = $pdo->prepare('SELECT t.id, t.service, t.origin, t.destination,
-        co.name as origin_city_name, po.name as origin_province_name,
-        cd.name as destination_city_name, pd.name as destination_province_name
-        FROM transfers t
-        LEFT JOIN cities co ON t.origin_city_id = co.id
-        LEFT JOIN provinces po ON co.province_id = po.id
-        LEFT JOIN cities cd ON t.destination_city_id = cd.id
-        LEFT JOIN provinces pd ON cd.province_id = pd.id
-        WHERE t.id = ?');
+      $stmt = $pdo->prepare('
+        SELECT ti.id, tr.origin_specific as origin, tr.destination_specific as destination,
+          oc.name as origin_city_name, op.name as origin_province_name,
+          dc.name as destination_city_name, dp.name as destination_province_name
+        FROM transfer_instances ti
+        INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+        INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+        LEFT JOIN cities oc ON tr.origin_city_id = oc.id
+        LEFT JOIN provinces op ON oc.province_id = op.id
+        LEFT JOIN cities dc ON tr.destination_city_id = dc.id
+        LEFT JOIN provinces pd ON dc.province_id = pd.id
+        WHERE ti.id = ?
+      ');
       $stmt->execute([$itemId]);
       return $stmt->fetch() ?: null;
       
@@ -111,15 +115,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     ];
     $entityTables = [
       'hotel' => 'hotels',
-      'flight' => 'flights',
+      'flight' => 'flight_routes',
       'activity' => 'activities',
-      'transfer' => 'transfers'
+      'transfer' => 'transfer_routes'
     ];
     $itemIdColumns = [
       'hotel' => 'hotel_id',
-      'flight' => 'flight_id',
+      'flight' => 'instance_id',
       'activity' => 'activity_id',
-      'transfer' => 'transfer_id'
+      'transfer' => 'instance_id'
     ];
     
     if ($isOwnerOrAgency) {
@@ -130,13 +134,50 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
         $itemIdColumn = $itemIdColumns[$type];
         
         // Join bookings with entities where created_by = userId
-        $stmt = $pdo->prepare("
-          SELECT b.status, b.total_price 
-          FROM $bookingTable b
-          INNER JOIN $entityTable e ON b.$itemIdColumn = e.id
-          WHERE e.created_by = ? AND e.deleted_at IS NULL
-        ");
-        $stmt->execute([$userId]);
+        if ($type === 'flight') {
+          // For flights: Join through instances → schedules → routes
+          $stmt = $pdo->prepare("
+            SELECT DISTINCT b.status, b.total_price 
+            FROM $bookingTable b
+            INNER JOIN flight_instances fi ON b.instance_id = fi.id
+            INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+            LEFT JOIN flight_routes fr ON fs.route_id = fr.id
+            LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
+            LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
+            LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
+            WHERE (fr.created_by = ? OR outbound.created_by = ? OR return_route.created_by = ?)
+              AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
+          ");
+          $stmt->execute([$userId, $userId, $userId]);
+        } else if ($type === 'transfer') {
+          // For transfers: Join through instances → schedules → routes
+          $stmt = $pdo->prepare("
+            SELECT b.status, b.total_price 
+            FROM $bookingTable b
+            INNER JOIN transfer_instances ti ON b.instance_id = ti.id
+            INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+            INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+            WHERE tr.created_by = ? AND tr.deleted_at IS NULL
+          ");
+          $stmt->execute([$userId]);
+        } else {
+          // For hotels and activities: Direct join
+          $deletedFilter = "";
+          try {
+            $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM $entityTable");
+            $testStmt->fetch();
+            $deletedFilter = "AND e.deleted_at IS NULL";
+          } catch (PDOException $e) {
+            // Column doesn't exist, skip filter
+          }
+          $stmt = $pdo->prepare("
+            SELECT b.status, b.total_price 
+            FROM $bookingTable b
+            INNER JOIN $entityTable e ON b.$itemIdColumn = e.id
+            WHERE e.created_by = ? $deletedFilter
+          ");
+          $stmt->execute([$userId]);
+        }
         $bookings = $stmt->fetchAll();
         
         foreach ($bookings as $booking) {
@@ -291,28 +332,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   try {
     $deletedFilter = "";
     try {
-      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM flights");
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM flight_routes");
       $testStmt->fetch();
-      $deletedFilter = "AND f.deleted_at IS NULL";
+      $deletedFilter = "AND fr.deleted_at IS NULL";
     } catch (PDOException $e) {
       // Column doesn't exist, skip filter
     }
-    $stmt = $pdo->prepare("SELECT f.*, 
-      co.name as origin_city_name, po.name as origin_province_name,
-      cd.name as destination_city_name, pd.name as destination_province_name,
-      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight' AND entity_id = f.id ORDER BY display_order ASC, id ASC) as image_url
-      FROM flights f
-      LEFT JOIN cities co ON f.origin_city_id = co.id
-      LEFT JOIN provinces po ON co.province_id = po.id
-      LEFT JOIN cities cd ON f.destination_city_id = cd.id
-      LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE f.created_by = ? AND f.ad = 1 $deletedFilter
-      ORDER BY f.depart_date ASC, f.price ASC");
+    $stmt = $pdo->prepare("SELECT fr.*,
+      oa.code as origin_code, oa.name as origin_name,
+      da.code as destination_code, da.name as destination_name,
+      oc.name as origin_city_name, op.name as origin_province_name,
+      dc.name as destination_city_name, dp.name as destination_province_name,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight_route' AND entity_id = fr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM flight_routes fr
+      INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+      INNER JOIN airports da ON fr.destination_airport_id = da.id
+      LEFT JOIN cities oc ON oa.city_id = oc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN cities dc ON da.city_id = dc.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      WHERE fr.created_by = ? AND fr.ad = 1 $deletedFilter
+      ORDER BY fr.base_price_economy ASC");
     $stmt->execute([$userId]);
     $promotedFlights = $stmt->fetchAll();
     foreach ($promotedFlights as &$flight) {
+      $flight['airline'] = $flight['airline'];
+      $flight['origin'] = $flight['origin_code'];
+      $flight['destination'] = $flight['destination_code'];
+      $flight['price'] = $flight['base_price_economy'];
       if (isset($flight['discount_percent']) && $flight['discount_percent'] > 0) {
-        $flight['discounted_price'] = round($flight['price'] * (1 - $flight['discount_percent'] / 100), 2);
+        $flight['discounted_price'] = round($flight['base_price_economy'] * (1 - $flight['discount_percent'] / 100), 2);
       }
     }
     $result['promoted']['flights'] = $promotedFlights;
@@ -323,30 +372,46 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   
   // Flights - all
   try {
-    $orderBy = "f.depart_date ASC, f.price ASC";
+    $orderBy = "fr.base_price_economy ASC";
+    $deletedFilter = "";
     try {
-      $testStmt = $pdo->query("SELECT TOP 1 ad FROM flights");
+      $testStmt = $pdo->query("SELECT TOP 1 ad FROM flight_routes");
       $testStmt->fetch();
-      $orderBy = "f.ad DESC, f.depart_date ASC, f.price ASC";
+      $orderBy = "fr.ad DESC, fr.base_price_economy ASC";
     } catch (PDOException $e) {
       // Column doesn't exist, use default order
     }
-    $stmt = $pdo->prepare("SELECT f.*, 
-      co.name as origin_city_name, po.name as origin_province_name,
-      cd.name as destination_city_name, pd.name as destination_province_name,
-      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight' AND entity_id = f.id ORDER BY display_order ASC, id ASC) as image_url
-      FROM flights f
-      LEFT JOIN cities co ON f.origin_city_id = co.id
-      LEFT JOIN provinces po ON co.province_id = po.id
-      LEFT JOIN cities cd ON f.destination_city_id = cd.id
-      LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE f.created_by = ? AND f.deleted_at IS NULL
+    try {
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM flight_routes");
+      $testStmt->fetch();
+      $deletedFilter = "AND fr.deleted_at IS NULL";
+    } catch (PDOException $e) {
+      // Column doesn't exist, skip filter
+    }
+    $stmt = $pdo->prepare("SELECT fr.*,
+      oa.code as origin_code, oa.name as origin_name,
+      da.code as destination_code, da.name as destination_name,
+      oc.name as origin_city_name, op.name as origin_province_name,
+      dc.name as destination_city_name, dp.name as destination_province_name,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'flight_route' AND entity_id = fr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM flight_routes fr
+      INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+      INNER JOIN airports da ON fr.destination_airport_id = da.id
+      LEFT JOIN cities oc ON oa.city_id = oc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN cities dc ON da.city_id = dc.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      WHERE fr.created_by = ? $deletedFilter
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allFlights = $stmt->fetchAll();
     foreach ($allFlights as &$flight) {
+      $flight['airline'] = $flight['airline'];
+      $flight['origin'] = $flight['origin_code'];
+      $flight['destination'] = $flight['destination_code'];
+      $flight['price'] = $flight['base_price_economy'];
       if (isset($flight['discount_percent']) && $flight['discount_percent'] > 0) {
-        $flight['discounted_price'] = round($flight['price'] * (1 - $flight['discount_percent'] / 100), 2);
+        $flight['discounted_price'] = round($flight['base_price_economy'] * (1 - $flight['discount_percent'] / 100), 2);
       }
     }
     $result['all']['flights'] = $allFlights;
@@ -409,22 +474,36 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   
   // Transfers - promoted
   try {
-    $stmt = $pdo->prepare("SELECT t.*, 
-      co.name as origin_city_name, po.name as origin_province_name,
-      cd.name as destination_city_name, pd.name as destination_province_name,
-      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer' AND entity_id = t.id ORDER BY display_order ASC, id ASC) as image_url
-      FROM transfers t
-      LEFT JOIN cities co ON t.origin_city_id = co.id
-      LEFT JOIN provinces po ON co.province_id = po.id
-      LEFT JOIN cities cd ON t.destination_city_id = cd.id
-      LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE t.created_by = ? AND t.ad = 1 AND t.deleted_at IS NULL
-      ORDER BY t.date ASC, t.price ASC");
+    $deletedFilter = "";
+    try {
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM transfer_routes");
+      $testStmt->fetch();
+      $deletedFilter = "AND tr.deleted_at IS NULL";
+    } catch (PDOException $e) {
+      // Column doesn't exist, skip filter
+    }
+    $stmt = $pdo->prepare("SELECT tr.*,
+      oc.name as origin_city_name, op.name as origin_province_name,
+      dc.name as destination_city_name, dp.name as destination_province_name,
+      tt.name as transfer_type_name,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM transfer_routes tr
+      INNER JOIN cities oc ON tr.origin_city_id = oc.id
+      INNER JOIN cities dc ON tr.destination_city_id = dc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      WHERE tr.created_by = ? AND tr.ad = 1 $deletedFilter
+      ORDER BY tr.base_price ASC");
     $stmt->execute([$userId]);
     $promotedTransfers = $stmt->fetchAll();
     foreach ($promotedTransfers as &$transfer) {
+      $transfer['service'] = $transfer['transfer_type_name'] . ' - ' . ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
+      $transfer['origin'] = $transfer['origin_specific'] ?? $transfer['origin_city_name'];
+      $transfer['destination'] = $transfer['destination_specific'] ?? $transfer['destination_city_name'];
+      $transfer['price'] = $transfer['base_price'];
       if (isset($transfer['discount_percent']) && $transfer['discount_percent'] > 0) {
-        $transfer['discounted_price'] = round($transfer['price'] * (1 - $transfer['discount_percent'] / 100), 2);
+        $transfer['discounted_price'] = round($transfer['base_price'] * (1 - $transfer['discount_percent'] / 100), 2);
       }
     }
     $result['promoted']['transfers'] = $promotedTransfers;
@@ -435,30 +514,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   
   // Transfers - all
   try {
-    $orderBy = "t.date ASC, t.price ASC";
+    $orderBy = "tr.base_price ASC";
+    $deletedFilter = "";
     try {
-      $testStmt = $pdo->query("SELECT TOP 1 ad FROM transfers");
+      $testStmt = $pdo->query("SELECT TOP 1 ad FROM transfer_routes");
       $testStmt->fetch();
-      $orderBy = "t.ad DESC, t.date ASC, t.price ASC";
+      $orderBy = "tr.ad DESC, tr.base_price ASC";
     } catch (PDOException $e) {
       // Column doesn't exist, use default order
     }
-    $stmt = $pdo->prepare("SELECT t.*, 
-      co.name as origin_city_name, po.name as origin_province_name,
-      cd.name as destination_city_name, pd.name as destination_province_name,
-      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer' AND entity_id = t.id ORDER BY display_order ASC, id ASC) as image_url
-      FROM transfers t
-      LEFT JOIN cities co ON t.origin_city_id = co.id
-      LEFT JOIN provinces po ON co.province_id = po.id
-      LEFT JOIN cities cd ON t.destination_city_id = cd.id
-      LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE t.created_by = ? AND t.deleted_at IS NULL
+    try {
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM transfer_routes");
+      $testStmt->fetch();
+      $deletedFilter = "AND tr.deleted_at IS NULL";
+    } catch (PDOException $e) {
+      // Column doesn't exist, skip filter
+    }
+    $stmt = $pdo->prepare("SELECT tr.*,
+      oc.name as origin_city_name, op.name as origin_province_name,
+      dc.name as destination_city_name, dp.name as destination_province_name,
+      tt.name as transfer_type_name,
+      (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM transfer_routes tr
+      INNER JOIN cities oc ON tr.origin_city_id = oc.id
+      INNER JOIN cities dc ON tr.destination_city_id = dc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      WHERE tr.created_by = ? $deletedFilter
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allTransfers = $stmt->fetchAll();
     foreach ($allTransfers as &$transfer) {
+      $transfer['service'] = $transfer['transfer_type_name'] . ' - ' . ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
+      $transfer['origin'] = $transfer['origin_specific'] ?? $transfer['origin_city_name'];
+      $transfer['destination'] = $transfer['destination_specific'] ?? $transfer['destination_city_name'];
+      $transfer['price'] = $transfer['base_price'];
       if (isset($transfer['discount_percent']) && $transfer['discount_percent'] > 0) {
-        $transfer['discounted_price'] = round($transfer['price'] * (1 - $transfer['discount_percent'] / 100), 2);
+        $transfer['discounted_price'] = round($transfer['base_price'] * (1 - $transfer['discount_percent'] / 100), 2);
       }
     }
     $result['all']['transfers'] = $allTransfers;

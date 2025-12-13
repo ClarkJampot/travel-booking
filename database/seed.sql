@@ -669,33 +669,8 @@ INSERT INTO dbo.hotels(name, destination_id, city_id, province_id, price_per_nig
 (N'Kanip Aw Pines View Lodge', 9, (SELECT id FROM dbo.cities WHERE name = N'Sagada'), (SELECT id FROM dbo.provinces WHERE name = N'Mountain Province'), 1500.00, N'Rustic lodge perfect for adventure seekers and nature lovers.', 9, 1, 18.00);
 
 -- ============================================================================
--- FLIGHTS (Owned by agencies)
+-- FLIGHTS - Now using flight_routes architecture (see NEW FLIGHTS AND TRANSFERS ARCHITECTURE section below)
 -- ============================================================================
--- Agency 1 (user_id 4): Flights 1-5
--- Agency 2 (user_id 5): Flights 6-10
--- Agency 3 (user_id 6): Flights 11-15
-
-INSERT INTO dbo.flights(airline, origin, destination, depart_date, price, description, created_by, ad, discount_percent, trip_type) VALUES
--- Agency 1 flights
-(N'Philippine Airlines', N'MNL', N'MPH', '2024-06-01', 8500.00, N'Direct flight from Manila to Boracay (Caticlan).', 4, 1, 15.00, N'one-way'),
-(N'Cebu Pacific', N'MNL', N'CEB', '2024-06-05', 4500.00, N'Affordable flight from Manila to Cebu.', 4, 0, 0.00, N'round-trip'),
-(N'AirAsia', N'MNL', N'PPS', '2024-06-10', 6200.00, N'Flight to Puerto Princesa, gateway to Palawan.', 4, 0, 12.00, N'one-way'),
-(N'Philippine Airlines', N'MNL', N'TAG', '2024-06-15', 7800.00, N'Flight to Tagbilaran, Bohol.', 4, 1, 20.00, N'round-trip'),
-(N'Cebu Pacific', N'MNL', N'BAG', '2024-06-20', 3500.00, N'Flight to Baguio for cool mountain escape.', 4, 0, 0.00, N'one-way'),
-
--- Agency 2 flights
-(N'Philippine Airlines', N'MNL', N'USU', '2024-07-01', 9200.00, N'Flight to El Nido, Palawan.', 5, 1, 25.00, N'one-way'),
-(N'Cebu Pacific', N'MNL', N'DVO', '2024-07-05', 5500.00, N'Flight to Davao City.', 5, 0, 0.00, N'round-trip'),
-(N'AirAsia', N'MNL', N'DGT', '2024-07-10', 5800.00, N'Flight to Dumaguete, Negros Oriental.', 5, 0, 8.00, N'one-way'),
-(N'Philippine Airlines', N'CEB', N'MPH', '2024-07-15', 6800.00, N'Flight from Cebu to Boracay.', 5, 1, 18.00, N'one-way'),
-(N'Cebu Pacific', N'MNL', N'ILO', '2024-07-20', 4800.00, N'Flight to Iloilo City.', 5, 0, 0.00, N'one-way'),
-
--- Agency 3 flights
-(N'Philippine Airlines', N'MNL', N'VGN', '2024-08-01', 7200.00, N'Flight to Vigan, Ilocos Sur.', 6, 0, 0.00, N'one-way'),
-(N'Cebu Pacific', N'MNL', N'LGP', '2024-08-05', 4200.00, N'Flight to Legazpi, Albay.', 6, 1, 22.00, N'round-trip'),
-(N'AirAsia', N'MNL', N'BCD', '2024-08-10', 5200.00, N'Flight to Bacolod, Negros Occidental.', 6, 0, 0.00, N'one-way'),
-(N'Philippine Airlines', N'MNL', N'ZAM', '2024-08-15', 8800.00, N'Flight to Zamboanga City.', 6, 0, 10.00, N'one-way'),
-(N'Cebu Pacific', N'MNL', N'CDO', '2024-08-20', 5600.00, N'Flight to Cagayan de Oro.', 6, 0, 0.00, N'one-way');
 
 -- ============================================================================
 -- ACTIVITIES (Owned by agencies, using city_id via subqueries)
@@ -722,27 +697,8 @@ INSERT INTO dbo.activities(title, destination_id, city_id, date, price, descript
 (N'Palawan Underground River Tour', 2, (SELECT id FROM dbo.cities WHERE name = N'Puerto Princesa'), '2024-09-01', 3800.00, N'UNESCO World Heritage Site featuring an underground river system. Boat tour through the spectacular cave system.', 4, 1, 20.00);
 
 -- ============================================================================
--- TRANSFERS (Owned by agencies)
+-- TRANSFERS - Now using transfer_routes architecture (see NEW FLIGHTS AND TRANSFERS ARCHITECTURE section below)
 -- ============================================================================
--- Agency 1 (user_id 4): Transfers 1-3
--- Agency 2 (user_id 5): Transfers 4-6
--- Agency 3 (user_id 6): Transfers 7-9
-
-INSERT INTO dbo.transfers(service, origin, destination, date, price, description, created_by, ad, discount_percent) VALUES
--- Agency 1 transfers
-(N'Manila to Boracay Transfer', N'Manila Airport (MNL)', N'Boracay Port', '2024-06-01', 3500.00, N'Comfortable van transfer from Manila Airport to Boracay Port.', 4, 1, 15.00),
-(N'Cebu to Bohol Transfer', N'Cebu Airport (CEB)', N'Bohol Port', '2024-06-05', 2800.00, N'Van transfer from Cebu Airport to Bohol Port.', 4, 0, 0.00),
-(N'Manila to Baguio Transfer', N'Manila Airport (MNL)', N'Baguio City', '2024-06-10', 3200.00, N'Bus transfer from Manila Airport to Baguio City.', 4, 0, 10.00),
-
--- Agency 2 transfers
-(N'Puerto Princesa to El Nido Transfer', N'Puerto Princesa Airport (PPS)', N'El Nido', '2024-07-01', 4200.00, N'Van transfer from Puerto Princesa Airport to El Nido.', 5, 1, 20.00),
-(N'Manila to Tagaytay Transfer', N'Manila Airport (MNL)', N'Tagaytay City', '2024-07-05', 2500.00, N'Van transfer from Manila Airport to Tagaytay City.', 5, 0, 0.00),
-(N'Davao to General Santos Transfer', N'Davao Airport (DVO)', N'General Santos City', '2024-07-10', 1800.00, N'Van transfer from Davao Airport to General Santos City.', 5, 0, 0.00),
-
--- Agency 3 transfers
-(N'Manila to Vigan Transfer', N'Manila Airport (MNL)', N'Vigan City', '2024-08-01', 4500.00, N'Bus transfer from Manila Airport to Vigan City.', 6, 0, 0.00),
-(N'Manila to Sagada Transfer', N'Manila Airport (MNL)', N'Sagada', '2024-08-05', 5200.00, N'Van transfer from Manila Airport to Sagada.', 6, 1, 18.00),
-(N'Manila to Batanes Transfer', N'Manila Airport (MNL)', N'Batanes (via Basco)', '2024-08-10', 8500.00, N'Van transfer from Manila Airport to Batanes via Basco.', 6, 0, 0.00);
 
 -- ============================================================================
 -- BOOKINGS (Linked to customers)
@@ -767,24 +723,53 @@ INSERT INTO dbo.hotel_bookings(user_id, hotel_id, check_in, check_out, guests, t
 (3, 11, '2025-12-09', '2025-12-13', 2, 8000.00, N'completed');
 
 -- Flight Bookings
-INSERT INTO dbo.flight_bookings(user_id, flight_id, class, passenger_count, total_price, status) VALUES
--- Customer 1: Flight 1 (MNL to MPH) - 2 passengers, economy class
--- Price: 8500 * (1 - 0.15) = 7225 per passenger * 2 = 14450, but using 17000 for 2 passengers with some adjustment
-(1, 1, N'economy', 2, 17000.00, N'confirmed'),
+-- Note: Using subqueries to find flight_instances that match routes and dates
+-- Since instances are generated dynamically, we find the first available instance for each route
+INSERT INTO dbo.flight_bookings(user_id, instance_id, class, passenger_count, total_price, status)
+SELECT TOP 1 1, fi.id, N'economy', 2, 17000.00, N'confirmed'
+FROM dbo.flight_instances fi
+INNER JOIN dbo.flight_schedules fs ON fi.schedule_id = fs.id
+INNER JOIN dbo.flight_routes fr ON fs.route_id = fr.id
+INNER JOIN dbo.airports oa ON fr.origin_airport_id = oa.id
+INNER JOIN dbo.airports da ON fr.destination_airport_id = da.id
+WHERE oa.code = N'MNL' AND da.code = N'MPH' AND fr.airline = N'Philippine Airlines'
+  AND fi.departure_date >= CAST(GETDATE() AS DATE)
+  AND fi.status = N'scheduled'
+ORDER BY fi.departure_date ASC;
 
--- Customer 2: Flight 6 (MNL to USU) - 2 passengers, economy class
--- Price: 9200 * (1 - 0.25) = 6900 per passenger * 2.67 ≈ 3 passengers = 20700, adjusting to 18400 for 2 passengers
-(2, 6, N'economy', 2, 18400.00, N'confirmed');
+INSERT INTO dbo.flight_bookings(user_id, instance_id, class, passenger_count, total_price, status)
+SELECT TOP 1 2, fi.id, N'economy', 2, 18400.00, N'confirmed'
+FROM dbo.flight_instances fi
+INNER JOIN dbo.flight_schedules fs ON fi.schedule_id = fs.id
+INNER JOIN dbo.flight_routes fr ON fs.route_id = fr.id
+INNER JOIN dbo.airports oa ON fr.origin_airport_id = oa.id
+INNER JOIN dbo.airports da ON fr.destination_airport_id = da.id
+WHERE oa.code = N'MNL' AND da.code = N'USU' AND fr.airline = N'Philippine Airlines'
+  AND fi.departure_date >= CAST(GETDATE() AS DATE)
+  AND fi.status = N'scheduled'
+ORDER BY fi.departure_date ASC;
 
 -- Transfer Bookings
-INSERT INTO dbo.transfer_bookings(user_id, transfer_id, passenger_count, total_price, status) VALUES
--- Customer 2: Transfer 4 (Puerto Princesa to El Nido) - 2 passengers
--- Price: 4200 * (1 - 0.20) = 3360 per passenger * 2.5 ≈ 2 passengers = 6720, adjusting to 8400
-(2, 4, 2, 8400.00, N'confirmed'),
+-- Note: Using subqueries to find transfer_instances that match routes and dates
+INSERT INTO dbo.transfer_bookings(user_id, instance_id, passenger_count, total_price, status)
+SELECT TOP 1 2, ti.id, 2, 8400.00, N'confirmed'
+FROM dbo.transfer_instances ti
+INNER JOIN dbo.transfer_schedules ts ON ti.schedule_id = ts.id
+INNER JOIN dbo.transfer_routes tr ON ts.route_id = tr.id
+WHERE tr.origin_specific LIKE N'%Puerto Princesa%' AND tr.destination_specific LIKE N'%El Nido%'
+  AND ti.departure_date >= CAST(GETDATE() AS DATE)
+  AND ti.status = N'scheduled'
+ORDER BY ti.departure_date ASC;
 
--- Customer 3: Transfer 7 (Manila to Vigan) - 2 passengers
--- Price: 4500 per passenger * 2 = 9000
-(3, 7, 2, 9000.00, N'confirmed');
+INSERT INTO dbo.transfer_bookings(user_id, instance_id, passenger_count, total_price, status)
+SELECT TOP 1 3, ti.id, 2, 9000.00, N'confirmed'
+FROM dbo.transfer_instances ti
+INNER JOIN dbo.transfer_schedules ts ON ti.schedule_id = ts.id
+INNER JOIN dbo.transfer_routes tr ON ts.route_id = tr.id
+WHERE tr.origin_specific LIKE N'%Manila Airport%' AND tr.destination_specific LIKE N'%Vigan%'
+  AND ti.departure_date >= CAST(GETDATE() AS DATE)
+  AND ti.status = N'scheduled'
+ORDER BY ti.departure_date ASC;
 
 -- Activity Bookings
 INSERT INTO dbo.activity_bookings(user_id, activity_id, date, participant_count, total_price, status) VALUES

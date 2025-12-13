@@ -95,8 +95,44 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/availabilit
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)) {
   $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
   
-  // Get single instance
+  // Get single route or instance
   if ($id) {
+    // First, try to get as route
+    $stmt = $pdo->prepare('
+      SELECT tr.*,
+        oc.name as origin_city_name, op.name as origin_province_name,
+        dc.name as destination_city_name, dp.name as destination_province_name,
+        tt.name as transfer_type_name, tt.icon as transfer_type_icon
+      FROM transfer_routes tr
+      INNER JOIN cities oc ON tr.origin_city_id = oc.id
+      INNER JOIN cities dc ON tr.destination_city_id = dc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      WHERE tr.id = ? AND tr.deleted_at IS NULL
+    ');
+    $stmt->execute([$id]);
+    $route = $stmt->fetch();
+    
+    if ($route) {
+      // It's a route - return route data
+      $route['images'] = [];
+      $route['image_url'] = null;
+      $route['price'] = $route['base_price'];
+      $route['service'] = ($route['transfer_type_name'] ?? 'Transfer') . ' - ' . ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
+      $route['origin'] = $route['origin_specific'] ?? $route['origin_city_name'];
+      $route['destination'] = $route['destination_specific'] ?? $route['destination_city_name'];
+      
+      // Get images
+      $images = get_entity_images($pdo, 'transfer_route', $id);
+      $route['images'] = $images;
+      $route['image_url'] = $images[0] ?? null;
+      
+      json_ok(['transfer' => $route]);
+      exit;
+    }
+    
+    // If not a route, try as instance (for backward compatibility)
     $stmt = $pdo->prepare('
       SELECT ti.*,
         ts.route_id, ts.departure_time, ts.days_of_week,
@@ -119,7 +155,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $stmt->execute([$id]);
     $instance = $stmt->fetch();
     if (!$instance) {
-      json_error('Transfer instance not found', 404);
+      json_error('Transfer route or instance not found', 404);
     }
     
     // Calculate price (use instance price if set, otherwise base price)
@@ -131,9 +167,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $instance['image_url'] = $images[0] ?? null;
     
     json_ok(['transfer' => $instance]);
+    exit;
   }
   
-  // Search for available instances
+  // Search for routes or instances
   $origin_city_id = isset($_GET['origin_city_id']) ? (int)$_GET['origin_city_id'] : null;
   $destination_city_id = isset($_GET['destination_city_id']) ? (int)$_GET['destination_city_id'] : null;
   $transfer_type_id = isset($_GET['transfer_type_id']) ? (int)$_GET['transfer_type_id'] : null;
@@ -143,8 +180,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 12)));
   $offset = ($page - 1) * $limit;
   
+  // If no date provided, return routes (for listing page)
   if (!$date) {
-    json_error('date is required', 400);
+    $where = ['tr.deleted_at IS NULL'];
+    $params = [];
+    
+    if ($origin_city_id !== null) {
+      $where[] = 'tr.origin_city_id = ?';
+      $params[] = $origin_city_id;
+    }
+    if ($destination_city_id !== null) {
+      $where[] = 'tr.destination_city_id = ?';
+      $params[] = $destination_city_id;
+    }
+    if ($transfer_type_id !== null) {
+      $where[] = 'tr.transfer_type_id = ?';
+      $params[] = $transfer_type_id;
+    }
+    
+    // Price filtering
+    $minPrice = isset($_GET['minPrice']) ? (float)$_GET['minPrice'] : null;
+    $maxPrice = isset($_GET['maxPrice']) ? (float)$_GET['maxPrice'] : null;
+    if ($minPrice !== null) {
+      $where[] = 'tr.base_price >= ?';
+      $params[] = $minPrice;
+    }
+    if ($maxPrice !== null) {
+      $where[] = 'tr.base_price <= ?';
+      $params[] = $maxPrice;
+    }
+    
+    $whereSql = 'WHERE ' . implode(' AND ', $where);
+    $offsetInt = (int)$offset;
+    $limitInt = (int)$limit;
+    
+    // Get promoted routes
+    $promotedWhere = array_merge(['tr.ad = 1'], $where);
+    $promotedWhereSql = 'WHERE ' . implode(' AND ', $promotedWhere);
+    
+    $promotedSql = "SELECT TOP 2 tr.*,
+        oc.name as origin_city_name, op.name as origin_province_name,
+        dc.name as destination_city_name, dp.name as destination_province_name,
+        tt.name as transfer_type_name,
+        (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM transfer_routes tr
+      INNER JOIN cities oc ON tr.origin_city_id = oc.id
+      INNER JOIN cities dc ON tr.destination_city_id = dc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      $promotedWhereSql
+      ORDER BY NEWID()";
+    
+    $promotedStmt = $pdo->prepare($promotedSql);
+    $promotedStmt->execute($params);
+    $promotedRoutes = $promotedStmt->fetchAll();
+    $promotedIds = array_column($promotedRoutes, 'id');
+    
+    // Regular routes (excluding promoted ones)
+    $regularWhere = $where;
+    $regularWhere[] = "(tr.ad = 0 OR tr.ad IS NULL)";
+    if (!empty($promotedIds)) {
+      $placeholders = implode(',', array_fill(0, count($promotedIds), '?'));
+      $regularWhere[] = "tr.id NOT IN ($placeholders)";
+      $regularParams = array_merge($params, $promotedIds);
+    } else {
+      $regularParams = $params;
+    }
+    
+    $regularWhereSql = 'WHERE ' . implode(' AND ', $regularWhere);
+    
+    $sql = "SELECT tr.*,
+        oc.name as origin_city_name, op.name as origin_province_name,
+        dc.name as destination_city_name, dp.name as destination_province_name,
+        tt.name as transfer_type_name,
+        (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
+      FROM transfer_routes tr
+      INNER JOIN cities oc ON tr.origin_city_id = oc.id
+      INNER JOIN cities dc ON tr.destination_city_id = dc.id
+      LEFT JOIN provinces op ON oc.province_id = op.id
+      LEFT JOIN provinces dp ON dc.province_id = dp.id
+      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      $regularWhereSql
+      ORDER BY tr.created_at DESC
+      OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";
+    
+    $stmt = $pdo->prepare($sql);
+    $stmt->execute($regularParams);
+    $routes = $stmt->fetchAll();
+    
+    // Format routes for display
+    foreach ($promotedRoutes as &$route) {
+      $route['service'] = $route['transfer_type_name'] . ' - ' . ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
+      $route['origin'] = $route['origin_specific'] ?? $route['origin_city_name'];
+      $route['destination'] = $route['destination_specific'] ?? $route['destination_city_name'];
+      $route['price'] = $route['base_price'];
+      if (isset($route['discount_percent']) && $route['discount_percent'] > 0) {
+        $route['discounted_price'] = round($route['base_price'] * (1 - $route['discount_percent'] / 100), 2);
+      }
+    }
+    foreach ($routes as &$route) {
+      $route['service'] = $route['transfer_type_name'] . ' - ' . ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
+      $route['origin'] = $route['origin_specific'] ?? $route['origin_city_name'];
+      $route['destination'] = $route['destination_specific'] ?? $route['destination_city_name'];
+      $route['price'] = $route['base_price'];
+      if (isset($route['discount_percent']) && $route['discount_percent'] > 0) {
+        $route['discounted_price'] = round($route['base_price'] * (1 - $route['discount_percent'] / 100), 2);
+      }
+    }
+    
+    json_ok(['page' => $page, 'limit' => $limit, 'promoted' => $promotedRoutes, 'results' => $routes]);
+    exit;
   }
   
   $where = ['ti.departure_date >= CAST(? AS DATE)', 'ti.status = ?'];
@@ -296,33 +442,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
     $totalPrice = round($totalPrice * (1 - $instance['discount_percent'] / 100), 2);
   }
   
-  // Get transfer_id from route
-  $stmt = $pdo->prepare('
-    SELECT tr.id as transfer_id
-    FROM transfer_instances ti
-    INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
-    INNER JOIN transfer_routes tr ON ts.route_id = tr.id
-    WHERE ti.id = ?
-  ');
-  $stmt->execute([$instance_id]);
-  $routeInfo = $stmt->fetch();
-  $transferId = $routeInfo['transfer_id'] ?? null;
-  
-  if (!$transferId) {
-    json_error('Unable to determine transfer for booking', 500);
-  }
-  
   // Start transaction
   $pdo->beginTransaction();
   
   try {
-    // Create booking in transfer_bookings table
+    // Create booking in transfer_bookings table using instance_id
     $stmt = $pdo->prepare('
-      INSERT INTO transfer_bookings (user_id, transfer_id, passenger_count, total_price, status)
+      INSERT INTO transfer_bookings (user_id, instance_id, passenger_count, total_price, status)
       VALUES (?, ?, ?, ?, ?)
     ');
     $stmt->execute([
-      (int)$user['id'], $transferId,
+      (int)$user['id'], $instance_id,
       $passenger_count, $totalPrice, 'confirmed'
     ]);
     $bookingId = (int)$pdo->lastInsertId();
@@ -339,10 +469,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
     ');
     $updateStmt->execute([$instance['capacity'], $instance_id, $instance['capacity']]);
     
-    // Update booking count on transfer
-    $updateStmt = $pdo->prepare('UPDATE transfers SET booking_count = booking_count + 1 WHERE id = ?');
-    $updateStmt->execute([$transferId]);
-    
     $pdo->commit();
     
     // Fetch booking with details
@@ -350,7 +476,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
     $stmt->execute([$bookingId]);
     $booking = $stmt->fetch();
     $booking['type'] = 'transfer';
-    $booking['item_id'] = $transferId;
+    $booking['item_id'] = $instance_id;
     
     json_ok(['booking' => $booking], 201);
   } catch (Exception $e) {

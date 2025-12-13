@@ -440,51 +440,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/book/?$#', $
   }
   
   // Get flight_id from route - need to find or create a flight record
-  // Get route details to find matching flight
-  $stmt = $pdo->prepare('
-    SELECT oa.name as origin_name, da.name as destination_name, fr.airline, fr.id as route_id
-    FROM flight_instances fi
-    INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-    LEFT JOIN flight_routes fr ON fs.route_id = fr.id
-    LEFT JOIN airports oa ON fr.origin_airport_id = oa.id
-    LEFT JOIN airports da ON fr.destination_airport_id = da.id
-    WHERE fi.id = ?
-  ');
-  $stmt->execute([$instance_id]);
-  $routeDetails = $stmt->fetch();
-  
-  $flightId = null;
-  if ($routeDetails) {
-    // Try to find existing flight
-    $stmt = $pdo->prepare('SELECT id FROM flights WHERE airline = ? AND origin = ? AND destination = ? AND depart_date = ?');
-    $stmt->execute([$routeDetails['airline'], $routeDetails['origin_name'], $routeDetails['destination_name'], $instance['departure_date']]);
-    $existingFlight = $stmt->fetch();
-    
-    if ($existingFlight) {
-      $flightId = (int)$existingFlight['id'];
-    } else {
-      // Create a flight record (simplified - in production you'd want more details)
-      $stmt = $pdo->prepare('INSERT INTO flights (airline, origin, destination, depart_date, price, created_by) VALUES (?, ?, ?, ?, ?, ?)');
-      $stmt->execute([$routeDetails['airline'], $routeDetails['origin_name'], $routeDetails['destination_name'], $instance['departure_date'], $basePrice, (int)$user['id']]);
-      $flightId = (int)$pdo->lastInsertId();
-    }
-  }
-  
-  if (!$flightId) {
-    json_error('Unable to determine flight for booking', 500);
-  }
-  
   // Start transaction
   $pdo->beginTransaction();
   
   try {
-    // Create booking in flight_bookings table
+    // Create booking in flight_bookings table using instance_id
     $stmt = $pdo->prepare('
-      INSERT INTO flight_bookings (user_id, flight_id, class, passenger_count, total_price, status)
+      INSERT INTO flight_bookings (user_id, instance_id, class, passenger_count, total_price, status)
       VALUES (?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
-      (int)$user['id'], $flightId, $class,
+      (int)$user['id'], $instance_id, $class,
       $passenger_count, $totalPrice, 'confirmed'
     ]);
     $bookingId = (int)$pdo->lastInsertId();
@@ -493,10 +459,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/book/?$#', $
     $updateStmt = $pdo->prepare("UPDATE flight_instances SET $seatsAvailableColumn = $seatsAvailableColumn - ? WHERE id = ?");
     $updateStmt->execute([$passenger_count, $instance_id]);
     
-    // Update booking count on flight
-    $updateStmt = $pdo->prepare('UPDATE flights SET booking_count = booking_count + 1 WHERE id = ?');
-    $updateStmt->execute([$flightId]);
-    
     $pdo->commit();
     
     // Fetch booking with details
@@ -504,7 +466,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/book/?$#', $
     $stmt->execute([$bookingId]);
     $booking = $stmt->fetch();
     $booking['type'] = 'flight';
-    $booking['item_id'] = $flightId;
+    $booking['item_id'] = $instance_id;
     
     json_ok(['booking' => $booking], 201);
   } catch (Exception $e) {
