@@ -157,8 +157,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/bookings/?$#', $uri))
     $params = [$userId];
     
     if ($status) {
-      $where[] = 'status = ?';
-      $params[] = $status;
+      $statusNormalized = trim(strtolower($status));
+      $where[] = 'LOWER(status) = ?';
+      $params[] = $statusNormalized;
     }
     
     $whereSql = 'WHERE ' . implode(' AND ', $where);
