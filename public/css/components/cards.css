@@ -7,11 +7,14 @@
   overflow: hidden;
   position: relative;
   background: var(--white);
+  /* Reserve space for hover transform to prevent layout shift */
+  margin-bottom: 8px;
 }
 
 .card:hover {
   transform: translateY(-8px);
   box-shadow: var(--shadow-xl);
+  margin-bottom: 0; /* Compensate for transform */
 }
 
 .card-img-wrapper {
@@ -84,8 +87,13 @@
   transition: transform var(--transition-fast);
 }
 
+.price {
+  display: inline-block; /* Prevent layout shift on scale */
+}
+
 .price:hover {
   transform: scale(1.05);
+  transform-origin: left center; /* Prevent pushing to left */
 }
 
 .price-small {

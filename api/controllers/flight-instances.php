@@ -14,6 +14,60 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
+// GET /api/flights/availability?route_id=X&return=true
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/availability/?$#', $uri)) {
+  $routeId = isset($_GET['route_id']) ? (int)$_GET['route_id'] : null;
+  $isReturn = isset($_GET['return']) && $_GET['return'] === 'true';
+  
+  if (!$routeId) {
+    json_error('route_id is required', 400);
+  }
+  
+  // If return is requested, get return route ID first
+  if ($isReturn) {
+    $returnRouteStmt = $pdo->prepare("
+      SELECT frp.return_route_id
+      FROM flight_route_pairs frp
+      WHERE frp.outbound_route_id = ?
+    ");
+    $returnRouteStmt->execute([$routeId]);
+    $returnRoute = $returnRouteStmt->fetch();
+    
+    if (!$returnRoute || !$returnRoute['return_route_id']) {
+      json_ok(['available_dates' => []]);
+      exit;
+    }
+    
+    $routeId = (int)$returnRoute['return_route_id'];
+  }
+  
+  // Get all available dates for this route
+  // Query flight_instances that are scheduled and have available seats
+  $stmt = $pdo->prepare('
+    SELECT DISTINCT CAST(fi.departure_date AS DATE) as available_date
+    FROM flight_instances fi
+    INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+    WHERE fs.route_id = ?
+      AND fi.status = ?
+      AND fi.departure_date >= CAST(GETDATE() AS DATE)
+      AND (
+        fi.seats_economy_available > 0 
+        OR fi.seats_business_available > 0 
+        OR fi.seats_first_available > 0
+      )
+    ORDER BY available_date ASC
+  ');
+  $stmt->execute([$routeId, 'scheduled']);
+  $results = $stmt->fetchAll();
+  
+  $availableDates = array_map(function($row) {
+    return $row['available_date'];
+  }, $results);
+  
+  json_ok(['available_dates' => $availableDates]);
+  exit;
+}
+
 // GET /api/flights (search for available instances)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) {
   $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
@@ -349,7 +403,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/book/?$#', $
   $instance_id = isset($input['instance_id']) ? (int)$input['instance_id'] : null;
   $class = trim($input['class'] ?? 'economy');
   $passenger_count = isset($input['passenger_count']) ? (int)$input['passenger_count'] : 1;
-  $passenger_details = $input['passenger_details'] ?? [];
   
   if (!$instance_id || !in_array($class, ['economy', 'business', 'first']) || $passenger_count < 1) {
     json_error('Missing or invalid required fields: instance_id, class, passenger_count', 400);
@@ -426,14 +479,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/book/?$#', $
   
   try {
     // Create booking in flight_bookings table
-    $passengerDetailsJson = json_encode($passenger_details);
     $stmt = $pdo->prepare('
-      INSERT INTO flight_bookings (user_id, flight_id, class, passenger_count, passenger_details, total_price, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO flight_bookings (user_id, flight_id, class, passenger_count, total_price, status)
+      VALUES (?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
       (int)$user['id'], $flightId, $class,
-      $passenger_count, $passengerDetailsJson, $totalPrice, 'confirmed'
+      $passenger_count, $totalPrice, 'confirmed'
     ]);
     $bookingId = (int)$pdo->lastInsertId();
     

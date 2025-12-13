@@ -756,45 +756,45 @@ INSERT INTO dbo.transfers(service, origin, destination, date, price, description
 INSERT INTO dbo.hotel_bookings(user_id, hotel_id, check_in, check_out, guests, total_price, status) VALUES
 -- Customer 1: Hotel 1 (Boracay Paradise Resort) - 5 nights, 2 guests
 -- Price: 3500 * (1 - 0.20) = 2800 per night * 5 = 14000
-(1, 1, '2024-06-02', '2024-06-07', 2, 14000.00, N'confirmed'),
+(1, 1, '2025-12-25', '2025-12-30', 2, 14000.00, N'confirmed'),
 
 -- Customer 2: Hotel 6 (El Nido Beach Hotel) - 5 nights, 2 guests
 -- Price: 4500 * (1 - 0.30) = 3150 per night * 5.7 ≈ 6 nights = 18900, but using 5 nights = 15750, adjusting to match 18000
-(2, 6, '2024-07-02', '2024-07-08', 2, 18000.00, N'confirmed'),
+(2, 6, '2025-12-16', '2024-12-20', 2, 18000.00, N'confirmed'),
 
 -- Customer 3: Hotel 11 (Vigan Heritage Mansion) - 4 nights, 2 guests
 -- Price: 2000 per night * 4 = 8000
-(3, 11, '2024-08-02', '2024-08-06', 2, 8000.00, N'confirmed');
+(3, 11, '2025-12-09', '2025-12-13', 2, 8000.00, N'completed');
 
 -- Flight Bookings
-INSERT INTO dbo.flight_bookings(user_id, flight_id, class, passenger_count, passenger_details, total_price, status) VALUES
+INSERT INTO dbo.flight_bookings(user_id, flight_id, class, passenger_count, total_price, status) VALUES
 -- Customer 1: Flight 1 (MNL to MPH) - 2 passengers, economy class
 -- Price: 8500 * (1 - 0.15) = 7225 per passenger * 2 = 14450, but using 17000 for 2 passengers with some adjustment
-(1, 1, N'economy', 2, N'[{"name":"Juan Dela Cruz","age":35},{"name":"Maria Dela Cruz","age":32}]', 17000.00, N'confirmed'),
+(1, 1, N'economy', 2, 17000.00, N'confirmed'),
 
 -- Customer 2: Flight 6 (MNL to USU) - 2 passengers, economy class
 -- Price: 9200 * (1 - 0.25) = 6900 per passenger * 2.67 ≈ 3 passengers = 20700, adjusting to 18400 for 2 passengers
-(2, 6, N'economy', 2, N'[{"name":"Maria Santos","age":28},{"name":"John Santos","age":30}]', 18400.00, N'confirmed');
+(2, 6, N'economy', 2, 18400.00, N'confirmed');
 
 -- Transfer Bookings
-INSERT INTO dbo.transfer_bookings(user_id, transfer_id, passenger_count, passenger_details, total_price, status) VALUES
+INSERT INTO dbo.transfer_bookings(user_id, transfer_id, passenger_count, total_price, status) VALUES
 -- Customer 2: Transfer 4 (Puerto Princesa to El Nido) - 2 passengers
 -- Price: 4200 * (1 - 0.20) = 3360 per passenger * 2.5 ≈ 2 passengers = 6720, adjusting to 8400
-(2, 4, 2, N'[{"name":"Maria Santos","age":28},{"name":"John Santos","age":30}]', 8400.00, N'confirmed'),
+(2, 4, 2, 8400.00, N'confirmed'),
 
 -- Customer 3: Transfer 7 (Manila to Vigan) - 2 passengers
 -- Price: 4500 per passenger * 2 = 9000
-(3, 7, 2, N'[{"name":"Pedro Garcia","age":45},{"name":"Ana Garcia","age":42}]', 9000.00, N'confirmed');
+(3, 7, 2, 9000.00, N'confirmed');
 
 -- Activity Bookings
-INSERT INTO dbo.activity_bookings(user_id, activity_id, participant_count, total_price, status) VALUES
--- Customer 1: Activity 1 (Boracay Island Hopping Tour) - 2 participants
+INSERT INTO dbo.activity_bookings(user_id, activity_id, date, participant_count, total_price, status) VALUES
+-- Customer 1: Activity 1 (Boracay Island Hopping Tour) - 2 participants, booked for December 25, 2025
 -- Price: 2500 * (1 - 0.20) = 2000 per participant * 2 = 4000, adjusting to 5000
-(1, 1, 2, 5000.00, N'confirmed'),
+(1, 1, '2025-12-25', 2, 5000.00, N'confirmed'),
 
--- Customer 3: Activity 6 (Vigan Heritage Walk) - 2 participants
+-- Customer 3: Activity 6 (Vigan Heritage Walk) - 2 participants, booked for December 9, 2025
 -- Price: 1400 per participant * 2 = 2800
-(3, 6, 2, 2800.00, N'confirmed');
+(3, 6, '2025-12-09', 2, 2800.00, N'completed');
 
 -- ============================================================================
 -- ENTITY IMAGES (All images per entity for carousel display)

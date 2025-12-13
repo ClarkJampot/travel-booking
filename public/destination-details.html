@@ -23,6 +23,10 @@
           <h4>Hotels in this Destination</h4>
           <div id="hotels" class="row g-4"></div>
         </div>
+        <div class="mt-4">
+          <h4>Activities in this Destination</h4>
+          <div id="activities" class="row g-4"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -103,6 +107,18 @@
               </div>
             </div>
           </div>`).join('');
+        
+        // Load activities in this destination
+        const activitiesData = await apiCall(`/activities?destination_id=${destId}&limit=6`);
+        const allActivities = [...(activitiesData.promoted || []), ...(activitiesData.results || [])];
+        document.getElementById('activities').innerHTML = allActivities.length === 0 
+          ? '<p class="text-muted">Currently no activities available.</p>' 
+          : allActivities.map(a => renderCard({
+              type: 'activity',
+              data: a,
+              columnsClass: 'col-md-6',
+              detailUrl: `activity-details.html?id=${a.id}`
+            })).join('');
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load destination');
       }

@@ -222,51 +222,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/bookings/?$#', $uri)
   }
   
   // Create booking based on type
-  if ($itemType === 'hotel') {
-    $checkIn = $input['check_in'] ?? null;
-    $checkOut = $input['check_out'] ?? null;
-    $guests = isset($input['guests']) ? (int)$input['guests'] : 1;
-    
-    if (!$checkIn || !$checkOut) {
-      json_error('Missing required fields: check_in, check_out', 400);
+  try {
+    if ($itemType === 'hotel') {
+      $checkIn = $input['check_in'] ?? null;
+      $checkOut = $input['check_out'] ?? null;
+      $guests = isset($input['guests']) ? (int)$input['guests'] : 1;
+      
+      if (!$checkIn || !$checkOut) {
+        json_error('Missing required fields: check_in, check_out', 400);
+      }
+      
+      $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, check_in, check_out, guests, total_price, status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed')");
+      $stmt->execute([$userId, $itemId, $checkIn, $checkOut, $guests, $totalPrice]);
+      
+    } elseif ($itemType === 'flight') {
+      $class = $input['class'] ?? null;
+      $passengerCount = isset($input['passenger_count']) ? (int)$input['passenger_count'] : 1;
+      
+      $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, class, passenger_count, total_price, status) VALUES (?, ?, ?, ?, ?, 'confirmed')");
+      $stmt->execute([$userId, $itemId, $class, $passengerCount, $totalPrice]);
+      
+    } elseif ($itemType === 'activity') {
+      $participantCount = isset($input['participant_count']) ? (int)$input['participant_count'] : 1;
+      $date = $input['date'] ?? null;
+      
+      if (!$date) {
+        json_error('Missing required field: date', 400);
+      }
+      
+      $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, date, participant_count, total_price, status) VALUES (?, ?, ?, ?, ?, 'confirmed')");
+      $stmt->execute([$userId, $itemId, $date, $participantCount, $totalPrice]);
+      
+    } elseif ($itemType === 'transfer') {
+      $passengerCount = isset($input['passenger_count']) ? (int)$input['passenger_count'] : 1;
+      
+      $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, passenger_count, total_price, status) VALUES (?, ?, ?, ?, 'confirmed')");
+      $stmt->execute([$userId, $itemId, $passengerCount, $totalPrice]);
     }
     
-    $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, check_in, check_out, guests, total_price, status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed')");
-    $stmt->execute([$userId, $itemId, $checkIn, $checkOut, $guests, $totalPrice]);
+    $bookingId = (int)$pdo->lastInsertId();
     
-  } elseif ($itemType === 'flight') {
-    $class = $input['class'] ?? null;
-    $passengerCount = isset($input['passenger_count']) ? (int)$input['passenger_count'] : 1;
-    $passengerDetails = isset($input['passenger_details']) ? json_encode($input['passenger_details']) : null;
+    // Update booking count (ignore if column doesn't exist)
+    try {
+      $entityTable = $itemType . 's';
+      $stmt = $pdo->prepare("UPDATE $entityTable SET booking_count = booking_count + 1 WHERE id = ?");
+      $stmt->execute([$itemId]);
+    } catch (PDOException $e) {
+      // booking_count column might not exist, log but don't fail
+      error_log('Failed to update booking_count: ' . $e->getMessage());
+    }
     
-    $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, class, passenger_count, passenger_details, total_price, status) VALUES (?, ?, ?, ?, ?, ?, 'confirmed')");
-    $stmt->execute([$userId, $itemId, $class, $passengerCount, $passengerDetails, $totalPrice]);
+    // Get created booking
+    $booking = findBookingById($pdo, $bookingId, $userId);
     
-  } elseif ($itemType === 'activity') {
-    $participantCount = isset($input['participant_count']) ? (int)$input['participant_count'] : 1;
+    if (!$booking) {
+      json_error('Failed to retrieve created booking', 500);
+    }
     
-    $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, participant_count, total_price, status) VALUES (?, ?, ?, ?, 'confirmed')");
-    $stmt->execute([$userId, $itemId, $participantCount, $totalPrice]);
-    
-  } elseif ($itemType === 'transfer') {
-    $passengerCount = isset($input['passenger_count']) ? (int)$input['passenger_count'] : 1;
-    $passengerDetails = isset($input['passenger_details']) ? json_encode($input['passenger_details']) : null;
-    
-    $stmt = $pdo->prepare("INSERT INTO $table (user_id, $itemIdColumn, passenger_count, passenger_details, total_price, status) VALUES (?, ?, ?, ?, ?, 'confirmed')");
-    $stmt->execute([$userId, $itemId, $passengerCount, $passengerDetails, $totalPrice]);
+    json_ok(['booking' => $booking], 201);
+  } catch (PDOException $e) {
+    error_log('Booking creation failed: ' . $e->getMessage());
+    json_error('Failed to create booking: ' . $e->getMessage(), 500);
+  } catch (Exception $e) {
+    error_log('Booking creation error: ' . $e->getMessage());
+    json_error('Failed to create booking', 500);
   }
-  
-  $bookingId = (int)$pdo->lastInsertId();
-  
-  // Update booking count
-  $entityTable = $itemType . 's';
-  $stmt = $pdo->prepare("UPDATE $entityTable SET booking_count = booking_count + 1 WHERE id = ?");
-  $stmt->execute([$itemId]);
-  
-  // Get created booking
-  $booking = findBookingById($pdo, $bookingId, $userId);
-  
-  json_ok(['booking' => $booking], 201);
 }
 
 // PUT /api/bookings/:id

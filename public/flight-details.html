@@ -31,10 +31,11 @@
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card sticky-booking-form reveal">
+        <div class="card reveal">
           <div class="card-body">
-            <h5>Book Now</h5>
-            <form id="bookingForm">
+            <h5 class="mb-4">Select Date</h5>
+            <div id="calendarContainer"></div>
+            <div class="mt-4">
               <div class="mb-3">
                 <label class="form-label">Trip Type</label>
                 <div class="btn-group w-100" role="group">
@@ -46,16 +47,8 @@
                 </div>
               </div>
               <div class="mb-3">
-                <label class="form-label">Departure Date</label>
-                <input type="date" class="form-control" id="departureDate" required min="">
-              </div>
-              <div class="mb-3" id="returnDateContainer" style="display: none;">
-                <label class="form-label">Return Date</label>
-                <input type="date" class="form-control" id="returnDate" min="">
-              </div>
-              <div class="mb-3">
                 <label class="form-label">Class</label>
-                <select class="form-control" id="classSelect" required>
+                <select class="form-control" id="classSelect">
                   <option value="economy">Economy</option>
                   <option value="business">Business</option>
                   <option value="first">First</option>
@@ -63,13 +56,10 @@
               </div>
               <div class="mb-3">
                 <label class="form-label">Passengers</label>
-                <input type="number" class="form-control" id="passengerCount" value="1" min="1" max="9" required>
+                <input type="number" class="form-control" id="passengerCount" value="1" min="1" max="9">
               </div>
-              <p class="price" id="totalPrice" style="display: none;"></p>
-              <div id="status"></div>
-              <button type="button" class="btn btn-secondary btn-cta w-100 mb-2" id="searchInstancesBtn">Search Flights</button>
-              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn" disabled>Book Now</button>
-            </form>
+            </div>
+            <div id="status" class="mt-3"></div>
           </div>
         </div>
       </div>
@@ -85,6 +75,7 @@
   <script src="js/components/Badge.js"></script>
   <script src="js/components/EmptyState.js"></script>
   <script src="js/components/Card.js"></script>
+  <script src="js/components/Calendar.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
@@ -96,58 +87,11 @@
     let route = null;
     let selectedInstance = null;
     let selectedReturnInstance = null;
+    let calendar = null;
+    let tripType = 'one-way';
     let selectedClass = 'economy';
     let passengerCount = 1;
-    let tripType = 'one-way';
-    
-    // Set minimum date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('departureDate').setAttribute('min', today);
-    document.getElementById('returnDate').setAttribute('min', today);
-    
-    // Trip type change handler
-    document.querySelectorAll('input[name="tripType"]').forEach(radio => {
-      radio.addEventListener('change', function() {
-        tripType = this.value;
-        const returnDateContainer = document.getElementById('returnDateContainer');
-        const returnDateInput = document.getElementById('returnDate');
-        
-        if (tripType === 'round-trip') {
-          returnDateContainer.style.display = 'block';
-          returnDateInput.required = true;
-          // Set minimum return date to departure date
-          const departureDate = document.getElementById('departureDate').value;
-          if (departureDate) {
-            const nextDay = new Date(departureDate);
-            nextDay.setDate(nextDay.getDate() + 1);
-            returnDateInput.setAttribute('min', nextDay.toISOString().split('T')[0]);
-          }
-        } else {
-          returnDateContainer.style.display = 'none';
-          returnDateInput.required = false;
-          returnDateInput.value = '';
-          selectedReturnInstance = null;
-        }
-        
-        // Reset instances and selection
-        document.getElementById('instancesSection').style.display = 'none';
-        selectedInstance = null;
-        selectedReturnInstance = null;
-        document.getElementById('bookBtn').disabled = true;
-      });
-    });
-    
-    // Update return date minimum when departure date changes
-    document.getElementById('departureDate').addEventListener('change', function() {
-      if (tripType === 'round-trip') {
-        const departureDate = this.value;
-        if (departureDate) {
-          const nextDay = new Date(departureDate);
-          nextDay.setDate(nextDay.getDate() + 1);
-          document.getElementById('returnDate').setAttribute('min', nextDay.toISOString().split('T')[0]);
-        }
-      }
-    });
+    let returnRouteId = null;
     
     async function loadRoute() {
       try {
@@ -195,39 +139,155 @@
           document.getElementById('flightPrice').insertAdjacentHTML('beforebegin', badgeHTML);
         }
         
-        // No images for flight routes
+        // Load available dates and initialize calendar
+        await loadAvailableDates();
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load flight route');
       }
     }
     
-    async function loadInstances() {
-      const departureDate = document.getElementById('departureDate').value;
-      const returnDate = document.getElementById('returnDate').value;
-      selectedClass = document.getElementById('classSelect').value;
-      passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
-      tripType = document.querySelector('input[name="tripType"]:checked').value;
-      
-      if (!departureDate) {
-      setStatus('status', 'error', 'Please select a departure date');
-        return;
+    async function loadAvailableDates() {
+      try {
+        const data = await apiCall(`/flights/availability?route_id=${routeId}`);
+        const availableDates = data.available_dates || [];
+        
+        // Initialize calendar
+        calendar = new Calendar({
+          container: '#calendarContainer',
+          availableDates: availableDates,
+          rangeMode: tripType === 'round-trip',
+          onDateSelect: (date) => {
+            // First date selected (departure)
+            loadInstancesForDate(date);
+            // If round-trip, load return route availability
+            if (tripType === 'round-trip') {
+              loadReturnRouteAvailability(date);
+            }
+          },
+          onRangeSelect: (departureDate, returnDate) => {
+            // Both dates selected
+            loadInstancesForDate(departureDate);
+          }
+        });
+        
+        // Get return route ID if it exists
+        await getReturnRouteId();
+        
+        // Trip type change handler
+        document.querySelectorAll('input[name="tripType"]').forEach(radio => {
+          radio.addEventListener('change', function() {
+            tripType = this.value;
+            
+            // Update calendar range mode
+            if (calendar) {
+              calendar.setRangeMode(tripType === 'round-trip');
+              if (tripType === 'round-trip') {
+                // Load return availability if departure is already selected
+                const departureDate = calendar.getDepartureDate();
+                if (departureDate) {
+                  loadReturnRouteAvailability(departureDate);
+                }
+              } else {
+                // Reset range selection
+                calendar.setReturnDate(null);
+                selectedReturnInstance = null;
+                // Reload instances with just departure date
+                const selectedDate = calendar.getSelectedDate();
+                if (selectedDate) {
+                  loadInstancesForDate(selectedDate);
+                }
+              }
+            }
+          });
+        });
+        
+        // Update instances when class or passenger count changes
+        document.getElementById('classSelect').addEventListener('change', function() {
+          const selectedDate = calendar ? calendar.getSelectedDate() : null;
+          if (selectedDate) {
+            loadInstancesForDate(selectedDate);
+          }
+        });
+        
+        document.getElementById('passengerCount').addEventListener('change', function() {
+          const selectedDate = calendar ? calendar.getSelectedDate() : null;
+          if (selectedDate) {
+            loadInstancesForDate(selectedDate);
+          }
+        });
+      } catch (error) {
+        console.error('Failed to load available dates:', error);
+        setStatus('status', 'error', 'Failed to load available dates');
       }
-      
-      if (tripType === 'round-trip' && !returnDate) {
-      setStatus('status', 'error', 'Please select a return date');
-        return;
+    }
+    
+    async function getReturnRouteId() {
+      try {
+        // Check if there's a return route by making a test call with a return date
+        const today = new Date().toISOString().split('T')[0];
+        const tomorrow = new Date();
+        tomorrow.setDate(tomorrow.getDate() + 1);
+        const tomorrowStr = tomorrow.toISOString().split('T')[0];
+        
+        const testData = await apiCall(`/flights/instances?route_id=${routeId}&departure_date=${today}&return_date=${tomorrowStr}`);
+        
+        // If return_instances exist, there's a return route
+        if (testData.return_instances && testData.return_instances.length > 0) {
+          // Return route exists - we'll get availability by querying with different return dates
+          returnRouteId = true; // Flag that return route exists
+        } else {
+          returnRouteId = null;
+        }
+      } catch (error) {
+        console.error('Failed to check return route:', error);
+        returnRouteId = null;
       }
-      
+    }
+    
+    async function loadReturnRouteAvailability(departureDate) {
+      try {
+        // Get available return dates using the API
+        const data = await apiCall(`/flights/availability?route_id=${routeId}&return=true`);
+        const allReturnDates = data.available_dates || [];
+        
+        // Filter to only dates after departure date
+        const departure = new Date(departureDate);
+        const availableReturnDates = allReturnDates.filter(dateStr => {
+          const date = new Date(dateStr);
+          return date > departure;
+        });
+        
+        // Update calendar with return available dates
+        if (calendar) {
+          calendar.setReturnAvailableDates(availableReturnDates);
+        }
+      } catch (error) {
+        console.error('Failed to load return route availability:', error);
+        if (calendar) {
+          calendar.setReturnAvailableDates([]);
+        }
+      }
+    }
+    
+    async function loadInstancesForDate(date) {
       try {
         clearStatus('status');
         
-        // Build API URL with optional return_date for round-trip
-        let apiUrl = `/flights/instances?route_id=${routeId}&departure_date=${departureDate}&class=${selectedClass}&passenger_count=${passengerCount}`;
-        if (tripType === 'round-trip' && returnDate) {
-          apiUrl += `&return_date=${returnDate}`;
+        // Get current class and passenger count from form
+        selectedClass = document.getElementById('classSelect').value;
+        passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
+        
+        // Build API URL
+        let apiUrl = `/flights/instances?route_id=${routeId}&departure_date=${date}&class=${selectedClass}&passenger_count=${passengerCount}`;
+        
+        // Add return date if round-trip and return date is selected
+        if (tripType === 'round-trip' && calendar) {
+          const returnDate = calendar.getReturnDate();
+          if (returnDate) {
+            apiUrl += `&return_date=${returnDate}`;
+          }
         }
         
-        // Load instances (API will return both departure and return instances if return_date is provided)
         const data = await apiCall(apiUrl);
         const instances = data.instances || [];
         const returnInstances = data.return_instances || [];
@@ -236,7 +296,6 @@
           document.getElementById('instancesList').innerHTML = '<p class="text-muted">No available flights for this date. Please try another date.</p>';
           document.getElementById('instancesSection').style.display = 'block';
           selectedInstance = null;
-          document.getElementById('bookBtn').disabled = true;
           return;
         }
         
@@ -261,7 +320,7 @@
                     <h6 class="mb-1">${departureTime}</h6>
                     <small class="text-muted">${formatDate(instance.departure_datetime)}</small>
                     <br>
-                    <small class="text-muted">${instance.seats_available} seat${instance.seats_available !== 1 ? 's' : ''} available</small>
+                    <small class="text-muted">${instance.seats_available || 0} seat${(instance.seats_available || 0) !== 1 ? 's' : ''} available</small>
                   </div>
                   <div class="text-end">
                     <strong class="text-primary">${formatPrice(price)}</strong>
@@ -278,7 +337,7 @@
         if (tripType === 'round-trip') {
           instancesHtml += '<h6 class="mb-3 mt-4">Return Flights</h6>';
           if (returnInstances.length === 0) {
-            instancesHtml += '<p class="text-muted">No return flights available for this date. Please try another return date.</p>';
+            instancesHtml += '<p class="text-muted">No return flights available. Please select a return date.</p>';
           } else {
             instancesHtml += returnInstances.map(instance => {
               const price = instance.discounted_price || instance.price;
@@ -299,7 +358,7 @@
                         <h6 class="mb-1">${departureTime}</h6>
                         <small class="text-muted">${formatDate(instance.departure_datetime)}</small>
                         <br>
-                        <small class="text-muted">${instance.seats_available} seat${instance.seats_available !== 1 ? 's' : ''} available</small>
+                        <small class="text-muted">${instance.seats_available || 0} seat${(instance.seats_available || 0) !== 1 ? 's' : ''} available</small>
                       </div>
                       <div class="text-end">
                         <strong class="text-primary">${formatPrice(price)}</strong>
@@ -317,60 +376,83 @@
         document.getElementById('instancesList').innerHTML = instancesHtml;
         document.getElementById('instancesSection').style.display = 'block';
         
+        // Store instances for later use
+        window.currentInstances = instances;
+        window.currentReturnInstances = returnInstances;
+        
+        // Always show booking button (will be enabled/disabled based on selection)
+        updateBookingButton();
+        
         // Add click handlers to instance cards
         document.querySelectorAll('.instance-card').forEach(card => {
           card.addEventListener('click', function() {
-            const instanceType = this.dataset.instanceType;
             const instanceId = parseInt(this.dataset.instanceId);
+            const instanceType = this.dataset.instanceType;
             
+            // Remove previous selection from same type
+            document.querySelectorAll(`.instance-card[data-instance-type="${instanceType}"]`).forEach(c => c.classList.remove('border-primary'));
+            this.classList.add('border-primary');
+            
+            // Use window.currentInstances which are stored globally
+            // Convert instanceId to string for comparison since API returns IDs as strings
+            const instanceIdStr = String(instanceId);
             if (instanceType === 'departure') {
-              // Remove previous selection from departure cards
-              document.querySelectorAll('.instance-card[data-instance-type="departure"]').forEach(c => c.classList.remove('border-primary'));
-              this.classList.add('border-primary');
-              selectedInstance = instances.find(i => i.id === instanceId);
+              selectedInstance = window.currentInstances.find(i => String(i.id) === instanceIdStr);
             } else if (instanceType === 'return') {
-              // Remove previous selection from return cards
-              document.querySelectorAll('.instance-card[data-instance-type="return"]').forEach(c => c.classList.remove('border-primary'));
-              this.classList.add('border-primary');
-              selectedReturnInstance = returnInstances.find(i => i.id === instanceId);
+              selectedReturnInstance = window.currentReturnInstances.find(i => String(i.id) === instanceIdStr);
             }
             
-            // Update total price and enable booking if both are selected (for round-trip) or just departure (for one-way)
-            if (tripType === 'round-trip') {
-              if (selectedInstance && selectedReturnInstance) {
-                const departurePrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
-                const returnPrice = (selectedReturnInstance.discounted_price || selectedReturnInstance.price) * passengerCount;
-                const totalPrice = departurePrice + returnPrice;
-                document.getElementById('totalPrice').textContent = `Total: ${formatPrice(totalPrice)}`;
-                document.getElementById('totalPrice').style.display = 'block';
-                document.getElementById('bookBtn').disabled = false;
-              } else {
-                document.getElementById('bookBtn').disabled = true;
-              }
-            } else {
-              if (selectedInstance) {
-                const totalPrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
-                document.getElementById('totalPrice').textContent = `Total: ${formatPrice(totalPrice)}`;
-                document.getElementById('totalPrice').style.display = 'block';
-                document.getElementById('bookBtn').disabled = false;
-              }
-            }
+            // Update booking button state
+            updateBookingButton();
           });
         });
       } catch (error) {
-      setStatus('status', 'error', error.message || 'Failed to load available flights');
+        setStatus('status', 'error', error.message || 'Failed to load available flights');
       }
     }
     
-    // Search instances button
-    document.getElementById('searchInstancesBtn').addEventListener('click', function() {
-      loadInstances();
-    });
-    
-    // Booking form submission
-    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    function updateBookingButton() {
+      const instancesSection = document.getElementById('instancesSection');
+      if (!instancesSection) return;
       
+      // Remove existing button if any
+      const existingBtn = instancesSection.querySelector('.book-instance-btn');
+      if (existingBtn) existingBtn.remove();
+      
+      // Check if we can show the booking button
+      const canBook = selectedInstance && (tripType === 'one-way' || (tripType === 'round-trip' && selectedReturnInstance));
+      
+      // Always show the button, always make it clickable
+      const bookingBtn = document.createElement('button');
+      bookingBtn.className = 'btn btn-lg w-100 mt-4 book-instance-btn';
+      bookingBtn.type = 'button'; // Prevent form submission
+      
+      if (canBook) {
+        bookingBtn.style.cssText = 'font-size: 1.2rem; font-weight: bold; padding: 15px; background-color: #007bff; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white; cursor: pointer;';
+        bookingBtn.textContent = 'Book Now';
+      } else {
+        bookingBtn.style.cssText = 'font-size: 1.2rem; font-weight: bold; padding: 15px; background-color: #6c757d; border: none; color: white; cursor: pointer; opacity: 0.8;';
+        bookingBtn.textContent = tripType === 'round-trip' && !selectedReturnInstance ? 'Select Return Flight' : 'Select a Flight';
+      }
+      
+      // Always attach click handler - it will validate inside
+      bookingBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleBooking();
+      });
+      
+      // Append button to the card-body, after instancesList
+      const cardBody = instancesSection.querySelector('.card-body');
+      if (cardBody) {
+        cardBody.appendChild(bookingBtn);
+      } else {
+        // Fallback: append to instancesSection
+        instancesSection.appendChild(bookingBtn);
+      }
+    }
+    
+    async function handleBooking() {
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
         window.location.href = 'login.html';
@@ -387,20 +469,29 @@
         return;
       }
       
-      const departureDate = new Date(document.getElementById('departureDate').value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Double-check we have valid selections
+      const canBook = selectedInstance && (tripType === 'one-way' || (tripType === 'round-trip' && selectedReturnInstance));
+      if (!canBook) {
+        setStatus('status', 'error', 'Please select a flight to continue');
+        return;
+      }
       
-      if (departureDate < today) {
-        setStatus('status', 'error', 'Departure date cannot be in the past');
+      // Get current values from form
+      selectedClass = document.getElementById('classSelect').value;
+      passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
+      
+      if (passengerCount < 1 || passengerCount > 9) {
+        setStatus('status', 'error', 'Please enter a valid number of passengers (1-9)');
         return;
       }
       
       clearStatus('status');
       
-      const bookBtn = document.getElementById('bookBtn');
-      bookBtn.disabled = true;
-      bookBtn.textContent = 'Booking...';
+      const bookBtn = document.querySelector('.book-instance-btn');
+      if (bookBtn) {
+        bookBtn.disabled = true;
+        bookBtn.textContent = 'Booking...';
+      }
       
       try {
         // Book departure flight
@@ -409,8 +500,7 @@
           body: JSON.stringify({
             instance_id: selectedInstance.id,
             class: selectedClass,
-            passenger_count: passengerCount,
-            passenger_details: []
+            passenger_count: passengerCount
           })
         });
         
@@ -421,8 +511,7 @@
             body: JSON.stringify({
               instance_id: selectedReturnInstance.id,
               class: selectedClass,
-              passenger_count: passengerCount,
-              passenger_details: []
+              passenger_count: passengerCount
             })
           });
         }
@@ -431,15 +520,17 @@
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to create booking');
-        bookBtn.disabled = false;
-        bookBtn.textContent = 'Book Now';
+        if (bookBtn) {
+          bookBtn.disabled = false;
+          bookBtn.textContent = 'Book Now';
+        }
       }
-    });
+    }
     
     if (routeId) {
       loadRoute();
     } else {
-    setStatus('status', 'error', 'Flight route ID not provided');
+      setStatus('status', 'error', 'Flight route ID not provided');
     }
   </script>
 </body>

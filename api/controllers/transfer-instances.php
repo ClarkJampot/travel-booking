@@ -14,6 +14,83 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
+// GET /api/transfer-instances?transfer_id=X&date=Y&passenger_count=Z
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfer-instances/?$#', $uri)) {
+  $transferId = isset($_GET['transfer_id']) ? (int)$_GET['transfer_id'] : null;
+  $date = $_GET['date'] ?? null;
+  $passengerCount = isset($_GET['passenger_count']) ? (int)$_GET['passenger_count'] : 1;
+  
+  if (!$transferId || !$date) {
+    json_error('transfer_id and date are required', 400);
+  }
+  
+  // Get instances for this transfer route on the specified date
+  // Use DATE comparison that accounts for timezone - compare date parts only
+  $stmt = $pdo->prepare('
+    SELECT ti.*,
+      ts.route_id, ts.departure_time,
+      tr.base_price, tr.discount_percent, tr.capacity,
+      tr.origin_city_id, tr.destination_city_id,
+      oc.name as origin_city_name, dc.name as destination_city_name
+    FROM transfer_instances ti
+    INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+    INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+    INNER JOIN cities oc ON tr.origin_city_id = oc.id
+    INNER JOIN cities dc ON tr.destination_city_id = dc.id
+    WHERE tr.id = ?
+      AND CAST(ti.departure_datetime AS DATE) = CAST(? AS DATE)
+      AND ti.status = ?
+      AND ti.seats_available >= ?
+    ORDER BY ti.departure_datetime ASC
+  ');
+  $stmt->execute([$transferId, $date, 'scheduled', $passengerCount]);
+  $instances = $stmt->fetchAll();
+  
+  // Calculate prices and discounted prices
+  foreach ($instances as &$instance) {
+    $price = $instance['price'] ?? $instance['base_price'];
+    $instance['price'] = $price;
+    if ($instance['discount_percent'] > 0) {
+      $instance['discounted_price'] = round($price * (1 - $instance['discount_percent'] / 100), 2);
+    }
+  }
+  
+  json_ok(['instances' => $instances]);
+  exit;
+}
+
+// GET /api/transfers/availability?transfer_id=X
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/availability/?$#', $uri)) {
+  $transferId = isset($_GET['transfer_id']) ? (int)$_GET['transfer_id'] : null;
+  
+  if (!$transferId) {
+    json_error('transfer_id is required', 400);
+  }
+  
+  // Get all available dates for this transfer route
+  // Query transfer_instances that are scheduled and have available seats
+  $stmt = $pdo->prepare('
+    SELECT DISTINCT CAST(ti.departure_date AS DATE) as available_date
+    FROM transfer_instances ti
+    INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+    INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+    WHERE tr.id = ?
+      AND ti.status = ?
+      AND ti.departure_date >= CAST(GETDATE() AS DATE)
+      AND ti.seats_available > 0
+    ORDER BY available_date ASC
+  ');
+  $stmt->execute([$transferId, 'scheduled']);
+  $results = $stmt->fetchAll();
+  
+  $availableDates = array_map(function($row) {
+    return $row['available_date'];
+  }, $results);
+  
+  json_ok(['available_dates' => $availableDates]);
+  exit;
+}
+
 // GET /api/transfers (search for available instances)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)) {
   $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
@@ -187,7 +264,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
   
   $instance_id = isset($input['instance_id']) ? (int)$input['instance_id'] : null;
   $passenger_count = isset($input['passenger_count']) ? (int)$input['passenger_count'] : 1;
-  $passenger_details = $input['passenger_details'] ?? [];
   
   if (!$instance_id || $passenger_count < 1) {
     json_error('Missing or invalid required fields: instance_id, passenger_count', 400);
@@ -241,14 +317,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
   
   try {
     // Create booking in transfer_bookings table
-    $passengerDetailsJson = json_encode($passenger_details);
     $stmt = $pdo->prepare('
-      INSERT INTO transfer_bookings (user_id, transfer_id, passenger_count, passenger_details, total_price, status)
-      VALUES (?, ?, ?, ?, ?, ?)
+      INSERT INTO transfer_bookings (user_id, transfer_id, passenger_count, total_price, status)
+      VALUES (?, ?, ?, ?, ?)
     ');
     $stmt->execute([
       (int)$user['id'], $transferId,
-      $passenger_count, $passengerDetailsJson, $totalPrice, 'confirmed'
+      $passenger_count, $totalPrice, 'confirmed'
     ]);
     $bookingId = (int)$pdo->lastInsertId();
     

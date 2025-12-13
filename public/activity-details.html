@@ -24,22 +24,19 @@
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card sticky-booking-form reveal">
+        <div class="card reveal">
           <div class="card-body">
-            <h5>Book Now</h5>
-            <form id="bookingForm">
-              <div class="mb-3">
-                <label class="form-label">Date</label>
-                <input type="date" class="form-control" id="activityDateInput" required>
-              </div>
+            <h5 class="mb-4">Select Date</h5>
+            <div id="calendarContainer"></div>
+            <div class="mt-4">
               <div class="mb-3">
                 <label class="form-label">Number of Participants</label>
-                <input type="number" class="form-control" id="participants" value="1" min="1" required>
+                <input type="number" class="form-control" id="participants" value="1" min="1">
               </div>
-              <p class="price" id="totalPrice"></p>
-              <div id="status"></div>
-              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn">Book Now</button>
-            </form>
+            </div>
+            <p class="price" id="totalPrice" style="display: none;"></p>
+            <div id="status" class="mt-3"></div>
+            <button type="button" class="btn btn-primary btn-cta w-100 mt-3" id="bookBtn" style="display: none;">Book Now</button>
           </div>
         </div>
       </div>
@@ -55,6 +52,7 @@
   <script src="js/components/Badge.js"></script>
   <script src="js/components/EmptyState.js"></script>
   <script src="js/components/Card.js"></script>
+  <script src="js/components/Calendar.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
@@ -63,10 +61,8 @@
     const urlParams = new URLSearchParams(window.location.search);
     const activityId = urlParams.get('id');
     let activity = null;
-    
-    // Set minimum date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('activityDateInput').setAttribute('min', today);
+    let calendar = null;
+    let selectedDate = null;
     
     async function loadActivity() {
       try {
@@ -145,59 +141,81 @@
           });
         }, 50);
         
-        calculateTotal();
+        // Initialize calendar - activities are available on their specific date or any future date
+        const today = new Date();
+        const availableDates = [];
+        // Generate available dates for next 365 days
+        for (let i = 0; i < 365; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() + i);
+          availableDates.push(date.toISOString().split('T')[0]);
+        }
+        
+        calendar = new Calendar({
+          container: '#calendarContainer',
+          availableDates: availableDates,
+          rangeMode: false,
+          onDateSelect: (date) => {
+            selectedDate = date;
+            updateTotalPrice();
+          }
+        });
+        
+        // Update total when participants change
+        document.getElementById('participants').addEventListener('change', function() {
+          updateTotalPrice();
+        });
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load activity');
       }
     }
     
-    function calculateTotal() {
-      const participants = parseInt(document.getElementById('participants').value) || 1;
-      if (activity) {
-        const pricePerPerson = activity.discount_percent > 0 
-          ? activity.price * (1 - activity.discount_percent / 100)
-          : activity.price;
-        const total = pricePerPerson * participants;
-        const priceEl = document.getElementById('totalPrice');
-        priceEl.style.animation = 'pulse 0.3s ease';
-        priceEl.textContent = `Total: ${formatPrice(total)}`;
-        setTimeout(() => priceEl.style.animation = '', 300);
+    function updateTotalPrice() {
+      if (!selectedDate) {
+        document.getElementById('totalPrice').style.display = 'none';
+        document.getElementById('bookBtn').style.display = 'none';
+        return;
       }
+      
+      const participants = parseInt(document.getElementById('participants').value) || 1;
+      const pricePerPerson = activity.discount_percent > 0 
+        ? activity.price * (1 - activity.discount_percent / 100)
+        : activity.price;
+      const total = pricePerPerson * participants;
+      
+      document.getElementById('totalPrice').textContent = `Total: ${formatPrice(total)}`;
+      document.getElementById('totalPrice').style.display = 'block';
+      document.getElementById('bookBtn').style.display = 'block';
     }
     
-    document.getElementById('participants').addEventListener('change', calculateTotal);
-    
-    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    document.getElementById('bookBtn').addEventListener('click', async function() {
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
         window.location.href = 'login.html';
         return;
       }
       
-      clearStatus('status');
-      const participants = parseInt(document.getElementById('participants').value) || 1;
-      const date = document.getElementById('activityDateInput').value;
-      
-      // Validation
-      if (!date) {
+      if (!selectedDate) {
         setStatus('status', 'error', 'Please select a date');
         return;
       }
       
-      const selectedDate = new Date(date);
+      const selectedDateObj = new Date(selectedDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      if (selectedDate < today) {
+      if (selectedDateObj < today) {
         setStatus('status', 'error', 'Date cannot be in the past');
         return;
       }
       
+      const participants = parseInt(document.getElementById('participants').value) || 1;
       const pricePerPerson = activity.discount_percent > 0 
         ? activity.price * (1 - activity.discount_percent / 100)
         : activity.price;
       const totalPrice = pricePerPerson * participants;
+      
+      clearStatus('status');
       
       const bookBtn = document.getElementById('bookBtn');
       bookBtn.disabled = true;
@@ -209,6 +227,7 @@
           body: JSON.stringify({
             item_type: 'activity',
             item_id: activity.id,
+            date: selectedDate,
             participant_count: participants,
             total_price: totalPrice
           })
@@ -227,4 +246,3 @@
   </script>
 </body>
 </html>
-

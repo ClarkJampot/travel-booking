@@ -23,26 +23,19 @@
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card sticky-booking-form reveal">
+        <div class="card reveal">
           <div class="card-body">
-            <h5>Book Now</h5>
-            <form id="bookingForm">
-              <div class="mb-3">
-                <label class="form-label">Check-in Date</label>
-                <input type="date" class="form-control" id="checkIn" required>
-              </div>
-              <div class="mb-3">
-                <label class="form-label">Check-out Date</label>
-                <input type="date" class="form-control" id="checkOut" required>
-              </div>
+            <h5 class="mb-4">Select Dates</h5>
+            <div id="calendarContainer"></div>
+            <div class="mt-4">
               <div class="mb-3">
                 <label class="form-label">Number of Guests</label>
-                <input type="number" class="form-control" id="guests" value="1" min="1" max="10" required>
+                <input type="number" class="form-control" id="guests" value="1" min="1" max="10">
               </div>
-              <p class="price" id="totalPrice"></p>
-              <div id="status"></div>
-              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn">Book Now</button>
-            </form>
+            </div>
+            <p class="price" id="totalPrice" style="display: none;"></p>
+            <div id="status" class="mt-3"></div>
+            <button type="button" class="btn btn-primary btn-cta w-100 mt-3" id="bookBtn" style="display: none;">Book Now</button>
           </div>
         </div>
       </div>
@@ -58,6 +51,7 @@
   <script src="js/components/Badge.js"></script>
   <script src="js/components/EmptyState.js"></script>
   <script src="js/components/Card.js"></script>
+  <script src="js/components/Calendar.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
@@ -66,6 +60,10 @@
     const urlParams = new URLSearchParams(window.location.search);
     const hotelId = urlParams.get('id');
     let hotel = null;
+    let calendar = null;
+    let checkInDate = null;
+    let checkOutDate = null;
+    
     async function loadHotel() {
       try {
         const data = await apiCall(`/hotels?id=${hotelId}`);
@@ -139,102 +137,106 @@
           });
         }, 50);
         
-        // Set minimum date to today
-        const today = new Date().toISOString().split('T')[0];
-        document.getElementById('checkIn').setAttribute('min', today);
-        document.getElementById('checkOut').setAttribute('min', today);
+        // Initialize calendar with range mode for check-in/check-out
+        // Hotels are always available, so we'll allow any future dates
+        const today = new Date();
+        const availableDates = [];
+        // Generate available dates for next 365 days
+        for (let i = 0; i < 365; i++) {
+          const date = new Date(today);
+          date.setDate(date.getDate() + i);
+          availableDates.push(date.toISOString().split('T')[0]);
+        }
         
-        calculateTotal();
+        calendar = new Calendar({
+          container: '#calendarContainer',
+          availableDates: availableDates,
+          returnAvailableDates: availableDates, // Hotels: all dates available for check-out too
+          rangeMode: true,
+          onDateSelect: (date) => {
+            checkInDate = date;
+            checkOutDate = null;
+            updateTotalPrice();
+          },
+          onRangeSelect: (departure, returnDate) => {
+            checkInDate = departure;
+            checkOutDate = returnDate;
+            updateTotalPrice();
+          }
+        });
+        
+        // Update total when guests change
+        document.getElementById('guests').addEventListener('change', function() {
+          updateTotalPrice();
+        });
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load hotel');
       }
     }
     
-    function calculateTotal() {
-      const checkIn = document.getElementById('checkIn').value;
-      const checkOut = document.getElementById('checkOut').value;
-      
-      if (!checkIn || !checkOut) {
-        document.getElementById('totalPrice').textContent = '';
+    function updateTotalPrice() {
+      if (!checkInDate || !checkOutDate) {
+        document.getElementById('totalPrice').style.display = 'none';
+        document.getElementById('bookBtn').style.display = 'none';
         return;
       }
       
-      const checkInDate = new Date(checkIn);
-      const checkOutDate = new Date(checkOut);
+      const checkIn = new Date(checkInDate);
+      const checkOut = new Date(checkOutDate);
       
-      if (checkOutDate <= checkInDate) {
-        document.getElementById('totalPrice').textContent = 'Check-out must be after check-in';
-        document.getElementById('totalPrice').style.color = 'red';
+      if (checkOut <= checkIn) {
+        document.getElementById('totalPrice').style.display = 'none';
+        document.getElementById('bookBtn').style.display = 'none';
         return;
       }
       
-      const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+      const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+      const guests = parseInt(document.getElementById('guests').value) || 1;
+      const pricePerNight = hotel.discount_percent > 0 
+        ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
+        : hotel.price_per_night;
+      const total = pricePerNight * nights * guests;
       
-      if (hotel) {
-        const pricePerNight = hotel.discount_percent > 0 
-          ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
-          : hotel.price_per_night;
-        const total = pricePerNight * nights;
-        const priceEl = document.getElementById('totalPrice');
-        priceEl.style.animation = 'pulse 0.3s ease';
-        priceEl.style.color = '';
-        priceEl.textContent = `${nights} night${nights !== 1 ? 's' : ''}: ${formatPrice(total)}`;
-        setTimeout(() => priceEl.style.animation = '', 300);
-      }
+      document.getElementById('totalPrice').textContent = `Total: ${formatPrice(total)} (${nights} night${nights !== 1 ? 's' : ''}, ${guests} guest${guests !== 1 ? 's' : ''})`;
+      document.getElementById('totalPrice').style.display = 'block';
+      document.getElementById('bookBtn').style.display = 'block';
     }
     
-    document.getElementById('checkIn').addEventListener('change', function() {
-      const checkIn = this.value;
-      if (checkIn) {
-        const nextDay = new Date(checkIn);
-        nextDay.setDate(nextDay.getDate() + 1);
-        document.getElementById('checkOut').setAttribute('min', nextDay.toISOString().split('T')[0]);
-      }
-      calculateTotal();
-    });
-    
-    document.getElementById('checkOut').addEventListener('change', calculateTotal);
-    document.getElementById('guests').addEventListener('change', calculateTotal);
-    
-    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    document.getElementById('bookBtn').addEventListener('click', async function() {
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
         window.location.href = 'login.html';
         return;
       }
       
-      clearStatus('status');
-      const checkIn = document.getElementById('checkIn').value;
-      const checkOut = document.getElementById('checkOut').value;
-      const guests = parseInt(document.getElementById('guests').value) || 1;
-      
-      // Validation
-      if (!checkIn || !checkOut) {
+      if (!checkInDate || !checkOutDate) {
         setStatus('status', 'error', 'Please select check-in and check-out dates');
         return;
       }
       
-      const checkInDate = new Date(checkIn);
-      const checkOutDate = new Date(checkOut);
+      const checkIn = new Date(checkInDate);
+      const checkOut = new Date(checkOutDate);
       const today = new Date();
       today.setHours(0, 0, 0, 0);
       
-      if (checkInDate < today) {
+      if (checkIn < today) {
         setStatus('status', 'error', 'Check-in date cannot be in the past');
         return;
       }
       
-      if (checkOutDate <= checkInDate) {
+      if (checkOut <= checkIn) {
         setStatus('status', 'error', 'Check-out date must be after check-in date');
         return;
       }
       
-      const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+      const nights = Math.ceil((checkOut - checkIn) / (1000 * 60 * 60 * 24));
+      const guests = parseInt(document.getElementById('guests').value) || 1;
       const pricePerNight = hotel.discount_percent > 0 
         ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
         : hotel.price_per_night;
-      const totalPrice = pricePerNight * nights;
+      const totalPrice = pricePerNight * nights * guests;
+      
+      clearStatus('status');
       
       const bookBtn = document.getElementById('bookBtn');
       bookBtn.disabled = true;
@@ -246,8 +248,8 @@
           body: JSON.stringify({
             item_type: 'hotel',
             item_id: hotel.id,
-            check_in: checkIn,
-            check_out: checkOut,
+            check_in: checkInDate,
+            check_out: checkOutDate,
             guests: guests,
             total_price: totalPrice
           })
@@ -260,10 +262,9 @@
         bookBtn.textContent = 'Book Now';
       }
     });
+    
     if (hotelId) loadHotel();
     else setStatus('status', 'error', 'Hotel ID not provided');
   </script>
 </body>
 </html>
-
-

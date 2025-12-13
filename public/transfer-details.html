@@ -31,23 +31,17 @@
         </div>
       </div>
       <div class="col-md-4">
-        <div class="card sticky-booking-form reveal">
+        <div class="card reveal">
           <div class="card-body">
-            <h5>Book Now</h5>
-            <form id="bookingForm">
-              <div class="mb-3">
-                <label class="form-label">Date</label>
-                <input type="date" class="form-control" id="transferDate" required min="">
-              </div>
+            <h5 class="mb-4">Select Date</h5>
+            <div id="calendarContainer"></div>
+            <div class="mt-4">
               <div class="mb-3">
                 <label class="form-label">Passengers</label>
-                <input type="number" class="form-control" id="passengerCount" value="1" min="1" max="9" required>
+                <input type="number" class="form-control" id="passengerCount" value="1" min="1" max="9">
               </div>
-              <p class="price" id="totalPrice" style="display: none;"></p>
-              <div id="status"></div>
-              <button type="button" class="btn btn-secondary btn-cta w-100 mb-2" id="searchInstancesBtn">Search Transfers</button>
-              <button type="submit" class="btn btn-primary btn-cta w-100" id="bookBtn" disabled>Book Now</button>
-            </form>
+            </div>
+            <div id="status" class="mt-3"></div>
           </div>
         </div>
       </div>
@@ -63,6 +57,7 @@
   <script src="js/components/Badge.js"></script>
   <script src="js/components/EmptyState.js"></script>
   <script src="js/components/Card.js"></script>
+  <script src="js/components/Calendar.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script src="js/carousel.js"></script>
@@ -73,11 +68,8 @@
     const transferId = urlParams.get('id');
     let transfer = null;
     let selectedInstance = null;
+    let calendar = null;
     let passengerCount = 1;
-    
-    // Set minimum date to today
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('transferDate').setAttribute('min', today);
     
     async function loadTransfer() {
       try {
@@ -130,27 +122,50 @@
         if (transfer.description) {
           document.getElementById('transferDescription').textContent = transfer.description;
         }
+        
+        // Load available dates and initialize calendar
+        await loadAvailableDates();
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load transfer');
       }
     }
     
-    async function loadInstances() {
-      const date = document.getElementById('transferDate').value;
-      passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
-      
-      if (!date) {
-        setStatus('status', 'error', 'Please select a date');
-        return;
+    async function loadAvailableDates() {
+      try {
+        const data = await apiCall(`/transfers/availability?transfer_id=${transferId}`);
+        const availableDates = data.available_dates || [];
+        
+        // Initialize calendar
+        calendar = new Calendar({
+          container: '#calendarContainer',
+          availableDates: availableDates,
+          onDateSelect: (date) => {
+            loadInstancesForDate(date);
+          }
+        });
+        
+        // Update instances when passenger count changes
+        document.getElementById('passengerCount').addEventListener('change', function() {
+          const selectedDate = calendar ? calendar.getSelectedDate() : null;
+          if (selectedDate) {
+            loadInstancesForDate(selectedDate);
+          }
+        });
+      } catch (error) {
+        console.error('Failed to load available dates:', error);
+        setStatus('status', 'error', 'Failed to load available dates');
       }
-      
+    }
+    
+    async function loadInstancesForDate(date) {
       try {
         clearStatus('status');
         
-        // Build API URL
-        const apiUrl = `/transfer-instances?transfer_id=${transferId}&date=${date}&passenger_count=${passengerCount}`;
+        // Get current passenger count from form
+        passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
         
-        // Load instances
+        // Load instances for selected date
+        const apiUrl = `/transfer-instances?transfer_id=${transferId}&date=${date}&passenger_count=${passengerCount}`;
         const data = await apiCall(apiUrl);
         const instances = data.instances || [];
         
@@ -158,14 +173,32 @@
           document.getElementById('instancesList').innerHTML = '<p class="text-muted">No available transfers for this date. Please try another date.</p>';
           document.getElementById('instancesSection').style.display = 'block';
           selectedInstance = null;
-          document.getElementById('bookBtn').disabled = true;
           return;
         }
         
         // Display instances
         let instancesHtml = instances.map(instance => {
           const price = instance.discounted_price || instance.price;
-          const time = instance.departure_time || instance.time || '';
+          // Use departure_datetime if available, otherwise construct from departure_date and departure_time
+          let departureTime = '';
+          if (instance.departure_datetime) {
+            departureTime = new Date(instance.departure_datetime).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: true 
+            });
+          } else if (instance.departure_date && instance.departure_time) {
+            // Construct datetime from date and time
+            const dateTimeStr = `${instance.departure_date}T${instance.departure_time}`;
+            departureTime = new Date(dateTimeStr).toLocaleTimeString('en-US', { 
+              hour: '2-digit', 
+              minute: '2-digit',
+              hour12: true 
+            });
+          }
+          
+          // Use departure_datetime for date formatting, fallback to departure_date or the selected date
+          const instanceDate = instance.departure_datetime || instance.departure_date || date;
           
           return `
             <div class="card mb-2 instance-card ${selectedInstance && selectedInstance.id === instance.id ? 'border-primary' : ''}" 
@@ -174,8 +207,8 @@
               <div class="card-body">
                 <div class="d-flex justify-content-between align-items-center">
                   <div>
-                    ${time ? `<h6 class="mb-1">${time}</h6>` : ''}
-                    <small class="text-muted">${formatDate(instance.date || date)}</small>
+                    ${departureTime ? `<h6 class="mb-1">${departureTime}</h6>` : ''}
+                    <small class="text-muted">${formatDate(instanceDate)}</small>
                     <br>
                     <small class="text-muted">${instance.seats_available || instance.available_seats || 'N/A'} seat${(instance.seats_available || instance.available_seats || 0) !== 1 ? 's' : ''} available</small>
                   </div>
@@ -191,6 +224,12 @@
         document.getElementById('instancesList').innerHTML = instancesHtml;
         document.getElementById('instancesSection').style.display = 'block';
         
+        // Store instances for later use
+        window.currentInstances = instances;
+        
+        // Always show booking button (will be enabled/disabled based on selection)
+        updateBookingButton();
+        
         // Add click handlers to instance cards
         document.querySelectorAll('.instance-card').forEach(card => {
           card.addEventListener('click', function() {
@@ -199,20 +238,18 @@
             // Remove previous selection
             document.querySelectorAll('.instance-card').forEach(c => c.classList.remove('border-primary'));
             this.classList.add('border-primary');
-            selectedInstance = instances.find(i => i.id === instanceId);
             
-            // Update total price and enable booking
-            if (selectedInstance) {
-              const totalPrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
-              document.getElementById('totalPrice').textContent = `Total: ${formatPrice(totalPrice)}`;
-              document.getElementById('totalPrice').style.display = 'block';
-              document.getElementById('bookBtn').disabled = false;
-            }
+            // Use window.currentInstances which are stored globally
+            // Convert instanceId to string for comparison since API returns IDs as strings
+            const instanceIdStr = String(instanceId);
+            selectedInstance = window.currentInstances.find(i => String(i.id) === instanceIdStr);
+            
+            // Update booking button state
+            updateBookingButton();
           });
         });
       } catch (error) {
         const errorMessage = error.message || 'Failed to load available transfers';
-        // Check if it's a 404 or "not found" error
         if (errorMessage.toLowerCase().includes('not found') || errorMessage.includes('404')) {
           setStatus('status', 'error', 'No transfers available for the selected date. Please try another date.');
         } else {
@@ -221,15 +258,45 @@
       }
     }
     
-    // Search instances button
-    document.getElementById('searchInstancesBtn').addEventListener('click', function() {
-      loadInstances();
-    });
-    
-    // Booking form submission
-    document.getElementById('bookingForm').addEventListener('submit', async function(e) {
-      e.preventDefault();
+    function updateBookingButton() {
+      const instancesSection = document.getElementById('instancesSection');
+      if (!instancesSection) return;
       
+      // Remove existing button if any
+      const existingBtn = instancesSection.querySelector('.book-instance-btn');
+      if (existingBtn) existingBtn.remove();
+      
+      // Always show the button, always make it clickable
+      const bookingBtn = document.createElement('button');
+      bookingBtn.className = 'btn btn-lg w-100 mt-4 book-instance-btn';
+      bookingBtn.type = 'button'; // Prevent form submission
+      
+      if (selectedInstance) {
+        bookingBtn.style.cssText = 'font-size: 1.2rem; font-weight: bold; padding: 15px; background-color: #007bff; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.1); color: white; cursor: pointer;';
+        bookingBtn.textContent = 'Book Now';
+      } else {
+        bookingBtn.style.cssText = 'font-size: 1.2rem; font-weight: bold; padding: 15px; background-color: #6c757d; border: none; color: white; cursor: pointer; opacity: 0.8;';
+        bookingBtn.textContent = 'Select a Transfer';
+      }
+      
+      // Always attach click handler - it will validate inside
+      bookingBtn.addEventListener('click', function(e) {
+        e.preventDefault();
+        e.stopPropagation();
+        handleBooking();
+      });
+      
+      // Append button to the card-body, after instancesList
+      const cardBody = instancesSection.querySelector('.card-body');
+      if (cardBody) {
+        cardBody.appendChild(bookingBtn);
+      } else {
+        // Fallback: append to instancesSection
+        instancesSection.appendChild(bookingBtn);
+      }
+    }
+    
+    async function handleBooking() {
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
         window.location.href = 'login.html';
@@ -241,28 +308,28 @@
         return;
       }
       
-      const transferDate = new Date(document.getElementById('transferDate').value);
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
+      // Get current passenger count from form
+      passengerCount = parseInt(document.getElementById('passengerCount').value) || 1;
       
-      if (transferDate < today) {
-        setStatus('status', 'error', 'Transfer date cannot be in the past');
+      if (passengerCount < 1 || passengerCount > 9) {
+        setStatus('status', 'error', 'Please enter a valid number of passengers (1-9)');
         return;
       }
       
       clearStatus('status');
       
-      const bookBtn = document.getElementById('bookBtn');
-      bookBtn.disabled = true;
-      bookBtn.textContent = 'Booking...';
+      const bookBtn = document.querySelector('.book-instance-btn');
+      if (bookBtn) {
+        bookBtn.disabled = true;
+        bookBtn.textContent = 'Booking...';
+      }
       
       try {
         await apiCall('/transfers/book', {
           method: 'POST',
           body: JSON.stringify({
             instance_id: selectedInstance.id,
-            passenger_count: passengerCount,
-            passenger_details: []
+            passenger_count: passengerCount
           })
         });
         
@@ -270,10 +337,12 @@
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to create booking');
-        bookBtn.disabled = false;
-        bookBtn.textContent = 'Book Now';
+        if (bookBtn) {
+          bookBtn.disabled = false;
+          bookBtn.textContent = 'Book Now';
+        }
       }
-    });
+    }
     
     if (transferId) {
       loadTransfer();
@@ -283,4 +352,5 @@
   </script>
 </body>
 </html>
+
 
