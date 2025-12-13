@@ -44,7 +44,7 @@ function get_authenticated_user(): ?array {
   // Get user from database
   try {
     $pdo = db_pdo();
-    $stmt = $pdo->prepare('SELECT u.id, u.email, u.full_name, u.phone, u.address, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?');
+    $stmt = $pdo->prepare('SELECT u.id, u.email, u.first_name, u.last_name, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?');
     $stmt->execute([$payload['user_id']]);
     $user = $stmt->fetch();
     

@@ -18,11 +18,15 @@ async function login(email, password) {
 }
 
 // Register
-async function register(email, password, full_name, role = 'customer') {
+async function register(email, password, first_name, last_name = '', role = 'customer') {
   try {
+    const payload = { email, password, first_name, role };
+    if (last_name) {
+      payload.last_name = last_name;
+    }
     const data = await apiCall('/auth/register', {
       method: 'POST',
-      body: JSON.stringify({ email, password, full_name, role })
+      body: JSON.stringify(payload)
     });
     
     localStorage.setItem('token', data.token);
@@ -47,7 +51,7 @@ function logout() {
   
   localStorage.removeItem('token');
   localStorage.removeItem('user');
-  window.location.href = '/index.html';
+  window.location.href = 'index.html';
 }
 
 // Get current user from API

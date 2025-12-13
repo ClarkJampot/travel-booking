@@ -14,16 +14,22 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
-// GET /api/profile?user_id=X
+// GET /api/profile?user_id=X (optional - if not provided, uses authenticated user)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) {
   $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
   
+  // If no user_id provided, try to get from authenticated user
   if (!$userId) {
-    json_error('Missing user_id parameter', 400);
+    $authUser = get_authenticated_user();
+    if ($authUser) {
+      $userId = (int)$authUser['id'];
+    } else {
+      json_error('Missing user_id parameter or authentication required', 400);
+    }
   }
   
   // Get user information
-  $stmt = $pdo->prepare('SELECT u.id, u.email, u.full_name, u.phone, u.address, r.name as role_name 
+  $stmt = $pdo->prepare('SELECT u.id, u.email, u.first_name, u.last_name, r.name as role_name 
     FROM users u 
     LEFT JOIN roles r ON u.role_id = r.id 
     WHERE u.id = ?');

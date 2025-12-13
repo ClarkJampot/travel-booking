@@ -21,12 +21,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/register/?$#', 
   
   $email = trim($input['email'] ?? '');
   $password = $input['password'] ?? '';
-  $full_name = trim($input['full_name'] ?? '');
+  $firstName = trim($input['first_name'] ?? '');
+  $lastName = trim($input['last_name'] ?? '');
   $role = $input['role'] ?? 'customer';
   
   // Validation
-  if (!$email || !$password || !$full_name) {
-    json_error('Missing required fields: email, password, full_name', 400);
+  if (!$email || !$password || !$firstName) {
+    json_error('Missing required fields: email, password, first_name', 400);
   }
   
   if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
@@ -54,12 +55,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/register/?$#', 
   
   // Create user
   $hash = password_hash($password, PASSWORD_DEFAULT);
-  $stmt = $pdo->prepare('INSERT INTO users (email, password_hash, full_name, role_id) VALUES (?, ?, ?, ?)');
-  $stmt->execute([$email, $hash, $full_name, $roleRow['id']]);
+  $stmt = $pdo->prepare('INSERT INTO users (email, password_hash, first_name, last_name, role_id) VALUES (?, ?, ?, ?, ?)');
+  $stmt->execute([$email, $hash, $firstName, $lastName ?: null, $roleRow['id']]);
   $userId = (int)$pdo->lastInsertId();
   
   // Get user with role
-  $stmt = $pdo->prepare('SELECT u.id, u.email, u.full_name, u.phone, u.address, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?');
+  $stmt = $pdo->prepare('SELECT u.id, u.email, u.first_name, u.last_name, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?');
   $stmt->execute([$userId]);
   $user = $stmt->fetch();
   
@@ -85,7 +86,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/login/?$#', $ur
   }
   
   // Get user with role
-  $stmt = $pdo->prepare('SELECT u.id, u.email, u.password_hash, u.full_name, u.phone, u.address, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.email = ?');
+  $stmt = $pdo->prepare('SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.email = ?');
   $stmt->execute([$email]);
   $user = $stmt->fetch();
   
@@ -94,8 +95,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/login/?$#', $ur
   }
   
   // Generate JWT token
-  $token = jwt_generate(['user_id' => $user['id'], 'email' => $user['email'], 'role' => $user['role']]);
-  jwt_store($user['id'], $token);
+  $userId = (int)$user['id']; // Cast to int for jwt_store
+  $token = jwt_generate(['user_id' => $userId, 'email' => $user['email'], 'role' => $user['role']]);
+  jwt_store($userId, $token);
   
   unset($user['password_hash']);
   

@@ -602,30 +602,30 @@ INSERT INTO dbo.cities(name, province_id, is_capital) VALUES
 -- ============================================================================
 -- Password hash algorithm: PHP password_hash() with PASSWORD_DEFAULT
 -- All passwords are: password123 (for testing)
--- Hash: $2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi
+-- Hash: $2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu
 
 -- Customers (3 users)
 INSERT INTO dbo.users(email, password_hash, first_name, last_name, role_id) VALUES
-(N'customer1@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Juan', 'Dela Cruz', 1),
-(N'customer2@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Maria', 'Santos', 1),
-(N'customer3@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Pedro', 'Garcia', 1);
+(N'customer1@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Juan', 'Dela Cruz', 1),
+(N'customer2@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Maria', 'Santos', 1),
+(N'customer3@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Pedro', 'Garcia', 1);
 
 -- Agencies (3 users)
 INSERT INTO dbo.users(email, password_hash, first_name, role_id) VALUES
-(N'agency1@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Travel Express', 2),
-(N'agency2@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Adventure Tours', 2),
-(N'agency3@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Paradise Travel', 2);
+(N'agency1@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Travel Express', 2),
+(N'agency2@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Adventure Tours', 2),
+(N'agency3@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Paradise Travel', 2);
 
 -- Owners (3 users)
 INSERT INTO dbo.users(email, password_hash, first_name, role_id) VALUES
-(N'owner1@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Hotel Magnate', 3),
-(N'owner2@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Resort Group', 3),
-(N'owner3@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Luxury Hotels', 3);
+(N'owner1@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Hotel Magnate', 3),
+(N'owner2@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Resort Group', 3),
+(N'owner3@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Luxury Hotels', 3);
 
 -- Admins (2 users)
 INSERT INTO dbo.users(email, password_hash, first_name, role_id) VALUES
-(N'admin@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'System Administrator', 4),
-(N'admin2@example.com', N'$2y$10$92IXUNpkjO0rOQ5byMi.Ye4oKoEa3Ro9llC/.og/at2.uheWG/igi', N'Site Manager', 4);
+(N'admin@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'System Administrator', 4),
+(N'admin2@example.com', N'$2a$10$zNNDZWg8pdnV1J0T9mWKf.Vq85SQzeNSqRdtADXrI66LpGU0vb3Hu', N'Site Manager', 4);
 
 -- ============================================================================
 -- DESTINATIONS
