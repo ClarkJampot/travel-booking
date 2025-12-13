@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities/?$#', $uri
       FROM activities a 
       LEFT JOIN cities c ON a.city_id = c.id 
       LEFT JOIN provinces p ON c.province_id = p.id 
-      WHERE a.id = ?');
+      WHERE a.id = ? AND a.deleted_at IS NULL');
     $stmt->execute([$id]);
     $activity = $stmt->fetch();
     if (!$activity) {
@@ -284,7 +284,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/activities/(\d+)/?
     ResponseHelper::error('Forbidden', 403);
   }
   
-  $stmt = $pdo->prepare('DELETE FROM activities WHERE id = ?');
+  // Soft delete
+  $stmt = $pdo->prepare('UPDATE activities SET deleted_at = SYSUTCDATETIME() WHERE id = ?');
   $stmt->execute([$id]);
   
   ResponseHelper::successSimple(['message' => 'Activity deleted successfully']);

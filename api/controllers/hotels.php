@@ -29,7 +29,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/hotels/?$#', $uri)) {
       FROM hotels h 
       LEFT JOIN cities c ON h.city_id = c.id 
       LEFT JOIN provinces p ON h.province_id = p.id 
-      WHERE h.id = ?');
+      WHERE h.id = ? AND h.deleted_at IS NULL');
     $stmt->execute([$id]);
     $hotel = $stmt->fetch();
     if (!$hotel) {
@@ -278,7 +278,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/hotels/(\d+)/?$#',
     ResponseHelper::error('Forbidden', 403);
   }
   
-  $stmt = $pdo->prepare('DELETE FROM hotels WHERE id = ?');
+  // Soft delete
+  $stmt = $pdo->prepare('UPDATE hotels SET deleted_at = SYSUTCDATETIME() WHERE id = ?');
   $stmt->execute([$id]);
   
   ResponseHelper::successSimple(['message' => 'Hotel deleted successfully']);

@@ -28,6 +28,9 @@
   <script src="js/components/Badge.js"></script>
   <script src="js/components/EmptyState.js"></script>
   <script src="js/components/Card.js"></script>
+  <script src="js/components/Modal.js"></script>
+  <script src="js/components/ContentListItem.js"></script>
+  <script src="js/components/PostingModal.js"></script>
   <script src="js/main.js"></script>
   <script src="js/auth.js"></script>
   <script>
@@ -51,13 +54,14 @@
       const priceLabel = type === 'hotel' ? '/night' : '';
       const nameField = type === 'activity' ? 'title' : (type === 'flight' ? 'airline' : (type === 'transfer' ? 'service' : 'name'));
       
+      const originalPrice = item[priceField] || item.price_per_night || item.price || 0;
       const priceDisplay = item.discount_percent > 0 
         ? `<div class="price-container">
-            <span class="original-price">${formatPrice(item[priceField])}</span>
-            <span class="discounted-price">${formatPrice(item.discounted_price || item[priceField] * (1 - item.discount_percent / 100))}</span>
+            <span class="original-price">${formatPrice(originalPrice)}</span>
+            <span class="discounted-price">${formatPrice(item.discounted_price || originalPrice * (1 - item.discount_percent / 100))}</span>
             ${priceLabel ? `<span class="price-small">${priceLabel}</span>` : ''}
           </div>`
-        : `<p class="price">${formatPrice(item[priceField])}${priceLabel ? `<span class="price-small">${priceLabel}</span>` : ''}</p>`;
+        : `<p class="price">${formatPrice(originalPrice)}${priceLabel ? `<span class="price-small">${priceLabel}</span>` : ''}</p>`;
       
       return `
         <div class="col-md-4 mb-4">
@@ -158,9 +162,13 @@
         }
         
         const user = data.user;
-        const bookings = data.bookings || { total: 0, confirmed: 0, cancelled: 0, completed: 0, recent: [] };
         const userRole = user.role_name || 'customer';
         const isOwnerOrAgency = userRole === 'owner' || userRole === 'agency';
+        const bookings = data.bookings || { total: 0, confirmed: 0, cancelled: 0, completed: 0, total_revenue: 0, total_spent: 0, recent: [] };
+        
+        // Debug: log data to see what's being returned
+        console.log('Profile data:', data);
+        console.log('All content:', data.all);
         
         const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.first_name;
         
@@ -178,7 +186,7 @@
               
               <div class="card">
                 <div class="card-body">
-                  <h5 class="card-title mb-3">Bookings Summary</h5>
+                  <h5 class="card-title mb-3">${isOwnerOrAgency ? 'Dashboard Summary' : 'Bookings Summary'}</h5>
                   <div class="mb-2">
                     <strong>Total:</strong> <span class="badge bg-primary">${bookings.total || 0}</span>
                   </div>
@@ -192,9 +200,9 @@
                     <strong>Completed:</strong> <span class="badge bg-secondary">${bookings.completed || 0}</span>
                   </div>
                   <div class="mb-3 pt-2 border-top">
-                    <strong>Total Spent:</strong> <span class="price">${formatPrice(bookings.total_spent || 0)}</span>
+                    <strong>${isOwnerOrAgency ? 'Total Revenue' : 'Total Spent'}:</strong> <span class="price">${formatPrice(isOwnerOrAgency ? (bookings.total_revenue || 0) : (bookings.total_spent || 0))}</span>
                   </div>
-                  <a href="bookings.html" class="btn btn-outline-primary w-100">View All Bookings</a>
+                  ${!isOwnerOrAgency ? '<a href="bookings.html" class="btn btn-outline-primary w-100">View All Bookings</a>' : ''}
                 </div>
               </div>
             </div>
@@ -202,26 +210,57 @@
             <div class="col-md-8">
               ${isOwnerOrAgency ? `
                 <div class="mb-5">
-                  <h3 class="mb-4">My Content</h3>
-                  ${renderContentSection('Promoted Items', [
-                    ...(data.promoted?.hotels || []),
-                    ...(data.promoted?.flights || []),
-                    ...(data.promoted?.activities || []),
-                    ...(data.promoted?.transfers || [])
-                  ], 'mixed')}
+                  <div class="d-flex justify-content-between align-items-center mb-4">
+                    <h3 class="mb-0">My Content</h3>
+                    <button class="btn btn-primary" onclick="createPosting()">
+                      <svg width="16" height="16" fill="currentColor" viewBox="0 0 16 16" style="margin-right: 4px;">
+                        <path d="M8 4a.5.5 0 0 1 .5.5v3h3a.5.5 0 0 1 0 1h-3v3a.5.5 0 0 1-1 0v-3h-3a.5.5 0 0 1 0-1h3v-3A.5.5 0 0 1 8 4z"/>
+                      </svg>
+                      Create Posting
+                    </button>
+                  </div>
                   
-                  <hr class="my-5">
+                  ${data.all?.hotels && data.all.hotels.length > 0 ? `
+                    <div class="mb-4">
+                      <h5 class="mb-3">Hotels</h5>
+                      <div class="list-group">
+                        ${data.all.hotels.map(item => renderContentListItem(item, 'hotel')).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
                   
-                  ${data.all?.hotels && data.all.hotels.length > 0 ? renderContentSection('Hotels', data.all.hotels, 'hotel') : ''}
-                  ${data.all?.flights && data.all.flights.length > 0 ? renderContentSection('Flights', data.all.flights, 'flight') : ''}
-                  ${data.all?.activities && data.all.activities.length > 0 ? renderContentSection('Activities', data.all.activities, 'activity') : ''}
-                  ${data.all?.transfers && data.all.transfers.length > 0 ? renderContentSection('Transfers', data.all.transfers, 'transfer') : ''}
+                  ${data.all?.flights && data.all.flights.length > 0 ? `
+                    <div class="mb-4">
+                      <h5 class="mb-3">Flights</h5>
+                      <div class="list-group">
+                        ${data.all.flights.map(item => renderContentListItem(item, 'flight')).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                  
+                  ${data.all?.activities && data.all.activities.length > 0 ? `
+                    <div class="mb-4">
+                      <h5 class="mb-3">Activities</h5>
+                      <div class="list-group">
+                        ${data.all.activities.map(item => renderContentListItem(item, 'activity')).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                  
+                  ${data.all?.transfers && data.all.transfers.length > 0 ? `
+                    <div class="mb-4">
+                      <h5 class="mb-3">Transfers</h5>
+                      <div class="list-group">
+                        ${data.all.transfers.map(item => renderContentListItem(item, 'transfer')).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
                   
                   ${(!data.all?.hotels || data.all.hotels.length === 0) && 
                     (!data.all?.flights || data.all.flights.length === 0) &&
                     (!data.all?.activities || data.all.activities.length === 0) &&
                     (!data.all?.transfers || data.all.transfers.length === 0)
-                    ? '<p class="text-muted">You haven\'t created any content yet.</p>' : ''}
+                    ? '<p class="text-muted">You haven\'t created any content yet. Click "Create Posting" to get started!</p>' : ''}
                 </div>
               ` : `
                 <div class="card mb-4">

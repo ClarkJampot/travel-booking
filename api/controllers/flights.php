@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
   
   // Get single flight
   if ($id) {
-    $stmt = $pdo->prepare('SELECT * FROM flights WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT * FROM flights WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $flight = $stmt->fetch();
     if (!$flight) {
@@ -374,7 +374,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/flights/(\d+)/?$#'
     json_error('Forbidden', 403);
   }
   
-  $stmt = $pdo->prepare('DELETE FROM flights WHERE id = ?');
+  // Soft delete
+  $stmt = $pdo->prepare('UPDATE flights SET deleted_at = SYSUTCDATETIME() WHERE id = ?');
   $stmt->execute([$id]);
   
   json_ok(['message' => 'Flight deleted successfully']);

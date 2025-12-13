@@ -102,6 +102,8 @@ CREATE TABLE dbo.hotels (
   discount_percent DECIMAL(5,2) DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_hotels_destinations FOREIGN KEY (destination_id) REFERENCES dbo.destinations(id),
   CONSTRAINT FK_hotels_cities FOREIGN KEY (city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_hotels_provinces FOREIGN KEY (province_id) REFERENCES dbo.provinces(id),
@@ -125,6 +127,8 @@ CREATE TABLE dbo.flights (
   trip_type NVARCHAR(20) NULL CHECK (trip_type IN ('one-way', 'round-trip')),
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_flights_users FOREIGN KEY (created_by) REFERENCES dbo.users(id),
   CONSTRAINT FK_flights_origin_cities FOREIGN KEY (origin_city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_flights_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id)
@@ -144,6 +148,8 @@ CREATE TABLE dbo.activities (
   discount_percent DECIMAL(5,2) DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_activities_destinations FOREIGN KEY (destination_id) REFERENCES dbo.destinations(id),
   CONSTRAINT FK_activities_cities FOREIGN KEY (city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_activities_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
@@ -165,6 +171,8 @@ CREATE TABLE dbo.transfers (
   discount_percent DECIMAL(5,2) DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_transfers_users FOREIGN KEY (created_by) REFERENCES dbo.users(id),
   CONSTRAINT FK_transfers_origin_cities FOREIGN KEY (origin_city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_transfers_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id)
@@ -314,6 +322,8 @@ CREATE TABLE dbo.flight_routes (
   discount_percent DECIMAL(5,2) DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_flight_routes_origin_airports FOREIGN KEY (origin_airport_id) REFERENCES dbo.airports(id),
   CONSTRAINT FK_flight_routes_destination_airports FOREIGN KEY (destination_airport_id) REFERENCES dbo.airports(id),
   CONSTRAINT FK_flight_routes_users FOREIGN KEY (created_by) REFERENCES dbo.users(id),
@@ -332,6 +342,8 @@ CREATE TABLE dbo.flight_route_pairs (
   ad BIT DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_flight_route_pairs_outbound FOREIGN KEY (outbound_route_id) REFERENCES dbo.flight_routes(id),
   CONSTRAINT FK_flight_route_pairs_return FOREIGN KEY (return_route_id) REFERENCES dbo.flight_routes(id),
   CONSTRAINT FK_flight_route_pairs_users FOREIGN KEY (created_by) REFERENCES dbo.users(id),
@@ -347,6 +359,8 @@ CREATE TABLE dbo.flight_schedules (
   days_of_week NVARCHAR(20) NOT NULL,
   is_active BIT DEFAULT 1,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_flight_schedules_routes FOREIGN KEY (route_id) REFERENCES dbo.flight_routes(id),
   CONSTRAINT FK_flight_schedules_route_pairs FOREIGN KEY (route_pair_id) REFERENCES dbo.flight_route_pairs(id),
   CONSTRAINT CK_flight_schedules_route_or_pair CHECK ((route_id IS NOT NULL AND route_pair_id IS NULL) OR (route_id IS NULL AND route_pair_id IS NOT NULL))
@@ -369,6 +383,8 @@ CREATE TABLE dbo.flight_instances (
   seats_first_available INT DEFAULT 0,
   status NVARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'boarding', 'departed', 'cancelled', 'delayed')),
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_flight_instances_schedules FOREIGN KEY (schedule_id) REFERENCES dbo.flight_schedules(id),
   CONSTRAINT UQ_flight_instances_schedule_date UNIQUE (schedule_id, departure_date)
 );
@@ -399,6 +415,8 @@ CREATE TABLE dbo.transfer_routes (
   discount_percent DECIMAL(5,2) DEFAULT 0,
   created_by INT NULL,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_transfer_routes_origin_cities FOREIGN KEY (origin_city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_transfer_routes_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_transfer_routes_types FOREIGN KEY (transfer_type_id) REFERENCES dbo.transfer_types(id),
@@ -413,6 +431,8 @@ CREATE TABLE dbo.transfer_schedules (
   days_of_week NVARCHAR(20) NOT NULL,
   is_active BIT DEFAULT 1,
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_transfer_schedules_routes FOREIGN KEY (route_id) REFERENCES dbo.transfer_routes(id)
 );
 
@@ -428,6 +448,8 @@ CREATE TABLE dbo.transfer_instances (
   seats_available INT DEFAULT 0,
   status NVARCHAR(20) DEFAULT 'scheduled' CHECK (status IN ('scheduled', 'in_transit', 'completed', 'cancelled')),
   created_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  updated_at DATETIME2 DEFAULT SYSUTCDATETIME(),
+  deleted_at DATETIME2 NULL,
   CONSTRAINT FK_transfer_instances_schedules FOREIGN KEY (schedule_id) REFERENCES dbo.transfer_schedules(id),
   CONSTRAINT UQ_transfer_instances_schedule_date UNIQUE (schedule_id, departure_date)
 );

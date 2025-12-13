@@ -20,7 +20,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   
   // Get single transfer
   if ($id) {
-    $stmt = $pdo->prepare('SELECT * FROM transfers WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT * FROM transfers WHERE id = ? AND deleted_at IS NULL');
     $stmt->execute([$id]);
     $transfer = $stmt->fetch();
     if (!$transfer) {
@@ -353,7 +353,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/transfers/(\d+)/?$
     json_error('Forbidden', 403);
   }
   
-  $stmt = $pdo->prepare('DELETE FROM transfers WHERE id = ?');
+  // Soft delete
+  $stmt = $pdo->prepare('UPDATE transfers SET deleted_at = SYSUTCDATETIME() WHERE id = ?');
   $stmt->execute([$id]);
   
   json_ok(['message' => 'Transfer deleted successfully']);

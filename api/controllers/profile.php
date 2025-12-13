@@ -88,17 +88,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   }
   
   // Get bookings summary
+  $userRole = $userInfo['role_name'] ?? 'customer';
+  $isOwnerOrAgency = $userRole === 'owner' || $userRole === 'agency';
+  
   $bookingsSummary = [
     'total' => 0,
     'confirmed' => 0,
     'cancelled' => 0,
     'completed' => 0,
     'total_spent' => 0,
+    'total_revenue' => 0,
     'recent' => []
   ];
   
   try {
-    // Count bookings from all tables
     $types = ['hotel', 'flight', 'activity', 'transfer'];
     $bookingTables = [
       'hotel' => 'hotel_bookings',
@@ -106,49 +109,93 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       'activity' => 'activity_bookings',
       'transfer' => 'transfer_bookings'
     ];
+    $entityTables = [
+      'hotel' => 'hotels',
+      'flight' => 'flights',
+      'activity' => 'activities',
+      'transfer' => 'transfers'
+    ];
+    $itemIdColumns = [
+      'hotel' => 'hotel_id',
+      'flight' => 'flight_id',
+      'activity' => 'activity_id',
+      'transfer' => 'transfer_id'
+    ];
     
-    foreach ($types as $type) {
-      $table = $bookingTables[$type];
-      $stmt = $pdo->prepare("SELECT status, total_price FROM $table WHERE user_id = ?");
-      $stmt->execute([$userId]);
-      $bookings = $stmt->fetchAll();
-      
-      foreach ($bookings as $booking) {
-        $bookingsSummary['total']++;
-        $status = $booking['status'];
-        if (isset($bookingsSummary[$status])) {
-          $bookingsSummary[$status]++;
-        }
-        // Calculate total spent (only confirmed and completed bookings)
-        if (in_array($status, ['confirmed', 'completed'])) {
-          $bookingsSummary['total_spent'] += (float)($booking['total_price'] ?? 0);
+    if ($isOwnerOrAgency) {
+      // For owners/agencies: Calculate revenue from bookings on their content
+      foreach ($types as $type) {
+        $bookingTable = $bookingTables[$type];
+        $entityTable = $entityTables[$type];
+        $itemIdColumn = $itemIdColumns[$type];
+        
+        // Join bookings with entities where created_by = userId
+        $stmt = $pdo->prepare("
+          SELECT b.status, b.total_price 
+          FROM $bookingTable b
+          INNER JOIN $entityTable e ON b.$itemIdColumn = e.id
+          WHERE e.created_by = ? AND e.deleted_at IS NULL
+        ");
+        $stmt->execute([$userId]);
+        $bookings = $stmt->fetchAll();
+        
+        foreach ($bookings as $booking) {
+          $bookingsSummary['total']++;
+          $status = $booking['status'];
+          if (isset($bookingsSummary[$status])) {
+            $bookingsSummary[$status]++;
+          }
+          // Calculate total revenue (only confirmed and completed bookings)
+          if (in_array($status, ['confirmed', 'completed'])) {
+            $bookingsSummary['total_revenue'] += (float)($booking['total_price'] ?? 0);
+          }
         }
       }
-    }
-    
-    // Get recent bookings (last 5) with item details
-    $recentBookings = [];
-    foreach ($types as $type) {
-      $table = $bookingTables[$type];
-      $itemIdColumn = $type . '_id';
-      $stmt = $pdo->prepare("SELECT TOP 5 *, '$type' as type, $itemIdColumn as item_id FROM $table WHERE user_id = ? ORDER BY booked_at DESC");
-      $stmt->execute([$userId]);
-      $bookings = $stmt->fetchAll();
-      
-      // Add item details to each booking
-      foreach ($bookings as &$booking) {
-        $itemId = (int)$booking['item_id'];
-        $booking['item_details'] = getItemDetails($pdo, $type, $itemId);
+    } else {
+      // For customers: Calculate from bookings they made
+      foreach ($types as $type) {
+        $table = $bookingTables[$type];
+        $stmt = $pdo->prepare("SELECT status, total_price FROM $table WHERE user_id = ?");
+        $stmt->execute([$userId]);
+        $bookings = $stmt->fetchAll();
+        
+        foreach ($bookings as $booking) {
+          $bookingsSummary['total']++;
+          $status = $booking['status'];
+          if (isset($bookingsSummary[$status])) {
+            $bookingsSummary[$status]++;
+          }
+          // Calculate total spent (only confirmed and completed bookings)
+          if (in_array($status, ['confirmed', 'completed'])) {
+            $bookingsSummary['total_spent'] += (float)($booking['total_price'] ?? 0);
+          }
+        }
       }
       
-      $recentBookings = array_merge($recentBookings, $bookings);
+      // Get recent bookings (last 5) with item details for customers only
+      $recentBookings = [];
+      foreach ($types as $type) {
+        $table = $bookingTables[$type];
+        $itemIdColumn = $itemIdColumns[$type];
+        $stmt = $pdo->prepare("SELECT TOP 5 *, '$type' as type, $itemIdColumn as item_id FROM $table WHERE user_id = ? ORDER BY booked_at DESC");
+        $stmt->execute([$userId]);
+        $bookings = $stmt->fetchAll();
+        
+        // Add item details to each booking
+        foreach ($bookings as &$booking) {
+          $itemId = (int)$booking['item_id'];
+          $booking['item_details'] = getItemDetails($pdo, $type, $itemId);
+        }
+        
+        $recentBookings = array_merge($recentBookings, $bookings);
+      }
+      
+      // Sort by booked_at and take top 5
+      usort($recentBookings, function($a, $b) {
+        return strtotime($b['booked_at']) - strtotime($a['booked_at']);
+      });
+      $bookingsSummary['recent'] = array_slice($recentBookings, 0, 5);
     }
-    
-    // Sort by booked_at and take top 5
-    usort($recentBookings, function($a, $b) {
-      return strtotime($b['booked_at']) - strtotime($a['booked_at']);
-    });
-    $bookingsSummary['recent'] = array_slice($recentBookings, 0, 5);
     
   } catch (Exception $e) {
     error_log('Profile bookings summary failed: ' . $e->getMessage());
@@ -174,12 +221,20 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   
   // Hotels - promoted
   try {
+    $deletedFilter = "";
+    try {
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM hotels");
+      $testStmt->fetch();
+      $deletedFilter = "AND h.deleted_at IS NULL";
+    } catch (PDOException $e) {
+      // Column doesn't exist, skip filter
+    }
     $stmt = $pdo->prepare("SELECT h.*, c.name as city_name, p.name as province_name, p.region,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'hotel' AND entity_id = h.id ORDER BY display_order ASC, id ASC) as image_url
       FROM hotels h 
       LEFT JOIN cities c ON h.city_id = c.id 
       LEFT JOIN provinces p ON h.province_id = p.id 
-      WHERE h.created_by = ? AND h.ad = 1
+      WHERE h.created_by = ? AND h.ad = 1 $deletedFilter
       ORDER BY h.price_per_night ASC");
     $stmt->execute([$userId]);
     $promotedHotels = $stmt->fetchAll();
@@ -197,6 +252,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   // Hotels - all
   try {
     $orderBy = "h.price_per_night ASC";
+    $deletedFilter = "";
     try {
       $testStmt = $pdo->query("SELECT TOP 1 ad FROM hotels");
       $testStmt->fetch();
@@ -204,12 +260,19 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     } catch (PDOException $e) {
       // Column doesn't exist, use default order
     }
+    try {
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM hotels");
+      $testStmt->fetch();
+      $deletedFilter = "AND h.deleted_at IS NULL";
+    } catch (PDOException $e) {
+      // Column doesn't exist, skip filter
+    }
     $stmt = $pdo->prepare("SELECT h.*, c.name as city_name, p.name as province_name, p.region,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'hotel' AND entity_id = h.id ORDER BY display_order ASC, id ASC) as image_url
       FROM hotels h 
       LEFT JOIN cities c ON h.city_id = c.id 
       LEFT JOIN provinces p ON h.province_id = p.id 
-      WHERE h.created_by = ?
+      WHERE h.created_by = ? $deletedFilter
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allHotels = $stmt->fetchAll();
@@ -226,6 +289,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   
   // Flights - promoted
   try {
+    $deletedFilter = "";
+    try {
+      $testStmt = $pdo->query("SELECT TOP 1 deleted_at FROM flights");
+      $testStmt->fetch();
+      $deletedFilter = "AND f.deleted_at IS NULL";
+    } catch (PDOException $e) {
+      // Column doesn't exist, skip filter
+    }
     $stmt = $pdo->prepare("SELECT f.*, 
       co.name as origin_city_name, po.name as origin_province_name,
       cd.name as destination_city_name, pd.name as destination_province_name,
@@ -235,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       LEFT JOIN provinces po ON co.province_id = po.id
       LEFT JOIN cities cd ON f.destination_city_id = cd.id
       LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE f.created_by = ? AND f.ad = 1
+      WHERE f.created_by = ? AND f.ad = 1 $deletedFilter
       ORDER BY f.depart_date ASC, f.price ASC");
     $stmt->execute([$userId]);
     $promotedFlights = $stmt->fetchAll();
@@ -269,7 +340,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       LEFT JOIN provinces po ON co.province_id = po.id
       LEFT JOIN cities cd ON f.destination_city_id = cd.id
       LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE f.created_by = ?
+      WHERE f.created_by = ? AND f.deleted_at IS NULL
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allFlights = $stmt->fetchAll();
@@ -291,7 +362,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       FROM activities a 
       LEFT JOIN cities c ON a.city_id = c.id 
       LEFT JOIN provinces p ON c.province_id = p.id 
-      WHERE a.created_by = ? AND a.ad = 1
+      WHERE a.created_by = ? AND a.ad = 1 AND a.deleted_at IS NULL
       ORDER BY a.date ASC, a.price ASC");
     $stmt->execute([$userId]);
     $promotedActivities = $stmt->fetchAll();
@@ -321,7 +392,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       FROM activities a 
       LEFT JOIN cities c ON a.city_id = c.id 
       LEFT JOIN provinces p ON c.province_id = p.id 
-      WHERE a.created_by = ?
+      WHERE a.created_by = ? AND a.deleted_at IS NULL
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allActivities = $stmt->fetchAll();
@@ -347,7 +418,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       LEFT JOIN provinces po ON co.province_id = po.id
       LEFT JOIN cities cd ON t.destination_city_id = cd.id
       LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE t.created_by = ? AND t.ad = 1
+      WHERE t.created_by = ? AND t.ad = 1 AND t.deleted_at IS NULL
       ORDER BY t.date ASC, t.price ASC");
     $stmt->execute([$userId]);
     $promotedTransfers = $stmt->fetchAll();
@@ -381,7 +452,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       LEFT JOIN provinces po ON co.province_id = po.id
       LEFT JOIN cities cd ON t.destination_city_id = cd.id
       LEFT JOIN provinces pd ON cd.province_id = pd.id
-      WHERE t.created_by = ?
+      WHERE t.created_by = ? AND t.deleted_at IS NULL
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allTransfers = $stmt->fetchAll();
