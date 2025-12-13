@@ -95,6 +95,54 @@
         </div>
       `;
     }
+    
+    function renderRecentBookingItem(booking, index) {
+      const statusClass = booking.status === 'confirmed'
+        ? 'success'
+        : booking.status === 'cancelled'
+          ? 'danger'
+          : 'secondary';
+      
+      const type = booking.type || 'unknown';
+      const itemDetails = booking.item_details || {};
+      const itemName = itemDetails.name || itemDetails.title || itemDetails.airline || itemDetails.service || `Item #${booking.item_id}`;
+      
+      // Build compact details
+      let detailsText = '';
+      if (type === 'hotel' && booking.check_in) {
+        detailsText = `${formatDate(booking.check_in)} - ${booking.check_out ? formatDate(booking.check_out) : 'N/A'}`;
+      } else if (type === 'flight' && itemDetails.origin && itemDetails.destination) {
+        detailsText = `${itemDetails.origin} → ${itemDetails.destination}`;
+      } else if (type === 'activity' && booking.date) {
+        detailsText = formatDate(booking.date);
+      } else if (type === 'transfer' && itemDetails.origin && itemDetails.destination) {
+        detailsText = `${itemDetails.origin} → ${itemDetails.destination}`;
+      }
+      
+      const detailPage = type === 'hotel' ? 'hotel-details.html' : 
+                        type === 'flight' ? 'flight-details.html' : 
+                        type === 'activity' ? 'activity-details.html' : 
+                        'transfer-details.html';
+      
+      return `
+        <div class="card mb-2">
+          <div class="card-body py-2">
+            <div class="d-flex justify-content-between align-items-center">
+              <div class="flex-grow-1">
+                <h6 class="mb-1">${type.charAt(0).toUpperCase() + type.slice(1)}: ${itemName}</h6>
+                ${detailsText ? `<small class="text-muted d-block">${detailsText}</small>` : ''}
+                <small class="text-muted">${formatDate(booking.booked_at)}</small>
+              </div>
+              <div class="text-end ms-3">
+                <span class="badge bg-${statusClass} mb-1 d-block">${booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span>
+                <small class="text-muted d-block">${formatPrice(booking.total_price)}</small>
+                <a href="${detailPage}?id=${booking.item_id}" class="btn btn-sm btn-outline-primary mt-1">View</a>
+              </div>
+            </div>
+          </div>
+        </div>
+      `;
+    }
 
     async function loadProfile() {
       showLoading('profileContent');
@@ -140,8 +188,11 @@
                   <div class="mb-2">
                     <strong>Cancelled:</strong> <span class="badge bg-danger">${bookings.cancelled || 0}</span>
                   </div>
-                  <div class="mb-3">
+                  <div class="mb-2">
                     <strong>Completed:</strong> <span class="badge bg-secondary">${bookings.completed || 0}</span>
+                  </div>
+                  <div class="mb-3 pt-2 border-top">
+                    <strong>Total Spent:</strong> <span class="price">${formatPrice(bookings.total_spent || 0)}</span>
                   </div>
                   <a href="bookings.html" class="btn btn-outline-primary w-100">View All Bookings</a>
                 </div>
@@ -173,11 +224,27 @@
                     ? '<p class="text-muted">You haven\'t created any content yet.</p>' : ''}
                 </div>
               ` : `
+                <div class="card mb-4">
+                  <div class="card-body">
+                    <h5 class="card-title mb-3">Recent Bookings</h5>
+                    ${bookings.recent && bookings.recent.length > 0 
+                      ? bookings.recent.map((booking, index) => renderRecentBookingItem(booking, index)).join('')
+                      : '<p class="text-muted mb-0">No recent bookings.</p>'}
+                    ${bookings.recent && bookings.recent.length === 0 
+                      ? '<a href="index.html" class="btn btn-primary w-100 mt-3">Start Booking!</a>'
+                      : ''}
+                  </div>
+                </div>
+                
                 <div class="card">
                   <div class="card-body">
-                    <h5 class="card-title">Welcome to your profile!</h5>
-                    <p class="card-text">Manage your bookings and account information from here.</p>
-                    <a href="bookings.html" class="btn btn-primary">View My Bookings</a>
+                    <h5 class="card-title mb-3">Browse More</h5>
+                    <div class="d-grid gap-2">
+                      <a href="hotels.html" class="btn btn-outline-primary">Hotels</a>
+                      <a href="flights.html" class="btn btn-outline-primary">Flights</a>
+                      <a href="activities.html" class="btn btn-outline-primary">Activities</a>
+                      <a href="transfers.html" class="btn btn-outline-primary">Transfers</a>
+                    </div>
                   </div>
                 </div>
               `}

@@ -6,6 +6,60 @@ require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
 
+/**
+ * Get item details for a booking
+ */
+function getItemDetails(PDO $pdo, string $type, int $itemId): ?array {
+  switch ($type) {
+    case 'hotel':
+      $stmt = $pdo->prepare('SELECT h.id, h.name, c.name as city_name, p.name as province_name 
+        FROM hotels h 
+        LEFT JOIN cities c ON h.city_id = c.id 
+        LEFT JOIN provinces p ON h.province_id = p.id 
+        WHERE h.id = ?');
+      $stmt->execute([$itemId]);
+      return $stmt->fetch() ?: null;
+      
+    case 'flight':
+      $stmt = $pdo->prepare('SELECT f.id, f.airline, f.origin, f.destination, 
+        co.name as origin_city_name, po.name as origin_province_name,
+        cd.name as destination_city_name, pd.name as destination_province_name
+        FROM flights f
+        LEFT JOIN cities co ON f.origin_city_id = co.id
+        LEFT JOIN provinces po ON co.province_id = po.id
+        LEFT JOIN cities cd ON f.destination_city_id = cd.id
+        LEFT JOIN provinces pd ON cd.province_id = pd.id
+        WHERE f.id = ?');
+      $stmt->execute([$itemId]);
+      return $stmt->fetch() ?: null;
+      
+    case 'activity':
+      $stmt = $pdo->prepare('SELECT a.id, a.title, c.name as city_name, p.name as province_name
+        FROM activities a
+        LEFT JOIN cities c ON a.city_id = c.id
+        LEFT JOIN provinces p ON c.province_id = p.id
+        WHERE a.id = ?');
+      $stmt->execute([$itemId]);
+      return $stmt->fetch() ?: null;
+      
+    case 'transfer':
+      $stmt = $pdo->prepare('SELECT t.id, t.service, t.origin, t.destination,
+        co.name as origin_city_name, po.name as origin_province_name,
+        cd.name as destination_city_name, pd.name as destination_province_name
+        FROM transfers t
+        LEFT JOIN cities co ON t.origin_city_id = co.id
+        LEFT JOIN provinces po ON co.province_id = po.id
+        LEFT JOIN cities cd ON t.destination_city_id = cd.id
+        LEFT JOIN provinces pd ON cd.province_id = pd.id
+        WHERE t.id = ?');
+      $stmt->execute([$itemId]);
+      return $stmt->fetch() ?: null;
+      
+    default:
+      return null;
+  }
+}
+
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
@@ -39,6 +93,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     'confirmed' => 0,
     'cancelled' => 0,
     'completed' => 0,
+    'total_spent' => 0,
     'recent' => []
   ];
   
@@ -54,7 +109,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     
     foreach ($types as $type) {
       $table = $bookingTables[$type];
-      $stmt = $pdo->prepare("SELECT status FROM $table WHERE user_id = ?");
+      $stmt = $pdo->prepare("SELECT status, total_price FROM $table WHERE user_id = ?");
       $stmt->execute([$userId]);
       $bookings = $stmt->fetchAll();
       
@@ -64,10 +119,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
         if (isset($bookingsSummary[$status])) {
           $bookingsSummary[$status]++;
         }
+        // Calculate total spent (only confirmed and completed bookings)
+        if (in_array($status, ['confirmed', 'completed'])) {
+          $bookingsSummary['total_spent'] += (float)($booking['total_price'] ?? 0);
+        }
       }
     }
     
-    // Get recent bookings (last 5)
+    // Get recent bookings (last 5) with item details
     $recentBookings = [];
     foreach ($types as $type) {
       $table = $bookingTables[$type];
@@ -75,6 +134,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
       $stmt = $pdo->prepare("SELECT TOP 5 *, '$type' as type, $itemIdColumn as item_id FROM $table WHERE user_id = ? ORDER BY booked_at DESC");
       $stmt->execute([$userId]);
       $bookings = $stmt->fetchAll();
+      
+      // Add item details to each booking
+      foreach ($bookings as &$booking) {
+        $itemId = (int)$booking['item_id'];
+        $booking['item_details'] = getItemDetails($pdo, $type, $itemId);
+      }
+      
       $recentBookings = array_merge($recentBookings, $bookings);
     }
     
