@@ -373,32 +373,36 @@
       
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
+        window.location.href = 'login.html';
         return;
       }
       
       if (!selectedInstance) {
-      setStatus('status', 'error', 'Please select a departure flight');
+        setStatus('status', 'error', 'Please select a departure flight');
         return;
       }
       
       if (tripType === 'round-trip' && !selectedReturnInstance) {
-      setStatus('status', 'error', 'Please select a return flight');
+        setStatus('status', 'error', 'Please select a return flight');
+        return;
+      }
+      
+      const departureDate = new Date(document.getElementById('departureDate').value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (departureDate < today) {
+        setStatus('status', 'error', 'Departure date cannot be in the past');
         return;
       }
       
       clearStatus('status');
       
+      const bookBtn = document.getElementById('bookBtn');
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Booking...';
+      
       try {
-        // For round-trip, we need to create two bookings or handle it differently
-        // For now, we'll book the departure flight
-        // In a production system, you'd want to handle round-trip bookings as a single booking with two instances
-        
-        const departurePrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
-        const returnPrice = tripType === 'round-trip' && selectedReturnInstance 
-          ? (selectedReturnInstance.discounted_price || selectedReturnInstance.price) * passengerCount
-          : 0;
-        const totalPrice = departurePrice + returnPrice;
-        
         // Book departure flight
         await apiCall('/flights/book', {
           method: 'POST',
@@ -426,7 +430,9 @@
         showSuccessToast('Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
-      setStatus('status', 'error', error.message || 'Failed to create booking');
+        setStatus('status', 'error', error.message || 'Failed to create booking');
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Book Now';
       }
     });
     

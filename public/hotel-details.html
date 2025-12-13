@@ -36,8 +36,8 @@
                 <input type="date" class="form-control" id="checkOut" required>
               </div>
               <div class="mb-3">
-                <label class="form-label">Number of Nights</label>
-                <input type="number" class="form-control" id="nights" value="1" min="1" required>
+                <label class="form-label">Number of Guests</label>
+                <input type="number" class="form-control" id="guests" value="1" min="1" max="10" required>
               </div>
               <p class="price" id="totalPrice"></p>
               <div id="status"></div>
@@ -139,13 +139,37 @@
           });
         }, 50);
         
+        // Set minimum date to today
+        const today = new Date().toISOString().split('T')[0];
+        document.getElementById('checkIn').setAttribute('min', today);
+        document.getElementById('checkOut').setAttribute('min', today);
+        
         calculateTotal();
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load hotel');
       }
     }
+    
     function calculateTotal() {
-      const nights = parseInt(document.getElementById('nights').value) || 1;
+      const checkIn = document.getElementById('checkIn').value;
+      const checkOut = document.getElementById('checkOut').value;
+      
+      if (!checkIn || !checkOut) {
+        document.getElementById('totalPrice').textContent = '';
+        return;
+      }
+      
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+      
+      if (checkOutDate <= checkInDate) {
+        document.getElementById('totalPrice').textContent = 'Check-out must be after check-in';
+        document.getElementById('totalPrice').style.color = 'red';
+        return;
+      }
+      
+      const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
+      
       if (hotel) {
         const pricePerNight = hotel.discount_percent > 0 
           ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
@@ -153,29 +177,78 @@
         const total = pricePerNight * nights;
         const priceEl = document.getElementById('totalPrice');
         priceEl.style.animation = 'pulse 0.3s ease';
-        priceEl.textContent = `Total: ${formatPrice(total)}`;
+        priceEl.style.color = '';
+        priceEl.textContent = `${nights} night${nights !== 1 ? 's' : ''}: ${formatPrice(total)}`;
         setTimeout(() => priceEl.style.animation = '', 300);
       }
     }
-    document.getElementById('nights').addEventListener('change', calculateTotal);
+    
+    document.getElementById('checkIn').addEventListener('change', function() {
+      const checkIn = this.value;
+      if (checkIn) {
+        const nextDay = new Date(checkIn);
+        nextDay.setDate(nextDay.getDate() + 1);
+        document.getElementById('checkOut').setAttribute('min', nextDay.toISOString().split('T')[0]);
+      }
+      calculateTotal();
+    });
+    
+    document.getElementById('checkOut').addEventListener('change', calculateTotal);
+    document.getElementById('guests').addEventListener('change', calculateTotal);
+    
     document.getElementById('bookingForm').addEventListener('submit', async function(e) {
       e.preventDefault();
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
+        window.location.href = 'login.html';
         return;
       }
+      
       clearStatus('status');
-      const nights = parseInt(document.getElementById('nights').value) || 1;
+      const checkIn = document.getElementById('checkIn').value;
+      const checkOut = document.getElementById('checkOut').value;
+      const guests = parseInt(document.getElementById('guests').value) || 1;
+      
+      // Validation
+      if (!checkIn || !checkOut) {
+        setStatus('status', 'error', 'Please select check-in and check-out dates');
+        return;
+      }
+      
+      const checkInDate = new Date(checkIn);
+      const checkOutDate = new Date(checkOut);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (checkInDate < today) {
+        setStatus('status', 'error', 'Check-in date cannot be in the past');
+        return;
+      }
+      
+      if (checkOutDate <= checkInDate) {
+        setStatus('status', 'error', 'Check-out date must be after check-in date');
+        return;
+      }
+      
+      const nights = Math.ceil((checkOutDate - checkInDate) / (1000 * 60 * 60 * 24));
       const pricePerNight = hotel.discount_percent > 0 
         ? hotel.price_per_night * (1 - hotel.discount_percent / 100)
         : hotel.price_per_night;
       const totalPrice = pricePerNight * nights;
+      
+      const bookBtn = document.getElementById('bookBtn');
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Booking...';
+      
       try {
         await apiCall('/bookings', {
           method: 'POST',
           body: JSON.stringify({
             item_type: 'hotel',
             item_id: hotel.id,
+            check_in: checkIn,
+            check_out: checkOut,
+            guests: guests,
             total_price: totalPrice
           })
         });
@@ -183,6 +256,8 @@
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to create booking');
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Book Now';
       }
     });
     if (hotelId) loadHotel();

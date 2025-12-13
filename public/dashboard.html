@@ -1,0 +1,217 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard - Travel Booking</title>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
+  <link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+  <div id="header"></div>
+
+  <div class="container mt-4 mb-5">
+    <h1 class="mb-4 reveal">Dashboard</h1>
+    
+    <div id="status"></div>
+    
+    <!-- Overview Stats -->
+    <div id="statsSection" class="row g-4 mb-5 reveal">
+      <!-- Loaded dynamically -->
+    </div>
+    
+    <!-- Recent Bookings -->
+    <div class="card mb-4 reveal">
+      <div class="card-header d-flex justify-content-between align-items-center">
+        <h5 class="mb-0">Recent Bookings</h5>
+        <a href="#" id="viewAllBookings" class="btn btn-sm btn-outline-primary">View All</a>
+      </div>
+      <div class="card-body">
+        <div id="recentBookings">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+    </div>
+    
+    <!-- My Items -->
+    <div class="card reveal">
+      <div class="card-header">
+        <h5 class="mb-0">My Items</h5>
+      </div>
+      <div class="card-body">
+        <div id="myItems">
+          <!-- Loaded dynamically -->
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="footer"></div>
+
+  <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+  <!-- Load utilities and components first -->
+  <script src="js/utils/formatters.js"></script>
+  <script src="js/utils/api.js"></script>
+  <script src="js/components/Image.js"></script>
+  <script src="js/components/Price.js"></script>
+  <script src="js/components/Badge.js"></script>
+  <script src="js/components/EmptyState.js"></script>
+  <script src="js/components/Card.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/auth.js"></script>
+  <script>
+    loadLayout();
+
+    // Check authentication and role
+    const user = getCurrentUser();
+    if (!isAuthenticated() || !user) {
+      alert('Please log in to access the dashboard.');
+      window.location.href = 'login.html';
+    } else if (user.role !== 'owner' && user.role !== 'agency') {
+      alert('Dashboard is only available for owners and agencies.');
+      window.location.href = 'index.html';
+    }
+
+    async function loadDashboard() {
+      showLoading('statsSection');
+      clearStatus('status');
+      
+      try {
+        // Load stats
+        const statsData = await apiCall('/dashboard');
+        const stats = statsData.stats || {};
+        
+        document.getElementById('statsSection').innerHTML = `
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <h3 class="text-primary">${stats.total_bookings || 0}</h3>
+                <p class="text-muted mb-0">Total Bookings</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <h3 class="text-success">${formatPrice(stats.total_revenue || 0)}</h3>
+                <p class="text-muted mb-0">Total Revenue</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <h3 class="text-info">${stats.total_items || 0}</h3>
+                <p class="text-muted mb-0">Active Items</p>
+              </div>
+            </div>
+          </div>
+          <div class="col-md-3">
+            <div class="card text-center">
+              <div class="card-body">
+                <h3 class="text-warning">${stats.confirmed_bookings || 0}</h3>
+                <p class="text-muted mb-0">Confirmed</p>
+              </div>
+            </div>
+          </div>
+        `;
+        
+        // Load recent bookings
+        const bookingsData = await apiCall('/dashboard/bookings?limit=10');
+        const bookings = bookingsData.results || [];
+        
+        const bookingsContainer = document.getElementById('recentBookings');
+        if (bookings.length === 0) {
+          bookingsContainer.innerHTML = renderEmptyState({ message: 'No bookings yet.' });
+        } else {
+          bookingsContainer.innerHTML = `
+            <div class="table-responsive">
+              <table class="table table-hover">
+                <thead>
+                  <tr>
+                    <th>ID</th>
+                    <th>Type</th>
+                    <th>Item</th>
+                    <th>Customer</th>
+                    <th>Total</th>
+                    <th>Status</th>
+                    <th>Booked</th>
+                    <th>Actions</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${bookings.map(booking => {
+                    const statusClass = booking.status === 'confirmed' ? 'success' : 
+                                      booking.status === 'cancelled' ? 'danger' : 'secondary';
+                    return `
+                      <tr>
+                        <td>#${booking.id}</td>
+                        <td>${booking.type.charAt(0).toUpperCase() + booking.type.slice(1)}</td>
+                        <td>${booking.item_name || 'N/A'}</td>
+                        <td>User #${booking.user_id}</td>
+                        <td>${formatPrice(booking.total_price)}</td>
+                        <td><span class="badge bg-${statusClass}">${booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span></td>
+                        <td>${formatDate(booking.booked_at)}</td>
+                        <td>
+                          <a href="${booking.type === 'hotel' ? 'hotel' : booking.type === 'flight' ? 'flight' : booking.type === 'activity' ? 'activity' : 'transfer'}-details.html?id=${booking.item_id}" class="btn btn-sm btn-outline-primary">View</a>
+                        </td>
+                      </tr>
+                    `;
+                  }).join('')}
+                </tbody>
+              </table>
+            </div>
+          `;
+        }
+        
+        // Load items
+        const itemsData = await apiCall('/dashboard/items');
+        const itemsContainer = document.getElementById('myItems');
+        const allItems = [
+          ...(itemsData.hotels || []).map(item => ({...item, type: 'hotel'})),
+          ...(itemsData.flights || []).map(item => ({...item, type: 'flight'})),
+          ...(itemsData.activities || []).map(item => ({...item, type: 'activity'})),
+          ...(itemsData.transfers || []).map(item => ({...item, type: 'transfer'}))
+        ];
+        
+        if (allItems.length === 0) {
+          itemsContainer.innerHTML = renderEmptyState({ message: 'You haven\'t created any items yet.' });
+        } else {
+          itemsContainer.innerHTML = `
+            <div class="row g-4">
+              ${allItems.slice(0, 8).map(item => {
+                const detailPage = `${item.type}-details.html`;
+                const nameField = item.type === 'activity' ? 'title' : (item.type === 'flight' ? 'airline' : (item.type === 'transfer' ? 'service' : 'name'));
+                return `
+                  <div class="col-md-3">
+                    <div class="card h-100">
+                      <div class="card-body">
+                        <h6 class="card-title">${item[nameField] || 'Untitled'}</h6>
+                        <p class="text-muted mb-2"><small>${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</small></p>
+                        <a href="${detailPage}?id=${item.id}" class="btn btn-sm btn-outline-primary">View</a>
+                      </div>
+                    </div>
+                  </div>
+                `;
+              }).join('')}
+            </div>
+            ${allItems.length > 8 ? `<p class="text-center mt-3"><a href="profile.html">View all ${allItems.length} items</a></p>` : ''}
+          `;
+        }
+        
+        // Set view all bookings link
+        document.getElementById('viewAllBookings').href = 'dashboard-bookings.html';
+        
+      } catch (error) {
+        console.error('Error loading dashboard:', error);
+        setStatus('status', 'error', error.message || 'Failed to load dashboard');
+      }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+      loadDashboard();
+    });
+  </script>
+</body>
+</html>
+

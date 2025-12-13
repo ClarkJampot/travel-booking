@@ -14,19 +14,12 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
-// GET /api/profile?user_id=X (optional - if not provided, uses authenticated user)
+// GET /api/profile (uses authenticated user only)
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) {
-  $userId = isset($_GET['user_id']) ? (int)$_GET['user_id'] : null;
+  requireAuth();
   
-  // If no user_id provided, try to get from authenticated user
-  if (!$userId) {
-    $authUser = get_authenticated_user();
-    if ($authUser) {
-      $userId = (int)$authUser['id'];
-    } else {
-      json_error('Missing user_id parameter or authentication required', 400);
-    }
-  }
+  $user = get_authenticated_user();
+  $userId = (int)$user['id'];
   
   // Get user information
   $stmt = $pdo->prepare('SELECT u.id, u.email, u.first_name, u.last_name, r.name as role_name 
@@ -34,15 +27,71 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     LEFT JOIN roles r ON u.role_id = r.id 
     WHERE u.id = ?');
   $stmt->execute([$userId]);
-  $user = $stmt->fetch();
+  $userInfo = $stmt->fetch();
   
-  if (!$user) {
+  if (!$userInfo) {
     json_error('User not found', 404);
+  }
+  
+  // Get bookings summary
+  $bookingsSummary = [
+    'total' => 0,
+    'confirmed' => 0,
+    'cancelled' => 0,
+    'completed' => 0,
+    'recent' => []
+  ];
+  
+  try {
+    // Count bookings from all tables
+    $types = ['hotel', 'flight', 'activity', 'transfer'];
+    $bookingTables = [
+      'hotel' => 'hotel_bookings',
+      'flight' => 'flight_bookings',
+      'activity' => 'activity_bookings',
+      'transfer' => 'transfer_bookings'
+    ];
+    
+    foreach ($types as $type) {
+      $table = $bookingTables[$type];
+      $stmt = $pdo->prepare("SELECT status FROM $table WHERE user_id = ?");
+      $stmt->execute([$userId]);
+      $bookings = $stmt->fetchAll();
+      
+      foreach ($bookings as $booking) {
+        $bookingsSummary['total']++;
+        $status = $booking['status'];
+        if (isset($bookingsSummary[$status])) {
+          $bookingsSummary[$status]++;
+        }
+      }
+    }
+    
+    // Get recent bookings (last 5)
+    $recentBookings = [];
+    foreach ($types as $type) {
+      $table = $bookingTables[$type];
+      $itemIdColumn = $type . '_id';
+      $stmt = $pdo->prepare("SELECT TOP 5 *, '$type' as type, $itemIdColumn as item_id FROM $table WHERE user_id = ? ORDER BY booked_at DESC");
+      $stmt->execute([$userId]);
+      $bookings = $stmt->fetchAll();
+      $recentBookings = array_merge($recentBookings, $bookings);
+    }
+    
+    // Sort by booked_at and take top 5
+    usort($recentBookings, function($a, $b) {
+      return strtotime($b['booked_at']) - strtotime($a['booked_at']);
+    });
+    $bookingsSummary['recent'] = array_slice($recentBookings, 0, 5);
+    
+  } catch (Exception $e) {
+    error_log('Profile bookings summary failed: ' . $e->getMessage());
   }
   
   // Get all content created by this user, separated by promoted and all
   $result = [
-    'user' => $user,
+    'user' => $userInfo,
+    'bookings' => $bookingsSummary,
     'promoted' => [
       'hotels' => [],
       'flights' => [],

@@ -10,14 +10,13 @@
 <body>
   <div id="header"></div>
   <div class="container mt-4">
-    <div id="transferDetails" class="reveal"></div>
     <div class="row mt-4 mb-4">
       <div class="col-md-8">
         <div class="card reveal">
           <div class="card-body">
             <h3 id="transferService" class="fade-in-up"></h3>
             <p id="transferRoute"></p>
-            <p class="text-muted" id="transferDate"></p>
+            <p class="text-muted" id="transferDateDisplay"></p>
             <p class="price" id="transferPrice"></p>
             <p id="transferDescription"></p>
           </div>
@@ -96,7 +95,7 @@
         document.getElementById('transferRoute').textContent = `${originDisplay} → ${destinationDisplay}`;
         
         if (transfer.date) {
-          document.getElementById('transferDate').textContent = `Date: ${formatDate(transfer.date)}`;
+          document.getElementById('transferDateDisplay').textContent = `Date: ${formatDate(transfer.date)}`;
         }
         
         // Display price
@@ -131,39 +130,6 @@
         if (transfer.description) {
           document.getElementById('transferDescription').textContent = transfer.description;
         }
-        
-        // Display images if available
-        const allImages = combineImages(transfer.image_url, transfer.images || []);
-        document.getElementById('transferDetails').innerHTML = createImageCarousel(allImages, 'transferCarousel', transfer.service || 'Transfer');
-        
-        // Initialize carousel and add hover effects after DOM insertion
-        setTimeout(() => {
-          const carouselEl = document.getElementById('transferCarousel');
-          if (carouselEl && allImages.length > 1) {
-            // Initialize Bootstrap carousel
-            const bsCarousel = new bootstrap.Carousel(carouselEl, {
-              interval: false,
-              wrap: true
-            });
-            
-            // Sync thumbnails when carousel slides
-            carouselEl.addEventListener('slid.bs.carousel', function(event) {
-              updateActiveThumbnail('transferCarousel', event.to);
-            });
-          }
-          
-          // Add hover effects for expand hint
-          carouselEl?.querySelectorAll('.card-img-wrapper').forEach(wrapper => {
-            wrapper.addEventListener('mouseenter', function() {
-              const hint = this.querySelector('.image-expand-hint');
-              if (hint) hint.style.opacity = '1';
-            });
-            wrapper.addEventListener('mouseleave', function() {
-              const hint = this.querySelector('.image-expand-hint');
-              if (hint) hint.style.opacity = '0';
-            });
-          });
-        }, 50);
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load transfer');
       }
@@ -245,7 +211,13 @@
           });
         });
       } catch (error) {
-        setStatus('status', 'error', error.message || 'Failed to load available transfers');
+        const errorMessage = error.message || 'Failed to load available transfers';
+        // Check if it's a 404 or "not found" error
+        if (errorMessage.toLowerCase().includes('not found') || errorMessage.includes('404')) {
+          setStatus('status', 'error', 'No transfers available for the selected date. Please try another date.');
+        } else {
+          setStatus('status', 'error', errorMessage);
+        }
       }
     }
     
@@ -260,6 +232,7 @@
       
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
+        window.location.href = 'login.html';
         return;
       }
       
@@ -268,11 +241,22 @@
         return;
       }
       
+      const transferDate = new Date(document.getElementById('transferDate').value);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (transferDate < today) {
+        setStatus('status', 'error', 'Transfer date cannot be in the past');
+        return;
+      }
+      
       clearStatus('status');
       
+      const bookBtn = document.getElementById('bookBtn');
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Booking...';
+      
       try {
-        const totalPrice = (selectedInstance.discounted_price || selectedInstance.price) * passengerCount;
-        
         await apiCall('/transfers/book', {
           method: 'POST',
           body: JSON.stringify({
@@ -286,6 +270,8 @@
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to create booking');
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Book Now';
       }
     });
     

@@ -81,6 +81,18 @@ elseif (preg_match('#^/flights(?:/(\d+))?/?$#', $uri, $matches)) {
   exit;
 }
 
+// Route: /api/transfer-instances
+elseif (preg_match('#^/transfer-instances/?$#', $uri)) {
+  require __DIR__ . '/controllers/transfer-instances.php';
+  exit;
+}
+
+// Route: /api/transfers/book
+elseif (preg_match('#^/transfers/book/?$#', $uri)) {
+  require __DIR__ . '/controllers/transfer-instances.php';
+  exit;
+}
+
 // Route: /api/transfers
 elseif (preg_match('#^/transfers(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/transfers.php';
@@ -132,6 +144,12 @@ elseif (preg_match('#^/(provinces|cities)(?:/(\d+))?/?$#', $uri, $matches)) {
 // Route: /api/profile
 elseif (preg_match('#^/profile/?$#', $uri)) {
   require __DIR__ . '/controllers/profile.php';
+  exit;
+}
+
+// Route: /api/dashboard
+elseif (preg_match('#^/dashboard(?:/(bookings|items))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/dashboard.php';
   exit;
 }
 

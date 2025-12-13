@@ -220,18 +220,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
     $totalPrice = round($totalPrice * (1 - $instance['discount_percent'] / 100), 2);
   }
   
+  // Get transfer_id from route
+  $stmt = $pdo->prepare('
+    SELECT tr.id as transfer_id
+    FROM transfer_instances ti
+    INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+    INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+    WHERE ti.id = ?
+  ');
+  $stmt->execute([$instance_id]);
+  $routeInfo = $stmt->fetch();
+  $transferId = $routeInfo['transfer_id'] ?? null;
+  
+  if (!$transferId) {
+    json_error('Unable to determine transfer for booking', 500);
+  }
+  
   // Start transaction
   $pdo->beginTransaction();
   
   try {
-    // Create booking
+    // Create booking in transfer_bookings table
     $passengerDetailsJson = json_encode($passenger_details);
     $stmt = $pdo->prepare('
-      INSERT INTO bookings (user_id, item_type, item_id, transfer_instance_id, passenger_count, passenger_details, total_price, status)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO transfer_bookings (user_id, transfer_id, passenger_count, passenger_details, total_price, status)
+      VALUES (?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
-      $user['id'], 'transfer', $instance_id, $instance_id,
+      (int)$user['id'], $transferId,
       $passenger_count, $passengerDetailsJson, $totalPrice, 'confirmed'
     ]);
     $bookingId = (int)$pdo->lastInsertId();
@@ -248,12 +264,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#',
     ');
     $updateStmt->execute([$instance['capacity'], $instance_id, $instance['capacity']]);
     
+    // Update booking count on transfer
+    $updateStmt = $pdo->prepare('UPDATE transfers SET booking_count = booking_count + 1 WHERE id = ?');
+    $updateStmt->execute([$transferId]);
+    
     $pdo->commit();
     
     // Fetch booking with details
-    $stmt = $pdo->prepare('SELECT * FROM bookings WHERE id = ?');
+    $stmt = $pdo->prepare('SELECT * FROM transfer_bookings WHERE id = ?');
     $stmt->execute([$bookingId]);
     $booking = $stmt->fetch();
+    $booking['type'] = 'transfer';
+    $booking['item_id'] = $transferId;
     
     json_ok(['booking' => $booking], 201);
   } catch (Exception $e) {

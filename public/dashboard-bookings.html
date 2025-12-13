@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>My Bookings - Travel Booking</title>
+  <title>Bookings Management - Travel Booking</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -11,7 +11,10 @@
   <div id="header"></div>
 
   <div class="container mt-4 mb-5">
-    <h1 class="mb-4 reveal">My Bookings</h1>
+    <div class="d-flex justify-content-between align-items-center mb-4">
+      <h1 class="reveal">Bookings Management</h1>
+      <a href="dashboard.html" class="btn btn-outline-secondary">Back to Dashboard</a>
+    </div>
     
     <!-- Filters -->
     <div class="filter-section mb-4">
@@ -66,9 +69,13 @@
   <script>
     loadLayout();
 
-    // Check authentication
-    if (!isAuthenticated()) {
-      alert('Please log in to view your bookings.');
+    // Check authentication and role
+    const user = getCurrentUser();
+    if (!isAuthenticated() || !user) {
+      alert('Please log in to access bookings management.');
+      window.location.href = 'login.html';
+    } else if (user.role !== 'owner' && user.role !== 'agency') {
+      alert('Bookings management is only available for owners and agencies.');
       window.location.href = 'index.html';
     }
 
@@ -108,7 +115,7 @@
       
       try {
         const params = getUrlParams();
-        let url = '/bookings?limit=50';
+        let url = '/dashboard/bookings?limit=50';
         if (params.item_type) url += `&item_type=${encodeURIComponent(params.item_type)}`;
         if (params.status) url += `&status=${encodeURIComponent(params.status)}`;
         
@@ -120,31 +127,90 @@
         if (params.status) document.getElementById('statusFilter').value = params.status;
         
         if (data.results.length === 0) {
-          container.innerHTML = renderEmptyState({ message: 'You have no bookings yet.' });
+          container.innerHTML = renderEmptyState({ message: 'No bookings found.' });
           return;
         }
         
-        container.innerHTML = data.results.map((booking, index) => renderBookingCard(booking, index)).join('');
+        container.innerHTML = `
+          <div class="table-responsive">
+            <table class="table table-hover">
+              <thead>
+                <tr>
+                  <th>ID</th>
+                  <th>Type</th>
+                  <th>Item</th>
+                  <th>Customer</th>
+                  <th>Details</th>
+                  <th>Total</th>
+                  <th>Status</th>
+                  <th>Booked</th>
+                  <th>Actions</th>
+                </tr>
+              </thead>
+              <tbody>
+                ${data.results.map(booking => {
+                  const statusClass = booking.status === 'confirmed' ? 'success' : 
+                                    booking.status === 'cancelled' ? 'danger' : 'secondary';
+                  
+                  let details = '';
+                  if (booking.type === 'hotel') {
+                    details = booking.check_in && booking.check_out 
+                      ? `${formatDate(booking.check_in)} - ${formatDate(booking.check_out)}`
+                      : 'N/A';
+                  } else if (booking.type === 'flight') {
+                    details = booking.class ? booking.class.charAt(0).toUpperCase() + booking.class.slice(1) : 'N/A';
+                  } else if (booking.type === 'activity') {
+                    details = booking.participant_count ? `${booking.participant_count} participant(s)` : 'N/A';
+                  } else if (booking.type === 'transfer') {
+                    details = booking.passenger_count ? `${booking.passenger_count} passenger(s)` : 'N/A';
+                  }
+                  
+                  return `
+                    <tr>
+                      <td>#${booking.id}</td>
+                      <td>${booking.type.charAt(0).toUpperCase() + booking.type.slice(1)}</td>
+                      <td>${booking.item_name || 'N/A'}</td>
+                      <td>User #${booking.user_id}</td>
+                      <td><small>${details}</small></td>
+                      <td>${formatPrice(booking.total_price)}</td>
+                      <td><span class="badge bg-${statusClass}">${booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span></td>
+                      <td><small>${formatDate(booking.booked_at)}</small></td>
+                      <td>
+                        <div class="btn-group btn-group-sm">
+                          <a href="${booking.type === 'hotel' ? 'hotel' : booking.type === 'flight' ? 'flight' : booking.type === 'activity' ? 'activity' : 'transfer'}-details.html?id=${booking.item_id}" class="btn btn-outline-primary">View</a>
+                          ${booking.status === 'confirmed' ? `
+                            <button class="btn btn-outline-success" onclick="updateStatus(${booking.id}, 'completed')">Complete</button>
+                            <button class="btn btn-outline-danger" onclick="updateStatus(${booking.id}, 'cancelled')">Cancel</button>
+                          ` : ''}
+                        </div>
+                      </td>
+                    </tr>
+                  `;
+                }).join('')}
+              </tbody>
+            </table>
+          </div>
+        `;
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to load bookings');
         document.getElementById('bookings').innerHTML = '';
       }
     }
-
-    async function cancelBooking(id) {
-      if (!confirm('Are you sure you want to cancel this booking?')) {
+    
+    async function updateStatus(bookingId, newStatus) {
+      if (!confirm(`Are you sure you want to mark this booking as ${newStatus}?`)) {
         return;
       }
       
       try {
-        await apiCall(`/bookings/${id}`, {
+        await apiCall(`/bookings/${bookingId}`, {
           method: 'PUT',
-          body: JSON.stringify({ status: 'cancelled' })
+          body: JSON.stringify({ status: newStatus })
         });
-        showSuccessToast('Booking cancelled successfully');
+        showSuccessToast(`Booking status updated to ${newStatus}`);
         loadBookings();
       } catch (error) {
-        showError('status', error.message || 'Failed to cancel booking');
+        setStatus('status', 'error', error.message || 'Failed to update booking status');
       }
     }
 
@@ -159,5 +225,4 @@
   </script>
 </body>
 </html>
-
 

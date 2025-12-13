@@ -171,30 +171,54 @@
       e.preventDefault();
       if (!isAuthenticated()) {
         alert('Please log in to make a booking.');
+        window.location.href = 'login.html';
         return;
       }
+      
       clearStatus('status');
       const participants = parseInt(document.getElementById('participants').value) || 1;
       const date = document.getElementById('activityDateInput').value;
+      
+      // Validation
+      if (!date) {
+        setStatus('status', 'error', 'Please select a date');
+        return;
+      }
+      
+      const selectedDate = new Date(date);
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      if (selectedDate < today) {
+        setStatus('status', 'error', 'Date cannot be in the past');
+        return;
+      }
+      
       const pricePerPerson = activity.discount_percent > 0 
         ? activity.price * (1 - activity.discount_percent / 100)
         : activity.price;
       const totalPrice = pricePerPerson * participants;
+      
+      const bookBtn = document.getElementById('bookBtn');
+      bookBtn.disabled = true;
+      bookBtn.textContent = 'Booking...';
+      
       try {
         await apiCall('/bookings', {
           method: 'POST',
           body: JSON.stringify({
             item_type: 'activity',
             item_id: activity.id,
-            total_price: totalPrice,
-            date: date,
-            participants: participants
+            participant_count: participants,
+            total_price: totalPrice
           })
         });
         showSuccessToast('Booking created successfully!');
         setTimeout(() => window.location.href = 'bookings.html', 2000);
       } catch (error) {
         setStatus('status', 'error', error.message || 'Failed to create booking');
+        bookBtn.disabled = false;
+        bookBtn.textContent = 'Book Now';
       }
     });
     

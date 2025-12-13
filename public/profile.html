@@ -10,8 +10,9 @@
 <body>
   <div id="header"></div>
 
-  <div class="container mt-4">
-    <div id="profileContent">
+  <div class="container mt-4 mb-5">
+    <div id="status"></div>
+    <div id="profileContent" class="reveal">
       <!-- Loaded dynamically -->
     </div>
   </div>
@@ -31,6 +32,12 @@
   <script src="js/auth.js"></script>
   <script>
     loadLayout();
+
+    // Check authentication
+    if (!isAuthenticated()) {
+      alert('Please log in to view your profile.');
+      window.location.href = 'login.html';
+    }
 
     function renderContentCard(item, type) {
       const detailPage = {
@@ -90,16 +97,11 @@
     }
 
     async function loadProfile() {
-      const urlParams = new URLSearchParams(window.location.search);
-      const userId = urlParams.get('user_id');
-      
-      if (!userId) {
-        document.getElementById('profileContent').innerHTML = '<p class="text-danger">User ID is required.</p>';
-        return;
-      }
+      showLoading('profileContent');
+      clearStatus('status');
       
       try {
-        const data = await apiCall(`/profile?user_id=${userId}`);
+        const data = await apiCall('/profile');
         const container = document.getElementById('profileContent');
         
         if (!data || !data.user) {
@@ -108,34 +110,84 @@
         }
         
         const user = data.user;
+        const bookings = data.bookings || { total: 0, confirmed: 0, cancelled: 0, completed: 0, recent: [] };
+        const userRole = user.role_name || 'customer';
+        const isOwnerOrAgency = userRole === 'owner' || userRole === 'agency';
+        
+        const fullName = [user.first_name, user.last_name].filter(Boolean).join(' ') || user.first_name;
+        
         container.innerHTML = `
-          <div class="profile-header mb-5">
-            <h1>${user.full_name}</h1>
-            <p class="text-muted">${user.role_name || 'User'}</p>
-            ${user.email ? `<p><strong>Email:</strong> ${user.email}</p>` : ''}
-            ${user.phone ? `<p><strong>Phone:</strong> ${user.phone}</p>` : ''}
-            ${user.address ? `<p><strong>Address:</strong> ${user.address}</p>` : ''}
+          <div class="row">
+            <div class="col-md-4">
+              <div class="card mb-4">
+                <div class="card-body">
+                  <h2 class="card-title mb-3">${fullName}</h2>
+                  <p class="text-muted mb-2"><strong>Role:</strong> ${user.role_name || 'Customer'}</p>
+                  <p class="mb-2"><strong>Email:</strong> ${user.email || 'N/A'}</p>
+                  ${isOwnerOrAgency ? `<a href="dashboard.html" class="btn btn-primary mt-3">Go to Dashboard</a>` : ''}
+                </div>
+              </div>
+              
+              <div class="card">
+                <div class="card-body">
+                  <h5 class="card-title mb-3">Bookings Summary</h5>
+                  <div class="mb-2">
+                    <strong>Total:</strong> <span class="badge bg-primary">${bookings.total || 0}</span>
+                  </div>
+                  <div class="mb-2">
+                    <strong>Confirmed:</strong> <span class="badge bg-success">${bookings.confirmed || 0}</span>
+                  </div>
+                  <div class="mb-2">
+                    <strong>Cancelled:</strong> <span class="badge bg-danger">${bookings.cancelled || 0}</span>
+                  </div>
+                  <div class="mb-3">
+                    <strong>Completed:</strong> <span class="badge bg-secondary">${bookings.completed || 0}</span>
+                  </div>
+                  <a href="bookings.html" class="btn btn-outline-primary w-100">View All Bookings</a>
+                </div>
+              </div>
+            </div>
+            
+            <div class="col-md-8">
+              ${isOwnerOrAgency ? `
+                <div class="mb-5">
+                  <h3 class="mb-4">My Content</h3>
+                  ${renderContentSection('Promoted Items', [
+                    ...(data.promoted?.hotels || []),
+                    ...(data.promoted?.flights || []),
+                    ...(data.promoted?.activities || []),
+                    ...(data.promoted?.transfers || [])
+                  ], 'mixed')}
+                  
+                  <hr class="my-5">
+                  
+                  ${data.all?.hotels && data.all.hotels.length > 0 ? renderContentSection('Hotels', data.all.hotels, 'hotel') : ''}
+                  ${data.all?.flights && data.all.flights.length > 0 ? renderContentSection('Flights', data.all.flights, 'flight') : ''}
+                  ${data.all?.activities && data.all.activities.length > 0 ? renderContentSection('Activities', data.all.activities, 'activity') : ''}
+                  ${data.all?.transfers && data.all.transfers.length > 0 ? renderContentSection('Transfers', data.all.transfers, 'transfer') : ''}
+                  
+                  ${(!data.all?.hotels || data.all.hotels.length === 0) && 
+                    (!data.all?.flights || data.all.flights.length === 0) &&
+                    (!data.all?.activities || data.all.activities.length === 0) &&
+                    (!data.all?.transfers || data.all.transfers.length === 0)
+                    ? '<p class="text-muted">You haven\'t created any content yet.</p>' : ''}
+                </div>
+              ` : `
+                <div class="card">
+                  <div class="card-body">
+                    <h5 class="card-title">Welcome to your profile!</h5>
+                    <p class="card-text">Manage your bookings and account information from here.</p>
+                    <a href="bookings.html" class="btn btn-primary">View My Bookings</a>
+                  </div>
+                </div>
+              `}
+            </div>
           </div>
-          
-          ${renderContentSection('Promoted Items', [
-            ...(data.promoted.hotels || []),
-            ...(data.promoted.flights || [])
-          ], 'mixed')}
-          
-          <hr class="my-5">
-          
-          <h2 class="mb-4">All Content</h2>
-          
-          ${data.all.hotels && data.all.hotels.length > 0 ? renderContentSection('Hotels', data.all.hotels, 'hotel') : ''}
-          ${data.all.flights && data.all.flights.length > 0 ? renderContentSection('Flights', data.all.flights, 'flight') : ''}
-          
-          ${(!data.all.hotels || data.all.hotels.length === 0) && 
-            (!data.all.flights || data.all.flights.length === 0) 
-            ? '<p class="text-muted">Currently no content available.</p>' : ''}
         `;
       } catch (error) {
         console.error('Error loading profile:', error);
-        document.getElementById('profileContent').innerHTML = '<p class="text-danger">Failed to load profile. Please try again later.</p>';
+        setStatus('status', 'error', error.message || 'Failed to load profile. Please try again later.');
+        document.getElementById('profileContent').innerHTML = '';
       }
     }
 

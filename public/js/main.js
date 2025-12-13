@@ -258,19 +258,58 @@ function renderBookingCard(booking, index = 0) {
     : booking.status === 'cancelled'
       ? 'danger'
       : 'secondary';
+  
+  const type = booking.type || booking.item_type || 'unknown';
+  const itemDetails = booking.item_details || {};
+  const itemName = itemDetails.name || itemDetails.title || itemDetails.airline || itemDetails.service || `Item #${booking.item_id}`;
+  
+  // Build details based on booking type
+  let detailsHtml = '';
+  if (type === 'hotel') {
+    detailsHtml = `
+      <p class="card-text"><strong>Hotel:</strong> ${itemName}</p>
+      ${booking.check_in ? `<p class="card-text"><strong>Check-in:</strong> ${formatDate(booking.check_in)}</p>` : ''}
+      ${booking.check_out ? `<p class="card-text"><strong>Check-out:</strong> ${formatDate(booking.check_out)}</p>` : ''}
+      ${booking.guests ? `<p class="card-text"><strong>Guests:</strong> ${booking.guests}</p>` : ''}
+      ${itemDetails.city_name ? `<p class="card-text text-muted">${itemDetails.city_name}${itemDetails.province_name ? ', ' + itemDetails.province_name : ''}</p>` : ''}
+    `;
+  } else if (type === 'flight') {
+    detailsHtml = `
+      <p class="card-text"><strong>Flight:</strong> ${itemName}</p>
+      ${booking.class ? `<p class="card-text"><strong>Class:</strong> ${booking.class.charAt(0).toUpperCase() + booking.class.slice(1)}</p>` : ''}
+      ${booking.passenger_count ? `<p class="card-text"><strong>Passengers:</strong> ${booking.passenger_count}</p>` : ''}
+      ${itemDetails.origin && itemDetails.destination ? `<p class="card-text text-muted">${itemDetails.origin} → ${itemDetails.destination}</p>` : ''}
+    `;
+  } else if (type === 'activity') {
+    detailsHtml = `
+      <p class="card-text"><strong>Activity:</strong> ${itemName}</p>
+      ${booking.participant_count ? `<p class="card-text"><strong>Participants:</strong> ${booking.participant_count}</p>` : ''}
+      ${itemDetails.city_name ? `<p class="card-text text-muted">${itemDetails.city_name}${itemDetails.province_name ? ', ' + itemDetails.province_name : ''}</p>` : ''}
+    `;
+  } else if (type === 'transfer') {
+    detailsHtml = `
+      <p class="card-text"><strong>Transfer:</strong> ${itemName}</p>
+      ${booking.passenger_count ? `<p class="card-text"><strong>Passengers:</strong> ${booking.passenger_count}</p>` : ''}
+      ${itemDetails.origin && itemDetails.destination ? `<p class="card-text text-muted">${itemDetails.origin} → ${itemDetails.destination}</p>` : ''}
+    `;
+  } else {
+    detailsHtml = `<p class="card-text"><strong>Item:</strong> ${itemName}</p>`;
+  }
+  
   return `
     <div class="card mb-3 reveal stagger-${(index % 5) + 1}" style="opacity: 1; transform: translateY(0);">
       <div class="card-body">
         <div class="row">
           <div class="col-md-8">
-            <h5 class="card-title">${booking.item_type.charAt(0).toUpperCase() + booking.item_type.slice(1)} Booking</h5>
-            <p class="card-text"><strong>Booking ID:</strong> ${booking.id}</p>
-            <p class="card-text"><strong>Status:</strong> <span class="badge bg-${statusClass}">${booking.status}</span></p>
-            <p class="card-text"><strong>Booked on:</strong> ${formatDate(booking.booked_at)}</p>
-            <p class="price">Total: ${formatPrice(booking.total_price)}</p>
+            <h5 class="card-title">${type.charAt(0).toUpperCase() + type.slice(1)} Booking #${booking.id}</h5>
+            ${detailsHtml}
+            <p class="card-text"><strong>Status:</strong> <span class="badge bg-${statusClass}">${booking.status.charAt(0).toUpperCase() + booking.status.slice(1)}</span></p>
+            <p class="card-text text-muted"><small>Booked on: ${formatDate(booking.booked_at)}</small></p>
+            <p class="price mt-2">Total: ${formatPrice(booking.total_price)}</p>
           </div>
           <div class="col-md-4 text-end">
             ${booking.status === 'confirmed' ? `<button class="btn btn-danger" onclick="cancelBooking(${booking.id})">Cancel Booking</button>` : ''}
+            <a href="${type === 'hotel' ? 'hotel' : type === 'flight' ? 'flight' : type === 'activity' ? 'activity' : 'transfer'}-details.html?id=${booking.item_id}" class="btn btn-outline-primary mt-2 d-block">View Details</a>
           </div>
         </div>
       </div>
@@ -357,6 +396,7 @@ function updateNavigation() {
   const registerBtn = document.getElementById('registerBtn');
   const profileBtn = document.getElementById('profileBtn');
   const bookingsBtn = document.getElementById('bookingsBtn');
+  const dashboardBtn = document.getElementById('dashboardBtn');
   const logoutBtn = document.getElementById('logoutBtn');
   
   if (user) {
@@ -365,11 +405,16 @@ function updateNavigation() {
     if (profileBtn) profileBtn.style.display = 'block';
     if (bookingsBtn) bookingsBtn.style.display = 'block';
     if (logoutBtn) logoutBtn.style.display = 'block';
+    
+    // Show dashboard only for owners/agencies
+    const isOwnerOrAgency = user.role === 'owner' || user.role === 'agency';
+    if (dashboardBtn) dashboardBtn.style.display = isOwnerOrAgency ? 'block' : 'none';
   } else {
     if (loginBtn) loginBtn.style.display = 'block';
     if (registerBtn) registerBtn.style.display = 'block';
     if (profileBtn) profileBtn.style.display = 'none';
     if (bookingsBtn) bookingsBtn.style.display = 'none';
+    if (dashboardBtn) dashboardBtn.style.display = 'none';
     if (logoutBtn) logoutBtn.style.display = 'none';
   }
 }
