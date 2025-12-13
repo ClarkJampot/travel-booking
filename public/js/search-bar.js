@@ -346,7 +346,8 @@ function renderDropdownResults(results, type) {
 
 // Render individual dropdown item
 function renderDropdownItem(item, type) {
-  const imageUrl = normalizeImageUrl(item.image_url || 'uploads/placeholder.svg');
+  const showImage = type !== 'flights' && type !== 'transfers';
+  const imageUrl = showImage ? normalizeImageUrl(item.image_url || 'uploads/placeholder.svg') : '';
   let detailUrl = '';
   let title = '';
   let subtitle = '';
@@ -362,9 +363,41 @@ function renderDropdownItem(item, type) {
     case 'flights':
       detailUrl = `flight-details.html?id=${item.id}`;
       title = escapeHtml(item.airline || '');
-      const flightOrigin = item.origin_city_name || item.origin || '';
-      const flightDestination = item.destination_city_name || item.destination || '';
-      subtitle = escapeHtml(`${flightOrigin} → ${flightDestination}`);
+      // Show both airport and city for origin
+      const originAirport = item.origin || '';
+      const originCity = item.origin_city_name || '';
+      const originProvince = item.origin_province_name || '';
+      const originDisplay = originCity 
+        ? `${originAirport} (${originCity}${originProvince ? ', ' + originProvince : ''})`
+        : originAirport;
+      // Show both airport and city for destination
+      const destAirport = item.destination || '';
+      const destCity = item.destination_city_name || '';
+      const destProvince = item.destination_province_name || '';
+      const destDisplay = destCity
+        ? `${destAirport} (${destCity}${destProvince ? ', ' + destProvince : ''})`
+        : destAirport;
+      subtitle = escapeHtml(`${originDisplay} → ${destDisplay}`);
+      price = item.price ? formatPrice(item.price) : '';
+      break;
+    case 'transfers':
+      detailUrl = `transfer-details.html?id=${item.id}`;
+      title = escapeHtml(item.service || '');
+      const transferOrigin = item.origin_city_name || item.origin || '';
+      const transferOriginProvince = item.origin_province_name || '';
+      const transferDest = item.destination_city_name || item.destination || '';
+      const transferDestProvince = item.destination_province_name || '';
+      const transferOriginFull = transferOrigin + (transferOriginProvince ? ', ' + transferOriginProvince : '');
+      const transferDestFull = transferDest + (transferDestProvince ? ', ' + transferDestProvince : '');
+      subtitle = escapeHtml(`${transferOriginFull} → ${transferDestFull}`);
+      price = item.price ? formatPrice(item.price) : '';
+      break;
+    case 'activities':
+      detailUrl = `activity-details.html?id=${item.id}`;
+      title = escapeHtml(item.title || '');
+      const activityCity = item.city_name || '';
+      const activityProvince = item.province_name || '';
+      subtitle = escapeHtml(activityCity + (activityProvince ? ', ' + activityProvince : ''));
       price = item.price ? formatPrice(item.price) : '';
       break;
     case 'destinations':
@@ -377,7 +410,7 @@ function renderDropdownItem(item, type) {
   
   return `
     <div class="search-dropdown-item" data-url="${detailUrl}">
-      <img src="${imageUrl}" alt="${title}" class="search-dropdown-item-image" loading="lazy" onerror="this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
+      ${showImage ? `<img src="${imageUrl}" alt="${title}" class="search-dropdown-item-image" loading="lazy" onerror="this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">` : ''}
       <div class="search-dropdown-item-content">
         <div class="search-dropdown-item-title">${title}</div>
         ${subtitle ? `<div class="search-dropdown-item-subtitle">${subtitle}</div>` : ''}
@@ -516,9 +549,41 @@ function renderResultCard(item, type) {
     case 'flights':
       detailUrl = `flight-details.html?id=${item.id}`;
       title = item.airline;
-      const flightOriginFull = item.origin_city_name || item.origin || '';
-      const flightDestinationFull = item.destination_city_name || item.destination || '';
-      subtitle = `${flightOriginFull} → ${flightDestinationFull}`;
+      // Show both airport and city for origin
+      const originAirport = item.origin || '';
+      const originCity = item.origin_city_name || '';
+      const originProvince = item.origin_province_name || '';
+      const originDisplay = originCity 
+        ? `${originAirport} (${originCity}${originProvince ? ', ' + originProvince : ''})`
+        : originAirport;
+      // Show both airport and city for destination
+      const destAirport = item.destination || '';
+      const destCity = item.destination_city_name || '';
+      const destProvince = item.destination_province_name || '';
+      const destDisplay = destCity
+        ? `${destAirport} (${destCity}${destProvince ? ', ' + destProvince : ''})`
+        : destAirport;
+      subtitle = `${originDisplay} → ${destDisplay}`;
+      price = item.price ? formatPrice(item.price) : '';
+      break;
+    case 'transfers':
+      detailUrl = `transfer-details.html?id=${item.id}`;
+      title = item.service;
+      const transferOrigin = item.origin_city_name || item.origin || '';
+      const transferOriginProvince = item.origin_province_name || '';
+      const transferDest = item.destination_city_name || item.destination || '';
+      const transferDestProvince = item.destination_province_name || '';
+      const transferOriginFull = transferOrigin + (transferOriginProvince ? ', ' + transferOriginProvince : '');
+      const transferDestFull = transferDest + (transferDestProvince ? ', ' + transferDestProvince : '');
+      subtitle = `${transferOriginFull} → ${transferDestFull}`;
+      price = item.price ? formatPrice(item.price) : '';
+      break;
+    case 'activities':
+      detailUrl = `activity-details.html?id=${item.id}`;
+      title = item.title;
+      const activityCity = item.city_name || '';
+      const activityProvince = item.province_name || '';
+      subtitle = activityCity + (activityProvince ? ', ' + activityProvince : '');
       price = item.price ? formatPrice(item.price) : '';
       break;
     case 'destinations':
@@ -560,6 +625,8 @@ function setContentTypeFromPage() {
   const typeMap = {
     'hotels.html': 'hotels',
     'flights.html': 'flights',
+    'transfers.html': 'transfers',
+    'activities.html': 'activities',
     'destinations.html': 'destinations'
   };
   

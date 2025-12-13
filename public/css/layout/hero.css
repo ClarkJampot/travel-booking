@@ -9,7 +9,7 @@
   justify-content: center;
   margin-bottom: var(--spacing-6xl);
   animation: fadeInUp 0.8s ease-out;
-  overflow: hidden;
+  overflow: visible;
 }
 
 .hero-banner-image {
@@ -22,6 +22,7 @@
   object-position: center;
   z-index: var(--z-base);
   display: block;
+  pointer-events: none;
 }
 
 .hero-overlay {
@@ -75,6 +76,7 @@
   backdrop-filter: var(--blur-lg);
   border-radius: var(--radius-lg);
   box-shadow: 0 4px 20px var(--black-rgba-3);
+  overflow: visible;
 }
 
 .hero-search-form .content-type-select,
@@ -99,6 +101,7 @@
   flex: 1 1 0;
   min-width: 200px;
   position: relative;
+  overflow: visible;
 }
 
 .hero-search-form .search-input {

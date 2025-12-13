@@ -630,17 +630,47 @@ INSERT INTO dbo.users(email, password_hash, first_name, role_id) VALUES
 -- ============================================================================
 -- DESTINATIONS
 -- ============================================================================
-INSERT INTO dbo.destinations(name, description) VALUES
-(N'Boracay Island', N'Famous white sand beach destination in Aklan, perfect for water activities and nightlife.'),
-(N'Puerto Princesa', N'Capital city of Palawan, gateway to stunning natural attractions including the Underground River.'),
-(N'Bohol', N'Beautiful island province known for its unique Chocolate Hills, tarsiers, and pristine beaches.'),
-(N'Baguio City', N'Cool mountain city known as the Summer Capital of the Philippines.'),
-(N'Siargao Island', N'Surfing capital of the Philippines with pristine beaches and natural pools.'),
-(N'El Nido', N'Stunning limestone cliffs, crystal-clear lagoons, and pristine beaches.'),
-(N'Coron', N'World-class diving destination with shipwrecks and stunning coral reefs.'),
-(N'Vigan', N'Historic Spanish colonial city, a UNESCO World Heritage Site.'),
-(N'Sagada', N'Mountain destination known for hanging coffins and beautiful caves.'),
-(N'Batanes', N'Northernmost province with rolling hills, traditional stone houses, and dramatic landscapes.');
+INSERT INTO dbo.destinations(name, description, province_id, city_id) VALUES
+(N'Boracay Island', N'Famous white sand beach destination in Aklan, perfect for water activities and nightlife.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Aklan'),
+  (SELECT id FROM dbo.cities WHERE name = N'Boracay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Aklan'))
+),
+(N'Puerto Princesa', N'Capital city of Palawan, gateway to stunning natural attractions including the Underground River.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Palawan'),
+  (SELECT id FROM dbo.cities WHERE name = N'Puerto Princesa' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Palawan'))
+),
+(N'Bohol', N'Beautiful island province known for its unique Chocolate Hills, tarsiers, and pristine beaches.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Bohol'),
+  NULL
+),
+(N'Baguio City', N'Cool mountain city known as the Summer Capital of the Philippines.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Benguet'),
+  (SELECT id FROM dbo.cities WHERE name = N'Baguio' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Benguet'))
+),
+(N'Siargao Island', N'Surfing capital of the Philippines with pristine beaches and natural pools.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Surigao del Norte'),
+  (SELECT id FROM dbo.cities WHERE name = N'General Luna' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Surigao del Norte'))
+),
+(N'El Nido', N'Stunning limestone cliffs, crystal-clear lagoons, and pristine beaches.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Palawan'),
+  (SELECT id FROM dbo.cities WHERE name = N'El Nido' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Palawan'))
+),
+(N'Coron', N'World-class diving destination with shipwrecks and stunning coral reefs.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Palawan'),
+  (SELECT id FROM dbo.cities WHERE name = N'Coron' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Palawan'))
+),
+(N'Vigan', N'Historic Spanish colonial city, a UNESCO World Heritage Site.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Ilocos Sur'),
+  (SELECT id FROM dbo.cities WHERE name = N'Vigan' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Ilocos Sur'))
+),
+(N'Sagada', N'Mountain destination known for hanging coffins and beautiful caves.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Mountain Province'),
+  (SELECT id FROM dbo.cities WHERE name = N'Sagada' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Mountain Province'))
+),
+(N'Batanes', N'Northernmost province with rolling hills, traditional stone houses, and dramatic landscapes.',
+  (SELECT id FROM dbo.provinces WHERE name = N'Batanes'),
+  NULL
+);
 
 -- ============================================================================
 -- HOTELS (Owned by owners, using city_id and province_id via subqueries)
