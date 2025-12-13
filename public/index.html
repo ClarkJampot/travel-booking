@@ -79,6 +79,14 @@
         <!-- Loaded dynamically -->
       </div>
     </section>
+
+    <!-- Featured Activities -->
+    <section class="mb-5 reveal">
+      <h2 class="mb-4">Featured Activities</h2>
+      <div id="featuredActivities" class="row g-4">
+        <!-- Loaded dynamically -->
+      </div>
+    </section>
   </div>
   <!-- End Main Content -->
 
@@ -158,9 +166,47 @@
       }
     }
 
+    // Load featured activities (include promoted; show 4 items)
+    async function loadFeaturedActivities() {
+      try {
+        const data = await apiCall('/activities?limit=4&page=1');
+        const container = document.getElementById('featuredActivities');
+        
+        const promoted = Array.isArray(data.promoted) ? data.promoted : [];
+        const regular = Array.isArray(data.results) ? data.results : [];
+        
+        const merged = [...promoted, ...regular].filter(Boolean);
+        const unique = [];
+        const seen = new Set();
+        merged.forEach(item => {
+          if (!item || seen.has(item.id)) return;
+          seen.add(item.id);
+          unique.push(item);
+        });
+        
+        if (unique.length === 0) {
+          container.innerHTML = renderEmptyState({ message: 'Currently no featured activities available.' });
+          return;
+        }
+        
+        // Make cards visible immediately
+        container.querySelectorAll('.reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+        
+        container.innerHTML = unique.slice(0, 4).map((activity) => {
+          return renderCard({ type: 'activity', data: activity, columnsClass: 'col-md-3' });
+        }).join('');
+      } catch (error) {
+        console.error('Error loading activities:', error);
+      }
+    }
+
     // Load all content
     document.addEventListener('DOMContentLoaded', function() {
       loadFeaturedDestinations().then(() => observeRevealElements());
+      loadFeaturedActivities().then(() => observeRevealElements());
       loadTopHotels().then(() => observeRevealElements());
     });
   </script>

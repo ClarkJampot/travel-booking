@@ -16,64 +16,38 @@
     
     <!-- Transfer Search Form -->
     <div class="flight-search-form">
-      <!-- Main Search Fields -->
-      <div class="flight-search-fields">
-        <!-- Origin Field -->
-        <div class="flight-field-wrapper">
-          <div class="flight-field-icon">
-            <i class="bi bi-geo-alt"></i>
-          </div>
-          <div class="flight-field-input-wrapper">
-            <input type="text" class="flight-field-input" id="originCityInput" placeholder="From" autocomplete="off">
-            <div class="flight-dropdown" id="originCityDropdown"></div>
-          </div>
+      <div class="row g-3 align-items-end">
+        <div class="col-md-2">
+          <label class="form-label">Province</label>
+          <select class="form-control" id="provinceFilter">
+            <option value="">All Provinces</option>
+          </select>
         </div>
-        
-        <!-- Swap Button -->
-        <button type="button" class="flight-swap-btn" id="swapCitiesBtn" title="Swap cities">
-          <i class="bi bi-arrow-left-right"></i>
-        </button>
-        
-        <!-- Destination Field -->
-        <div class="flight-field-wrapper">
-          <div class="flight-field-icon">
-            <i class="bi bi-geo-alt-fill"></i>
-          </div>
-          <div class="flight-field-input-wrapper">
-            <input type="text" class="flight-field-input" id="destinationCityInput" placeholder="To" autocomplete="off">
-            <div class="flight-dropdown" id="destinationCityDropdown"></div>
-          </div>
+        <div class="col-md-2">
+          <label class="form-label">City</label>
+          <select class="form-control" id="cityFilter" disabled>
+            <option value="">Select Province First</option>
+          </select>
         </div>
-        
-        <!-- Search Button -->
-        <button type="button" class="flight-search-btn" id="searchTransfersBtn">
-          Search
-        </button>
-      </div>
-      
-      <!-- Price Range Filter -->
-      <div class="flight-filters mt-3">
-        <div class="row g-3">
-          <div class="col-md-6">
-            <label class="form-label fw-bold">Price Range</label>
-            <div class="row g-2">
-              <div class="col-6">
-                <input type="number" class="form-control" id="minPrice" placeholder="Min price" min="0" step="100" inputmode="numeric" pattern="[0-9]*">
-              </div>
-              <div class="col-6">
-                <input type="number" class="form-control" id="maxPrice" placeholder="Max price" min="0" step="100" inputmode="numeric" pattern="[0-9]*">
-              </div>
-            </div>
-          </div>
+        <div class="col-md-2">
+          <label class="form-label">Keyword</label>
+          <input type="text" class="form-control" id="keywordFilter" placeholder="Search transfers...">
         </div>
-        <div class="mt-2">
-          <button type="button" class="btn btn-sm btn-outline-secondary" id="clearFiltersBtn">Clear Filters</button>
+        <div class="col-md-2">
+          <label class="form-label">Min Price</label>
+          <input type="number" class="form-control" id="minPrice" placeholder="Min" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="col-md-2">
+          <label class="form-label">Max Price</label>
+          <input type="number" class="form-control" id="maxPrice" placeholder="Max" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
+        </div>
+        <div class="col-md-2 d-flex align-items-end">
+          <button type="button" class="btn btn-primary w-100" id="searchTransfersBtn">Filter</button>
         </div>
       </div>
     </div>
     
     <!-- Hidden inputs for actual values -->
-    <input type="hidden" id="originCityId">
     <input type="hidden" id="destinationCityId">
     <div id="status"></div>
     
@@ -111,89 +85,7 @@
     let isLoading = false;
     let hasMore = true;
     let citiesData = [];
-    
-    // Load cities
-    async function loadCities() {
-      try {
-        const data = await apiCall('/cities');
-        citiesData = data.results || [];
-      } catch (error) {
-        console.error('Error loading cities:', error);
-      }
-    }
-    
-    // Render city dropdown
-    function renderCityDropdown(dropdownId, searchTerm = '') {
-      const dropdown = document.getElementById(dropdownId);
-      if (!dropdown) return;
-      
-      const searchLower = searchTerm.toLowerCase();
-      let html = '';
-      
-      const matchingCities = citiesData.filter(city => 
-        !searchTerm ||
-        city.name.toLowerCase().includes(searchLower) ||
-        (city.province_name && city.province_name.toLowerCase().includes(searchLower))
-      );
-      
-      if (matchingCities.length === 0) {
-        html = '<div class="flight-dropdown-item">No cities found</div>';
-      } else {
-        matchingCities.forEach(city => {
-          html += `
-            <div class="flight-dropdown-item" data-type="city" data-city-id="${city.id}" data-city-name="${city.name}" data-province-name="${city.province_name || ''}">
-              <div class="flight-dropdown-city">${city.name}${city.province_name ? ', ' + city.province_name : ''}</div>
-            </div>
-          `;
-        });
-      }
-      
-      dropdown.innerHTML = html;
-      
-      // Add click handlers
-      dropdown.querySelectorAll('.flight-dropdown-item').forEach(item => {
-        item.addEventListener('click', function() {
-          const inputId = dropdownId === 'originCityDropdown' ? 'originCityInput' : 'destinationCityInput';
-          const hiddenId = dropdownId === 'originCityDropdown' ? 'originCityId' : 'destinationCityId';
-          const input = document.getElementById(inputId);
-          const hidden = document.getElementById(hiddenId);
-          
-          const cityName = this.dataset.cityName;
-          const provinceName = this.dataset.provinceName;
-          input.value = `${cityName}${provinceName ? ', ' + provinceName : ''}`;
-          hidden.value = this.dataset.cityId;
-          
-          closeAllDropdowns();
-        });
-      });
-    }
-    
-    // Swap cities
-    function swapCities() {
-      const originInput = document.getElementById('originCityInput');
-      const destinationInput = document.getElementById('destinationCityInput');
-      const originHidden = document.getElementById('originCityId');
-      const destinationHidden = document.getElementById('destinationCityId');
-      
-      const tempInput = originInput.value;
-      const tempHidden = originHidden.value;
-      
-      originInput.value = destinationInput.value;
-      originHidden.value = destinationHidden.value;
-      destinationInput.value = tempInput;
-      destinationHidden.value = tempHidden;
-    }
-    
-    function getUrlParams() {
-      const params = new URLSearchParams(window.location.search);
-      return {
-        origin_city_id: params.get('origin_city_id') || '',
-        destination_city_id: params.get('destination_city_id') || '',
-        minPrice: params.get('minPrice') || '',
-        maxPrice: params.get('maxPrice') || '',
-        page: parseInt(params.get('page')) || 1
-      };
-    }
+    let provincesData = [];
     
     // Force integer-only values on numeric inputs
     function enforceIntegerInput(inputId) {
@@ -208,15 +100,87 @@
       sanitize();
     }
     
+    async function loadProvinces() {
+      try {
+        const data = await apiCall('/provinces');
+        provincesData = data.results || [];
+        const provinceSelect = document.getElementById('provinceFilter');
+        provinceSelect.innerHTML = '<option value=\"\">All Provinces</option>' + provincesData.map(p => `<option value=\"${p.id}\">${escapeHtml(p.name)}</option>`).join('');
+      } catch (error) {
+        console.error('Error loading provinces:', error);
+      }
+    }
+    
+    async function loadCitiesForProvince(provinceId, citySelect) {
+      const params = provinceId ? `?province_id=${provinceId}` : '';
+      const data = await apiCall(`/cities${params}`);
+      citiesData = data.results || [];
+      citySelect.innerHTML = '<option value=\"\">All Cities</option>';
+      citiesData.forEach(city => {
+        const opt = document.createElement('option');
+        opt.value = city.id;
+        opt.textContent = city.name;
+        citySelect.appendChild(opt);
+      });
+    }
+    
+    function initCascadingCityDropdown(provinceSelectId, citySelectId) {
+      const provinceSelect = document.getElementById(provinceSelectId);
+      const citySelect = document.getElementById(citySelectId);
+      if (!provinceSelect || !citySelect) return;
+      
+      citySelect.disabled = true;
+      citySelect.innerHTML = '<option value=\"\">Select Province First</option>';
+      
+      provinceSelect.addEventListener('change', async function() {
+        const provinceId = this.value;
+        citySelect.value = '';
+        document.getElementById('destinationCityId').value = '';
+        
+        if (!provinceId) {
+          citySelect.disabled = true;
+          citySelect.innerHTML = '<option value=\"\">Select Province First</option>';
+          updateURLWithFilters();
+          loadTransfers(true);
+          return;
+        }
+        
+        citySelect.disabled = false;
+        await loadCitiesForProvince(provinceId, citySelect);
+        updateURLWithFilters();
+        loadTransfers(true);
+      });
+      
+      citySelect.addEventListener('change', function() {
+        document.getElementById('destinationCityId').value = this.value || '';
+        updateURLWithFilters();
+        loadTransfers(true);
+      });
+    }
+    
+    function getUrlParams() {
+      const params = new URLSearchParams(window.location.search);
+      return {
+        province_id: params.get('province_id') || '',
+        destination_city_id: params.get('destination_city_id') || '',
+        q: params.get('q') || '',
+        minPrice: params.get('minPrice') || '',
+        maxPrice: params.get('maxPrice') || '',
+        page: parseInt(params.get('page')) || 1
+      };
+    }
+    
     function updateURLWithFilters() {
       const params = new URLSearchParams();
-      const originCityId = document.getElementById('originCityId').value;
+      const provinceId = document.getElementById('provinceFilter').value;
       const destinationCityId = document.getElementById('destinationCityId').value;
+      const keyword = document.getElementById('keywordFilter').value;
       const minPrice = document.getElementById('minPrice').value;
       const maxPrice = document.getElementById('maxPrice').value;
       
-      if (originCityId) params.set('origin_city_id', originCityId);
+      if (provinceId) params.set('province_id', provinceId);
       if (destinationCityId) params.set('destination_city_id', destinationCityId);
+      if (keyword) params.set('q', keyword);
       if (minPrice) params.set('minPrice', minPrice);
       if (maxPrice) params.set('maxPrice', maxPrice);
       
@@ -279,8 +243,9 @@
         const urlParams = getUrlParams();
         let url = `/transfers?limit=${limit}&page=${currentPage}`;
         
-        if (urlParams.origin_city_id) url += `&origin_city_id=${urlParams.origin_city_id}`;
+        if (urlParams.province_id) url += `&province_id=${urlParams.province_id}`;
         if (urlParams.destination_city_id) url += `&destination_city_id=${urlParams.destination_city_id}`;
+        if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
         if (urlParams.minPrice) url += `&minPrice=${urlParams.minPrice}`;
         if (urlParams.maxPrice) url += `&maxPrice=${urlParams.maxPrice}`;
         
@@ -311,7 +276,7 @@
         // Display regular transfers
         if (!data || !data.results || data.results.length === 0) {
           if (currentPage === 1) {
-            const hasFilters = urlParams.origin_city_id || urlParams.destination_city_id || urlParams.minPrice || urlParams.maxPrice;
+            const hasFilters = urlParams.province_id || urlParams.destination_city_id || urlParams.minPrice || urlParams.maxPrice || urlParams.q;
             container.innerHTML = hasFilters
               ? renderEmptyState({ message: 'No transfers found matching your criteria. Try adjusting your search filters.' })
               : renderEmptyState({ message: 'Currently no transfers available.' });
@@ -373,94 +338,32 @@
 
     document.addEventListener('DOMContentLoaded', async function() {
       setupInfiniteScroll();
-      await loadCities();
-      enforceIntegerInput('minPrice');
-      enforceIntegerInput('maxPrice');
+        await loadProvinces();
+        initCascadingCityDropdown('provinceFilter', 'cityFilter');
+        enforceIntegerInput('minPrice');
+        enforceIntegerInput('maxPrice');
       
-      // Initialize dropdowns
-      renderCityDropdown('originCityDropdown');
-      renderCityDropdown('destinationCityDropdown');
-      
-      // Load URL params into form
+      // Load URL params into selects
       const urlParams = getUrlParams();
-      if (urlParams.origin_city_id) {
-        const city = citiesData.find(c => c.id == urlParams.origin_city_id);
-        if (city) {
-          document.getElementById('originCityInput').value = `${city.name}${city.province_name ? ', ' + city.province_name : ''}`;
-          document.getElementById('originCityId').value = city.id;
-        }
+      if (urlParams.province_id) {
+        document.getElementById('provinceFilter').value = urlParams.province_id;
+          const citySelect = document.getElementById('cityFilter');
+          citySelect.disabled = false;
+          await loadCitiesForProvince(urlParams.province_id, citySelect);
       }
       if (urlParams.destination_city_id) {
         const city = citiesData.find(c => c.id == urlParams.destination_city_id);
         if (city) {
-          document.getElementById('destinationCityInput').value = `${city.name}${city.province_name ? ', ' + city.province_name : ''}`;
+          document.getElementById('cityFilter').value = city.id;
           document.getElementById('destinationCityId').value = city.id;
         }
       }
+        if (urlParams.q) document.getElementById('keywordFilter').value = urlParams.q;
+        if (urlParams.minPrice) document.getElementById('minPrice').value = urlParams.minPrice;
+        if (urlParams.maxPrice) document.getElementById('maxPrice').value = urlParams.maxPrice;
       
-      // Close all dropdowns
-      function closeAllDropdowns() {
-        document.querySelectorAll('.flight-dropdown').forEach(d => d.classList.remove('show'));
-        document.querySelectorAll('.flight-field-wrapper').forEach(w => w.classList.remove('focused'));
-      }
-      
-      // Position dropdown relative to input field
-      function positionDropdown(inputElement, dropdownElement) {
-        const rect = inputElement.getBoundingClientRect();
-        dropdownElement.style.top = (rect.bottom + window.scrollY + 8) + 'px';
-        dropdownElement.style.left = (rect.left + window.scrollX) + 'px';
-        dropdownElement.style.width = rect.width + 'px';
-      }
-      
-      // City input handlers
-      ['originCityInput', 'destinationCityInput'].forEach(inputId => {
-        const input = document.getElementById(inputId);
-        const dropdownId = inputId === 'originCityInput' ? 'originCityDropdown' : 'destinationCityDropdown';
-        
-        input.addEventListener('focus', function() {
-          closeAllDropdowns();
-          this.parentElement.parentElement.classList.add('focused');
-          const dropdown = document.getElementById(dropdownId);
-          positionDropdown(this.parentElement.parentElement, dropdown);
-          dropdown.classList.add('show');
-          renderCityDropdown(dropdownId, this.value);
-        });
-        
-        input.addEventListener('input', function() {
-          renderCityDropdown(dropdownId, this.value);
-        });
-        
-        input.addEventListener('blur', function() {
-          setTimeout(() => {
-            document.getElementById(dropdownId).classList.remove('show');
-            this.parentElement.parentElement.classList.remove('focused');
-          }, 200);
-        });
-      });
-      
-      // Swap button
-      document.getElementById('swapCitiesBtn').addEventListener('click', swapCities);
-      
-      // Search button
-      document.getElementById('searchTransfersBtn').addEventListener('click', function() {
-        closeAllDropdowns();
-        updateURLWithFilters();
-        loadTransfers(true);
-      });
-      
-      // Clear filters
-      document.getElementById('clearFiltersBtn').addEventListener('click', function() {
-        document.getElementById('originCityInput').value = '';
-        document.getElementById('destinationCityInput').value = '';
-        document.getElementById('originCityId').value = '';
-        document.getElementById('destinationCityId').value = '';
-        document.getElementById('minPrice').value = '';
-        document.getElementById('maxPrice').value = '';
-        updateURLWithFilters();
-        loadTransfers(true);
-      });
-      
-      // Apply filters on price change
+      // Province / City filter handlers
+      // Province / City handled via cascading dropdown init
       document.getElementById('minPrice').addEventListener('change', function() {
         updateURLWithFilters();
         loadTransfers(true);
@@ -471,53 +374,19 @@
         loadTransfers(true);
       });
       
-      // Initialize filters from URL
-      const filterUrlParams = getUrlParams();
-      if (filterUrlParams.minPrice) {
-        document.getElementById('minPrice').value = filterUrlParams.minPrice;
-      }
-      if (filterUrlParams.maxPrice) {
-        document.getElementById('maxPrice').value = filterUrlParams.maxPrice;
-      }
-      
-      // Close dropdowns when clicking outside
-      document.addEventListener('click', function(e) {
-        if (!e.target.closest('.flight-field-wrapper') && 
-            !e.target.closest('.flight-dropdown')) {
-          closeAllDropdowns();
+      document.getElementById('keywordFilter').addEventListener('keydown', function(e) {
+        if (e.key === 'Enter') {
+          e.preventDefault();
+          updateURLWithFilters();
+          loadTransfers(true);
         }
       });
       
-      // Handle Enter key on inputs
-      document.querySelectorAll('.flight-field-input').forEach(input => {
-        input.addEventListener('keydown', function(e) {
-          if (e.key === 'Enter') {
-            e.preventDefault();
-            closeAllDropdowns();
-            updateURLWithFilters();
-            loadTransfers(true);
-          }
-        });
+      // Search button
+      document.getElementById('searchTransfersBtn').addEventListener('click', function() {
+        updateURLWithFilters();
+        loadTransfers(true);
       });
-      
-      // Handle window resize and scroll to reposition dropdowns
-      function repositionActiveDropdowns() {
-        document.querySelectorAll('.flight-dropdown.show').forEach(dropdown => {
-          let inputId = '';
-          if (dropdown.id === 'originCityDropdown') inputId = 'originCityInput';
-          else if (dropdown.id === 'destinationCityDropdown') inputId = 'destinationCityInput';
-          
-          if (inputId) {
-            const input = document.getElementById(inputId);
-            if (input) {
-              positionDropdown(input.parentElement.parentElement, dropdown);
-            }
-          }
-        });
-      }
-      
-      window.addEventListener('resize', repositionActiveDropdowns);
-      window.addEventListener('scroll', repositionActiveDropdowns, true);
       
       // Initial load - show all transfers if no filters
       loadTransfers(true);

@@ -29,3 +29,4 @@ function renderPrice({ price, discountedPrice = null, discountPercent = 0, suffi
   return `<p class="price${sizeClass}">${formatPrice(price)}${suffix ? `<span class="price-small">${suffix}</span>` : ''}</p>`;
 }
 
+

@@ -70,9 +70,8 @@ class PromotionHelper {
    * @return QueryBuilder Modified query builder
    */
   public static function excludePromoted(QueryBuilder $baseQuery, string $tableAlias, array $promotedIds): QueryBuilder {
-    // Exclude promoted items
-    $baseQuery->where("($tableAlias.ad = 0 OR $tableAlias.ad IS NULL)");
-    
+    // Exclude only the specific promoted IDs that were already returned
+    // This allows other promoted items to appear in regular results
     if (!empty($promotedIds)) {
       $baseQuery->whereNotIn("$tableAlias.id", $promotedIds);
     }

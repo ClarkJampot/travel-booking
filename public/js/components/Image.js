@@ -42,3 +42,4 @@ function renderImage({ src, alt = '', className = '', lazy = true }) {
   return `<img src="${normalizedSrc}" alt="${escapeHtml(alt)}"${classAttr} ${lazyAttr} onerror="this.src='/uploads/placeholder.svg'">`;
 }
 
+

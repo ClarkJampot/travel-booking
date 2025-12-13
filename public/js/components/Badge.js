@@ -43,3 +43,4 @@ function isPromoted(ad) {
   return !isNaN(num) && num === 1;
 }
 
+

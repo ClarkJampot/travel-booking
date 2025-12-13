@@ -35,11 +35,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   }
   
   // List transfers
-  $origin_city_id = isset($_GET['origin_city_id']) ? (int)$_GET['origin_city_id'] : null;
   $destination_city_id = isset($_GET['destination_city_id']) ? (int)$_GET['destination_city_id'] : null;
-  $date = $_GET['date'] ?? null;
-  $q = isset($_GET['q']) ? trim($_GET['q']) : null;
-  $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;
+  $province_id = isset($_GET['province_id']) ? (int)$_GET['province_id'] : null;
+  $q = isset($_GET['q']) ? trim((string)$_GET['q']) : null;
+  $minPrice = isset($_GET['minPrice']) ? (float)$_GET['minPrice'] : null;
+  $maxPrice = isset($_GET['maxPrice']) ? (float)$_GET['maxPrice'] : null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 10)));
   $offset = ($page - 1) * $limit;
@@ -47,23 +47,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   $where = [];
   $params = [];
   
-  if ($origin_city_id !== null) {
-    $where[] = 't.origin_city_id = ?';
-    $params[] = $origin_city_id;
-  }
   if ($destination_city_id !== null) {
     $where[] = 't.destination_city_id = ?';
     $params[] = $destination_city_id;
   }
-  if ($date) {
-    $where[] = 't.date >= ?';
-    $params[] = $date;
+  if ($province_id !== null) {
+    $where[] = 'cd.province_id = ?';
+    $params[] = $province_id;
   }
   if ($q) {
     // Escape special characters for SQL LIKE: %, _, [, ]
     $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $q);
-    $where[] = "(t.service COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR t.origin COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR t.destination COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR co.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR cd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR po.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR pd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR t.description COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?)";
     $searchPattern = '%' . $searchTerm . '%';
+    $where[] = "(t.service COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR t.origin COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR t.destination COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR co.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR cd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR po.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR pd.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?
+      OR t.description COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?)";
     $params[] = $searchPattern;
     $params[] = $searchPattern;
     $params[] = $searchPattern;
@@ -73,9 +76,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $params[] = $searchPattern;
     $params[] = $searchPattern;
   }
-  if ($createdBy !== null) {
-    $where[] = 't.created_by = ?';
-    $params[] = $createdBy;
+  if ($minPrice !== null) {
+    $where[] = 't.price >= ?';
+    $params[] = $minPrice;
+  }
+  if ($maxPrice !== null) {
+    $where[] = 't.price <= ?';
+    $params[] = $maxPrice;
   }
   
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
