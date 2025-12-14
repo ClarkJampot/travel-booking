@@ -59,6 +59,26 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/flights/?$#',
   json_ok(['results' => $rows]);
 }
 
+// GET /api/top/activities
+elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/activities/?$#', $uri)) {
+  $limit = min(10, max(1, (int)($_GET['limit'] ?? 4)));
+  
+  // Weighted scoring: (booking_count * 0.6) + (days_since_created_penalty * 0.4)
+  $sql = "SELECT TOP $limit a.*, c.name as city_name, p.name as province_name,
+    ((a.booking_count * 0.6) + (DATEDIFF(day, a.created_at, GETDATE()) * -0.1 * 0.4)) as score,
+    (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'activity' AND entity_id = a.id ORDER BY display_order ASC, id ASC) as image_url
+    FROM activities a
+    LEFT JOIN cities c ON a.city_id = c.id
+    LEFT JOIN provinces p ON c.province_id = p.id
+    WHERE a.deleted_at IS NULL
+    ORDER BY score DESC, a.booking_count DESC";
+  
+  $stmt = $pdo->prepare($sql);
+  $stmt->execute();
+  $rows = $stmt->fetchAll();
+  json_ok(['results' => $rows]);
+}
+
 else {
   json_error('Not found', 404);
 }

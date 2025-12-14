@@ -40,8 +40,9 @@
           <label for="maxPrice" class="form-label"></label>
           <input type="number" class="form-control" id="maxPrice" placeholder="Max" min="0" step="1" inputmode="numeric" pattern="[0-9]*">
         </div>
-        <div class="col-md-2 d-flex align-items-end">
-          <button class="btn btn-primary w-100" onclick="handleFilterClick()">Filter</button>
+        <div class="col-md-2 d-flex align-items-end gap-2">
+          <button class="btn btn-primary flex-grow-1" onclick="handleFilterClick()">Filter</button>
+          <button class="btn btn-outline-secondary" onclick="clearFilters()">Clear</button>
         </div>
       </div>
     </div>
@@ -262,6 +263,19 @@
     // Handle filter button click
     function handleFilterClick() {
       updateURLWithFilters();
+      loadActivities(true);
+    }
+    
+    // Clear all filters
+    function clearFilters() {
+      document.getElementById('provinceFilter').value = '';
+      document.getElementById('cityFilter').value = '';
+      document.getElementById('cityFilter').disabled = true;
+      document.getElementById('cityFilter').innerHTML = '<option value="">All Cities</option>';
+      document.getElementById('keywordFilter').value = '';
+      document.getElementById('minPrice').value = '';
+      document.getElementById('maxPrice').value = '';
+      window.history.pushState({}, '', window.location.pathname);
       loadActivities(true);
     }
 

@@ -142,6 +142,9 @@
     
     // Render airport dropdown
     function renderAirportDropdown(dropdownId, searchTerm = '') {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:144',message:'renderAirportDropdown called',data:{dropdownId,searchTerm,searchTermLength:searchTerm.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       const dropdown = document.getElementById(dropdownId);
       if (!dropdown) return;
       
@@ -187,11 +190,17 @@
         }
       });
       
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:190',message:'Before setting dropdown HTML',data:{htmlLength:html.length,hasHtml:html.length>0,searchTerm},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+      // #endregion
       dropdown.innerHTML = html || '<div class="flight-dropdown-item">No airports found</div>';
       
       // Add click handlers
       dropdown.querySelectorAll('.flight-dropdown-item').forEach(item => {
         item.addEventListener('click', function() {
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:194',message:'Dropdown item clicked',data:{type:this.dataset.type,dropdownId},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
           const type = this.dataset.type;
           const inputId = dropdownId === 'originAirportDropdown' ? 'originAirportInput' : 'destinationAirportInput';
           const hiddenId = dropdownId === 'originAirportDropdown' ? 'originAirportId' : 'destinationAirportId';
@@ -200,23 +209,52 @@
           const hidden = document.getElementById(hiddenId);
           const cityHidden = document.getElementById(cityHiddenId);
           
+          // Close dropdown and remove focused class BEFORE setting value
+          // This prevents the input event from re-rendering the dropdown
+          closeAllDropdowns();
+          input.parentElement.parentElement.classList.remove('focused');
+          
           if (type === 'city') {
             const cityKey = this.dataset.cityKey;
             const cityData = airportsByCity[cityKey];
-            input.value = `${cityData.cityName}${cityData.provinceName ? ', ' + cityData.provinceName : ''}`;
+            const newValue = `${cityData.cityName}${cityData.provinceName ? ', ' + cityData.provinceName : ''}`;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:206',message:'Setting city input value',data:{newValue,oldValue:input.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            input.value = newValue;
             hidden.value = ''; // All airports in city
             cityHidden.value = cityData.cityId || '';
           } else if (type === 'airport') {
             const code = this.dataset.airportCode;
             const name = this.dataset.airportName;
-            input.value = `${code} - ${name}`;
+            const newValue = `${code} - ${name}`;
+            // #region agent log
+            fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:212',message:'Setting airport input value',data:{newValue,oldValue:input.value,code,name},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+            // #endregion
+            input.value = newValue;
             hidden.value = this.dataset.airportId;
             cityHidden.value = this.dataset.cityId || '';
           }
           
-          closeAllDropdowns();
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:217',message:'After setting values and closing dropdown',data:{inputValue:input.value,dropdownVisible:dropdown.classList.contains('show')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+          // #endregion
         });
       });
+    }
+    
+    // Close all dropdowns - moved to top level scope
+    function closeAllDropdowns() {
+      // #region agent log
+      const dropdownsBefore = Array.from(document.querySelectorAll('.flight-dropdown')).map(d => ({id:d.id,visible:d.classList.contains('show')}));
+      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:222',message:'closeAllDropdowns called',data:{dropdownsBefore},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
+      document.querySelectorAll('.flight-dropdown').forEach(d => d.classList.remove('show'));
+      document.querySelectorAll('.flight-field-wrapper').forEach(w => w.classList.remove('focused'));
+      // #region agent log
+      const dropdownsAfter = Array.from(document.querySelectorAll('.flight-dropdown')).map(d => ({id:d.id,visible:d.classList.contains('show')}));
+      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:225',message:'closeAllDropdowns completed',data:{dropdownsAfter},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
+      // #endregion
     }
     
     // Swap airports
@@ -439,12 +477,6 @@
         }
       }
       
-      // Close all dropdowns
-      function closeAllDropdowns() {
-        document.querySelectorAll('.flight-dropdown').forEach(d => d.classList.remove('show'));
-        document.querySelectorAll('.flight-field-wrapper').forEach(w => w.classList.remove('focused'));
-      }
-      
       // Position dropdown relative to input field
       function positionDropdown(inputElement, dropdownElement) {
         const rect = inputElement.getBoundingClientRect();
@@ -459,22 +491,58 @@
         const dropdownId = inputId === 'originAirportInput' ? 'originAirportDropdown' : 'destinationAirportDropdown';
         
         input.addEventListener('focus', function() {
-          closeAllDropdowns();
+          if (typeof closeAllDropdowns === 'function') {
+            closeAllDropdowns();
+          }
           this.parentElement.parentElement.classList.add('focused');
           const dropdown = document.getElementById(dropdownId);
           positionDropdown(this.parentElement.parentElement, dropdown);
           dropdown.classList.add('show');
-          renderAirportDropdown(dropdownId, this.value);
+          // If a selection has been made, store the current value and clear the input so user can immediately start typing to search
+          const hiddenId = inputId === 'originAirportInput' ? 'originAirportId' : 'destinationAirportId';
+          const cityHiddenId = inputId === 'originAirportInput' ? 'originCityId' : 'destinationCityId';
+          const hidden = document.getElementById(hiddenId);
+          const cityHidden = document.getElementById(cityHiddenId);
+          const hasSelection = (hidden && hidden.value) || (cityHidden && cityHidden.value);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:493',message:'Focus event',data:{hasSelection,currentValue:this.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
+          // #endregion
+          if (hasSelection) {
+            // Store the selected value to restore on blur if user doesn't select a new item
+            this.dataset.previousValue = this.value;
+            // Clear input so user can immediately start typing to search
+            this.value = '';
+            renderAirportDropdown(dropdownId, '');
+          } else {
+            // Use current value for search
+            renderAirportDropdown(dropdownId, this.value);
+          }
         });
         
         input.addEventListener('input', function() {
-          renderAirportDropdown(dropdownId, this.value);
+          // #region agent log
+          fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'flights.html:500',message:'Input event triggered',data:{inputValue:this.value,dropdownId,isFocused:this.parentElement.parentElement.classList.contains('focused')},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
+          // #endregion
+          // Only render dropdown if the field is focused (user is typing, not programmatic change)
+          if (this.parentElement.parentElement.classList.contains('focused')) {
+            renderAirportDropdown(dropdownId, this.value);
+          }
         });
         
         input.addEventListener('blur', function() {
           setTimeout(() => {
             document.getElementById(dropdownId).classList.remove('show');
             this.parentElement.parentElement.classList.remove('focused');
+            // If user didn't select anything and had a previous value, restore it
+            const hiddenId = inputId === 'originAirportInput' ? 'originAirportId' : 'destinationAirportId';
+            const cityHiddenId = inputId === 'originAirportInput' ? 'originCityId' : 'destinationCityId';
+            const hidden = document.getElementById(hiddenId);
+            const cityHidden = document.getElementById(cityHiddenId);
+            const hasSelection = (hidden && hidden.value) || (cityHidden && cityHidden.value);
+            if (hasSelection && !this.value.trim() && this.dataset.previousValue) {
+              this.value = this.dataset.previousValue;
+              delete this.dataset.previousValue;
+            }
           }, 200);
         });
       });

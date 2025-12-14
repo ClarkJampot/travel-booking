@@ -80,3 +80,14 @@ function requireRole(array $allowedRoles): void {
     json_error('Forbidden', 403);
   }
 }
+
+/**
+ * Require customer role - exits if user is not a customer
+ */
+function requireCustomer(): void {
+  requireAuth();
+  $user = get_authenticated_user();
+  if (!$user || $user['role'] !== 'customer') {
+    json_error('Only customers can make bookings. Please log in with a customer account or register as a customer.', 403);
+  }
+}

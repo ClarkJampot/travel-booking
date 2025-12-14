@@ -181,13 +181,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $where = ['tr.deleted_at IS NULL'];
     $params = [];
     
+    // Province filtering (if city not specified, filter by province)
+    $origin_province_id = isset($_GET['origin_province_id']) ? (int)$_GET['origin_province_id'] : null;
+    $destination_province_id = isset($_GET['destination_province_id']) ? (int)$_GET['destination_province_id'] : null;
+    
     if ($origin_city_id !== null) {
       $where[] = 'tr.origin_city_id = ?';
       $params[] = $origin_city_id;
+    } else if ($origin_province_id !== null) {
+      // Filter by province if city not specified
+      $where[] = 'oc.province_id = ?';
+      $params[] = $origin_province_id;
     }
+    
     if ($destination_city_id !== null) {
       $where[] = 'tr.destination_city_id = ?';
       $params[] = $destination_city_id;
+    } else if ($destination_province_id !== null) {
+      // Filter by province if city not specified
+      $where[] = 'dc.province_id = ?';
+      $params[] = $destination_province_id;
     }
     
     // Price filtering
@@ -383,7 +396,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
 
 // POST /api/transfers/book (book a transfer instance)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/book/?$#', $uri)) {
-  requireAuth();
+  requireCustomer();
   
   $user = get_authenticated_user();
   $input = json_decode(file_get_contents('php://input'), true);

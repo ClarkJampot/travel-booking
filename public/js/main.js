@@ -115,7 +115,7 @@ function renderFlightListItem(f) {
         <div class="flex-grow-1">
           <div class="d-flex flex-wrap align-items-center gap-2 mb-1">
             <span>${originDisplay} → ${destinationDisplay}</span>
-            ${isPromoted(f.ad) ? '<span class="badge bg-warning text-dark">Promoted</span>' : ''}
+            ${isPromoted(f.ad) ? '<span class="promoted-badge">Promoted</span>' : ''}
             ${f.discount_percent > 0 ? `<span class="badge bg-danger">${formatPercent(f.discount_percent)}% OFF</span>` : ''}
           </div>
         </div>
@@ -353,6 +353,53 @@ function isAuthenticated() {
   return !!localStorage.getItem('token');
 }
 
+// Check if user is a customer
+function isCustomer() {
+  const user = getCurrentUser();
+  return user && user.role === 'customer';
+}
+
+// Show modal to prompt non-customers to log in or register as customer
+function showCustomerRequiredModal() {
+  const modalId = `customer-required-${Date.now()}`;
+  const modalHtml = `
+    <div class="modal fade" id="${modalId}" tabindex="-1" aria-labelledby="${modalId}Label" aria-hidden="true">
+      <div class="modal-dialog modal-dialog-centered">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="${modalId}Label">Customer Account Required</h5>
+            <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
+          </div>
+          <div class="modal-body">
+            <p>Only customers can make bookings. Please log in with a customer account or register as a customer to continue.</p>
+          </div>
+          <div class="modal-footer">
+            <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Close</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  `;
+  
+  // Remove existing modal if any
+  const existingModal = document.getElementById(modalId);
+  if (existingModal) {
+    existingModal.remove();
+  }
+  
+  // Add modal to body
+  document.body.insertAdjacentHTML('beforeend', modalHtml);
+  const modalElement = document.getElementById(modalId);
+  const modal = new bootstrap.Modal(modalElement);
+  
+  // Clean up on close
+  modalElement.addEventListener('hidden.bs.modal', () => {
+    modalElement.remove();
+  });
+  
+  modal.show();
+}
+
 // Show loading state
 function showLoading(elementId) {
   const element = document.getElementById(elementId);
@@ -403,12 +450,14 @@ function updateNavigation() {
     if (loginBtn) loginBtn.style.display = 'none';
     if (registerBtn) registerBtn.style.display = 'none';
     if (profileBtn) profileBtn.style.display = 'block';
-    if (bookingsBtn) bookingsBtn.style.display = 'block';
     if (logoutBtn) logoutBtn.style.display = 'block';
     
     // Show dashboard only for owners/agencies
     const isOwnerOrAgency = user.role === 'owner' || user.role === 'agency';
     if (dashboardBtn) dashboardBtn.style.display = isOwnerOrAgency ? 'block' : 'none';
+    
+    // Show bookings only for customers (not owners/agencies)
+    if (bookingsBtn) bookingsBtn.style.display = user.role === 'customer' ? 'block' : 'none';
   } else {
     if (loginBtn) loginBtn.style.display = 'block';
     if (registerBtn) registerBtn.style.display = 'block';

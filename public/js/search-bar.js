@@ -187,6 +187,30 @@ function initSearchBar() {
   
   // Initialize scroll detection
   initScrollDetection();
+  
+  // Update hero dropdown position on window resize/scroll
+  let resizeTimeout;
+  function updateHeroDropdownPosition() {
+    const heroDropdown = document.getElementById('heroSearchDropdown');
+    const heroInput = document.getElementById('heroSearchInput');
+    if (heroDropdown && heroInput && heroDropdown.classList.contains('show')) {
+      const inputRect = heroInput.getBoundingClientRect();
+      heroDropdown.style.top = (inputRect.bottom + 5) + 'px';
+      heroDropdown.style.left = inputRect.left + 'px';
+      heroDropdown.style.width = inputRect.width + 'px';
+    }
+  }
+  
+  window.addEventListener('resize', function() {
+    clearTimeout(resizeTimeout);
+    resizeTimeout = setTimeout(updateHeroDropdownPosition, 100);
+  });
+  
+  window.addEventListener('scroll', function() {
+    if (document.getElementById('heroSearchDropdown')?.classList.contains('show')) {
+      updateHeroDropdownPosition();
+    }
+  });
 }
 
 // Initialize scroll detection for sticky search bar
@@ -237,6 +261,12 @@ function hideDropdown(formType) {
     dropdown.classList.remove('show');
     dropdown.style.display = 'none';
     dropdown.style.visibility = 'hidden';
+    // Reset positioning styles
+    dropdown.style.position = '';
+    dropdown.style.top = '';
+    dropdown.style.left = '';
+    dropdown.style.width = '';
+    dropdown.style.right = '';
   }
 }
 
@@ -245,11 +275,36 @@ function showDropdown(formType) {
   const dropdown = formType === 'hero'
     ? document.getElementById('heroSearchDropdown')
     : document.getElementById('stickySearchDropdown');
+  const searchInput = formType === 'hero'
+    ? document.getElementById('heroSearchInput')
+    : document.getElementById('stickySearchInput');
+  
   if (dropdown) {
     dropdown.classList.add('show');
     dropdown.style.display = 'block';
     dropdown.style.visibility = 'visible';
     dropdown.style.opacity = '1';
+    
+    // For hero dropdown, calculate fixed position to escape overflow constraints
+    if (formType === 'hero' && searchInput) {
+      const inputRect = searchInput.getBoundingClientRect();
+      const wrapper = searchInput.closest('.search-input-wrapper');
+      if (wrapper) {
+        dropdown.style.position = 'fixed';
+        dropdown.style.top = (inputRect.bottom + 5) + 'px';
+        dropdown.style.left = inputRect.left + 'px';
+        dropdown.style.width = inputRect.width + 'px';
+        dropdown.style.right = 'auto';
+      }
+    } else {
+      // Reset to absolute for sticky dropdown
+      dropdown.style.position = '';
+      dropdown.style.top = '';
+      dropdown.style.left = '';
+      dropdown.style.width = '';
+      dropdown.style.right = '';
+    }
+    
     // Force reflow to ensure display change takes effect
     dropdown.offsetHeight;
   }
@@ -294,8 +349,15 @@ async function performDropdownSearch(formType) {
   try {
     const data = await apiCall(`/search?q=${encodeURIComponent(query)}&type=${type}`);
     
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'search-bar.js:295',message:'API response received',data:{hasData:!!data,hasResults:!!(data&&data.results),resultKeys:data&&data.results?Object.keys(data.results):[],type:type,query:query},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+    // #endregion
+    
     // Check if API returned data correctly
     if (!data || !data.results) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'search-bar.js:299',message:'No data or results in response',data:{hasData:!!data,hasResults:!!(data&&data.results)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'F'})}).catch(()=>{});
+      // #endregion
       dropdown.innerHTML = '<div class="search-dropdown-empty">Error loading results</div>';
       showDropdown(formType);
       return;
@@ -303,6 +365,10 @@ async function performDropdownSearch(formType) {
     
     // Filter results to only show the selected type (limit to 5 for dropdown)
     const results = data.results && data.results[type] ? data.results[type].slice(0, 5) : [];
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'search-bar.js:305',message:'Results filtered',data:{type:type,resultsCount:results.length,hasTypeInResults:!!(data.results&&data.results[type]),resultKeys:Object.keys(data.results||{}),typeValue:data.results?data.results[type]:null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'G'})}).catch(()=>{});
+    // #endregion
     
     // Debug: Log what we got
     if (results.length === 0) {
@@ -313,10 +379,17 @@ async function performDropdownSearch(formType) {
     }
     
     if (results.length === 0) {
+      // #region agent log
+      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'search-bar.js:315',message:'No results to display',data:{type:type,query:query},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'H'})}).catch(()=>{});
+      // #endregion
       dropdown.innerHTML = `<div class="search-dropdown-empty">No ${type} found matching "${query}"</div>`;
       showDropdown(formType);
       return;
     }
+    
+    // #region agent log
+    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'search-bar.js:322',message:'Rendering dropdown results',data:{type:type,resultsCount:results.length,firstResult:results[0]||null},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'I'})}).catch(()=>{});
+    // #endregion
     
     // Render dropdown results
     dropdown.innerHTML = renderDropdownResults(results, type);
@@ -346,6 +419,10 @@ function renderDropdownResults(results, type) {
 
 // Render individual dropdown item
 function renderDropdownItem(item, type) {
+  // #region agent log
+  fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'search-bar.js:348',message:'Rendering dropdown item',data:{type:type,itemId:item.id,itemTitle:item.title||item.name||item.service||item.airline},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'J'})}).catch(()=>{});
+  // #endregion
+  
   const imageUrl = normalizeImageUrl(item.image_url || 'uploads/placeholder.svg');
   let detailUrl = '';
   let title = '';
@@ -372,6 +449,20 @@ function renderDropdownItem(item, type) {
       title = escapeHtml(item.name || '');
       subtitle = 'Philippines';
       price = '';
+      break;
+    case 'transfers':
+      detailUrl = `transfer-details.html?id=${item.id}`;
+      title = escapeHtml(item.service || 'Transfer');
+      const transferOrigin = item.origin_city_name || item.origin_specific || '';
+      const transferDestination = item.destination_city_name || item.destination_specific || '';
+      subtitle = escapeHtml(`${transferOrigin} → ${transferDestination}`);
+      price = item.price ? formatPrice(item.price) : '';
+      break;
+    case 'activities':
+      detailUrl = `activity-details.html?id=${item.id}`;
+      title = escapeHtml(item.title || 'Activity');
+      subtitle = escapeHtml(`${item.city_name || ''}${item.province_name ? ', ' + item.province_name : ''}`);
+      price = item.price ? formatPrice(item.price) : '';
       break;
   }
   
@@ -526,6 +617,20 @@ function renderResultCard(item, type) {
       title = item.name;
       subtitle = 'Philippines';
       price = '';
+      break;
+    case 'transfers':
+      detailUrl = `transfer-details.html?id=${item.id}`;
+      title = item.service || 'Transfer';
+      const transferOriginFull = item.origin_city_name || item.origin_specific || '';
+      const transferDestinationFull = item.destination_city_name || item.destination_specific || '';
+      subtitle = `${transferOriginFull} → ${transferDestinationFull}`;
+      price = item.price ? formatPrice(item.price) : '';
+      break;
+    case 'activities':
+      detailUrl = `activity-details.html?id=${item.id}`;
+      title = item.title || 'Activity';
+      subtitle = `${item.city_name || ''}${item.province_name ? ', ' + item.province_name : ''}`;
+      price = item.price ? formatPrice(item.price) : '';
       break;
   }
   

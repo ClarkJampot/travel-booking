@@ -41,20 +41,25 @@ function renderContentListItem(item, type) {
     dateInfo = formatDate(item.date);
   }
   
+  // Only show image for hotels and activities, not flights and transfers
+  const imageHtml = (type === 'hotel' || type === 'activity') 
+    ? `<div class="flex-shrink-0">
+        <img src="${normalizeImageUrl(item.image_url)}" alt="${item[nameField]}" 
+             class="rounded" style="width: 100px; height: 100px; object-fit: cover;" 
+             loading="lazy" onerror="this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
+      </div>`
+    : '';
+  
   return `
     <div class="list-group-item">
       <div class="d-flex align-items-center gap-3">
-        <div class="flex-shrink-0">
-          <img src="${normalizeImageUrl(item.image_url)}" alt="${item[nameField]}" 
-               class="rounded" style="width: 100px; height: 100px; object-fit: cover;" 
-               loading="lazy" onerror="this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
-        </div>
+        ${imageHtml}
         <div class="flex-grow-1">
           <div class="d-flex align-items-start justify-content-between">
             <div>
               <h6 class="mb-1">
                 ${item[nameField] || 'Untitled'}
-                ${isPromoted(item.ad) ? '<span class="badge bg-warning text-dark ms-2">Promoted</span>' : ''}
+                ${isPromoted(item.ad) ? '<span class="promoted-badge ms-2">Promoted</span>' : ''}
               </h6>
               ${locationInfo ? `<p class="text-muted mb-1 small">${locationInfo}</p>` : ''}
               ${dateInfo ? `<p class="text-muted mb-1 small">${dateInfo}</p>` : ''}

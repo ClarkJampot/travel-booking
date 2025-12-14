@@ -154,7 +154,7 @@ elseif (preg_match('#^/search/?$#', $uri)) {
 }
 
 // Route: /api/top/*
-elseif (preg_match('#^/top/(hotels|flights)/?$#', $uri, $matches)) {
+elseif (preg_match('#^/top/(hotels|flights|activities)/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/top.php';
   exit;
 }

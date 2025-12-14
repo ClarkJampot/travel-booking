@@ -25,9 +25,11 @@
             <option value="hotels">Hotels</option>
             <option value="flights">Flights</option>
             <option value="destinations">Destinations</option>
+            <option value="transfers">Transfers</option>
+            <option value="activities">Activities</option>
           </select>
           <div class="search-input-wrapper">
-            <input type="text" class="search-input" id="heroSearchInput" placeholder="Search for hotels, flights, or destinations...">
+            <input type="text" class="search-input" id="heroSearchInput" placeholder="Search for hotels, flights, destinations, transfers, or activities...">
             <div class="search-dropdown" id="heroSearchDropdown"></div>
           </div>
           <button type="button" class="search-btn" id="heroSearchBtn">Search</button>
@@ -45,9 +47,11 @@
             <option value="hotels">Hotels</option>
             <option value="flights">Flights</option>
             <option value="destinations">Destinations</option>
+            <option value="transfers">Transfers</option>
+            <option value="activities">Activities</option>
           </select>
           <div class="search-input-wrapper">
-            <input type="text" class="search-input" id="stickySearchInput" placeholder="Search for hotels, flights, or destinations...">
+            <input type="text" class="search-input" id="stickySearchInput" placeholder="Search for hotels, flights, destinations, transfers, or activities...">
             <div class="search-dropdown" id="stickySearchDropdown"></div>
           </div>
           <button type="button" class="search-btn" id="stickySearchBtn">Search</button>
@@ -76,6 +80,14 @@
     <section class="mb-5 reveal">
       <h2 class="mb-4">Top Hotels</h2>
       <div id="topHotels" class="row g-4">
+        <!-- Loaded dynamically -->
+      </div>
+    </section>
+
+    <!-- Top Activities -->
+    <section class="mb-5 reveal">
+      <h2 class="mb-4">Top Activities</h2>
+      <div id="topActivities" class="row g-4">
         <!-- Loaded dynamically -->
       </div>
     </section>
@@ -158,10 +170,36 @@
       }
     }
 
+    // Load top activities
+    async function loadTopActivities() {
+      try {
+        const data = await apiCall('/top/activities?limit=4');
+        const container = document.getElementById('topActivities');
+        
+        if (data.results.length === 0) {
+          container.innerHTML = renderEmptyState({ message: 'Currently no activities available.' });
+          return;
+        }
+        
+        // Make cards visible immediately
+        container.querySelectorAll('.reveal').forEach(el => {
+          el.style.opacity = '1';
+          el.style.transform = 'translateY(0)';
+        });
+        
+        container.innerHTML = data.results.map((activity, index) => {
+          return renderCard({ type: 'activity', data: activity, columnsClass: 'col-md-3' });
+        }).join('');
+      } catch (error) {
+        console.error('Error loading activities:', error);
+      }
+    }
+
     // Load all content
     document.addEventListener('DOMContentLoaded', function() {
       loadFeaturedDestinations().then(() => observeRevealElements());
       loadTopHotels().then(() => observeRevealElements());
+      loadTopActivities().then(() => observeRevealElements());
     });
   </script>
 </body>

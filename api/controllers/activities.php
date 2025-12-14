@@ -25,7 +25,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?
   
   // Get single activity
   if ($id) {
-    $stmt = $pdo->prepare('SELECT a.*, c.name as city_name, p.name as province_name, p.region 
+    $stmt = $pdo->prepare('SELECT a.*, c.name as city_name, c.province_id, p.name as province_name, p.region 
       FROM activities a 
       LEFT JOIN cities c ON a.city_id = c.id 
       LEFT JOIN provinces p ON c.province_id = p.id 
@@ -54,7 +54,26 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?
   $qb->join('LEFT JOIN provinces p ON c.province_id = p.id');
   
   // Add filters
-  FilterHelper::addLocationFilters($qb, 'a');
+  // Note: city_id and destination_id can use 'a' prefix, but province_id must use 'c' prefix
+  $city_id = isset($_GET['city_id']) ? (int)$_GET['city_id'] : null;
+  $province_id = isset($_GET['province_id']) ? (int)$_GET['province_id'] : null;
+  
+  if ($city_id !== null) {
+    $qb->where('a.city_id = ?', $city_id);
+  }
+  if ($province_id !== null) {
+    // Province is in the joined cities table, not activities table
+    $qb->where('c.province_id = ?', $province_id);
+    // #region agent log
+    error_log(json_encode([
+      'location' => 'activities.php:62',
+      'message' => 'Province filter applied',
+      'data' => ['province_id' => $province_id],
+      'timestamp' => time()
+    ]));
+    // #endregion
+  }
+  
   FilterHelper::addPriceFilters($qb, 'a.price');
   FilterHelper::addCreatedByFilter($qb, 'a');
   
@@ -83,6 +102,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?
   
   try {
     $sql = $regularQb->buildSelect($selectClause, $fromClause);
+    // #region agent log
+    error_log(json_encode([
+      'location' => 'activities.php:104',
+      'message' => 'Executing activities query',
+      'data' => [
+        'sql' => $sql,
+        'params' => $regularQb->getParams()
+      ],
+      'timestamp' => time()
+    ]));
+    // #endregion
     $stmt = $pdo->prepare($sql);
     $stmt->execute($regularQb->getParams());
     $activities = $stmt->fetchAll();

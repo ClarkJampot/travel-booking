@@ -298,8 +298,12 @@
     
     async function handleBooking() {
       if (!isAuthenticated()) {
-        alert('Please log in to make a booking.');
-        window.location.href = 'login.html';
+        showCustomerRequiredModal();
+        return;
+      }
+      
+      if (!isCustomer()) {
+        showCustomerRequiredModal();
         return;
       }
       

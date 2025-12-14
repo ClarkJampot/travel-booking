@@ -318,11 +318,12 @@ class PostingModal {
           
           // Populate select
           select.innerHTML = '<option value="">Select...</option>';
+          const itemValue = this.item ? this.item[field.name] : null;
           data.forEach(item => {
             const option = document.createElement('option');
             option.value = item.id;
             option.textContent = item.name || item.title || `${item.code} - ${item.name}`;
-            if (this.item && this.item[field.name] == item.id) {
+            if (itemValue != null && itemValue == item.id) {
               option.selected = true;
             }
             select.appendChild(option);
@@ -428,6 +429,7 @@ class PostingModal {
   
   async loadCitiesForProvince(provinceId, citySelect) {
     try {
+      const cityFieldName = citySelect.name;
       const cities = await apiCall(`/cities?province_id=${provinceId}`);
       citySelect.disabled = false;
       citySelect.innerHTML = '<option value="">Select City</option>';
@@ -436,7 +438,8 @@ class PostingModal {
           const option = document.createElement('option');
           option.value = city.id;
           option.textContent = city.name;
-          if (this.item && this.item.city_id == city.id) {
+          const shouldSelect = this.item && (this.item[cityFieldName] == city.id || this.item.city_id == city.id || this.item.origin_city_id == city.id || this.item.destination_city_id == city.id);
+          if (shouldSelect) {
             option.selected = true;
           }
           citySelect.appendChild(option);
@@ -915,6 +918,9 @@ function editContentItem(type, id) {
     endpoint = `/flights/routes/${id}`;
   } else if (type === 'transfer') {
     endpoint = `/transfers/routes/${id}`;
+  } else if (type === 'hotel') {
+    // Hotels use query parameters, not path parameters
+    endpoint = `/hotels?id=${id}`;
   } else {
     // Use getPluralType to ensure correct pluralization
     const pluralType = type === 'activity' ? 'activities' : `${type}s`;

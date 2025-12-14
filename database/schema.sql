@@ -158,7 +158,6 @@ CREATE TABLE dbo.flight_bookings (
   cancelled_at DATETIME2 NULL,
   status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
   CONSTRAINT FK_flight_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
-  CONSTRAINT FK_flight_bookings_instances FOREIGN KEY (instance_id) REFERENCES dbo.flight_instances(id)
 );
 
 CREATE TABLE dbo.transfer_bookings (
@@ -172,7 +171,6 @@ CREATE TABLE dbo.transfer_bookings (
   cancelled_at DATETIME2 NULL,
   status NVARCHAR(20) DEFAULT 'confirmed' CHECK (status IN ('confirmed','cancelled','completed')),
   CONSTRAINT FK_transfer_bookings_users FOREIGN KEY (user_id) REFERENCES dbo.users(id),
-  CONSTRAINT FK_transfer_bookings_instances FOREIGN KEY (instance_id) REFERENCES dbo.transfer_instances(id)
 );
 
 

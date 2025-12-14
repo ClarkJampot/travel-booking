@@ -230,20 +230,20 @@
                     </div>
                   ` : ''}
                   
-                  ${data.all?.flights && data.all.flights.length > 0 ? `
-                    <div class="mb-4">
-                      <h5 class="mb-3">Flights</h5>
-                      <div class="list-group">
-                        ${data.all.flights.map(item => renderContentListItem(item, 'flight')).join('')}
-                      </div>
-                    </div>
-                  ` : ''}
-                  
                   ${data.all?.activities && data.all.activities.length > 0 ? `
                     <div class="mb-4">
                       <h5 class="mb-3">Activities</h5>
                       <div class="list-group">
                         ${data.all.activities.map(item => renderContentListItem(item, 'activity')).join('')}
+                      </div>
+                    </div>
+                  ` : ''}
+                  
+                  ${data.all?.flights && data.all.flights.length > 0 ? `
+                    <div class="mb-4">
+                      <h5 class="mb-3">Flights</h5>
+                      <div class="list-group">
+                        ${data.all.flights.map(item => renderContentListItem(item, 'flight')).join('')}
                       </div>
                     </div>
                   ` : ''}

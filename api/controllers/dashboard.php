@@ -103,7 +103,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/?$#', $uri)
       
       foreach ($bookings as $booking) {
         $stats['total_bookings']++;
-        $stats['total_revenue'] += (float)$booking['total_price'];
+        
+        // Calculate total revenue (only confirmed and completed bookings, exclude cancelled)
+        if (in_array($booking['status'] ?? '', ['confirmed', 'completed'])) {
+          $stats['total_revenue'] += (float)($booking['total_price'] ?? 0);
+        }
         
         if ($booking['status'] === 'confirmed') {
           $stats['confirmed_bookings']++;
@@ -131,6 +135,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
   
   $itemType = $_GET['item_type'] ?? null;
   $status = $_GET['status'] ?? null;
+  $customerName = $_GET['customer_name'] ?? null;
+  $keyword = $_GET['keyword'] ?? null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 20)));
   $offset = ($page - 1) * $limit;
@@ -152,11 +158,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
           $where[] = 'b.status = ?';
           $params[] = $status;
         }
+        if ($customerName) {
+          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
+          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
+        }
+        if ($keyword) {
+          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
+          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR i.name LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+        }
         $whereSql = 'WHERE ' . implode(' AND ', $where);
         $sql = "
-          SELECT b.*, 'hotel' as type, b.hotel_id as item_id, i.name as item_name
+          SELECT b.*, 'hotel' as type, b.hotel_id as item_id, i.name as item_name,
+            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
+            b.guests as participants
           FROM hotel_bookings b
           INNER JOIN hotels i ON b.hotel_id = i.id
+          LEFT JOIN users u ON b.user_id = u.id
           $whereSql AND i.deleted_at IS NULL
           ORDER BY b.booked_at DESC, b.id DESC
           OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
@@ -170,9 +190,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
           $where[] = 'b.status = ?';
           $params[] = $status;
         }
+        if ($customerName) {
+          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
+          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
+        }
+        if ($keyword) {
+          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
+          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR fr.airline LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+        }
         $whereSql = 'WHERE ' . implode(' AND ', $where);
         $sql = "
-          SELECT DISTINCT b.*, 'flight' as type, b.instance_id as item_id, fr.airline as item_name
+          SELECT DISTINCT b.*, 'flight' as type, b.instance_id as item_id, fr.airline as item_name,
+            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
+            b.passenger_count as participants
           FROM flight_bookings b
           INNER JOIN flight_instances fi ON b.instance_id = fi.id
           INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
@@ -180,6 +213,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
           LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
           LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
           LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
+          LEFT JOIN users u ON b.user_id = u.id
           $whereSql AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
           ORDER BY b.booked_at DESC, b.id DESC
           OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
@@ -191,16 +225,30 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
           $where[] = 'b.status = ?';
           $params[] = $status;
         }
+        if ($customerName) {
+          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
+          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
+        }
+        if ($keyword) {
+          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
+          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR (oc.name + ' to ' + dc.name) LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+        }
         $whereSql = 'WHERE ' . implode(' AND ', $where);
         $sql = "
           SELECT b.*, 'transfer' as type, b.instance_id as item_id,
-            (oc.name + ' to ' + dc.name) as item_name
+            (oc.name + ' to ' + dc.name) as item_name,
+            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
+            b.passenger_count as participants
           FROM transfer_bookings b
           INNER JOIN transfer_instances ti ON b.instance_id = ti.id
           INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
           INNER JOIN transfer_routes tr ON ts.route_id = tr.id
           INNER JOIN cities oc ON tr.origin_city_id = oc.id
           INNER JOIN cities dc ON tr.destination_city_id = dc.id
+          LEFT JOIN users u ON b.user_id = u.id
           $whereSql AND tr.deleted_at IS NULL
           ORDER BY b.booked_at DESC, b.id DESC
           OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
@@ -212,11 +260,25 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
           $where[] = 'b.status = ?';
           $params[] = $status;
         }
+        if ($customerName) {
+          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
+          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
+        }
+        if ($keyword) {
+          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
+          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR i.title LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+          $params[] = '%' . $searchTerm . '%';
+        }
         $whereSql = 'WHERE ' . implode(' AND ', $where);
         $sql = "
-          SELECT b.*, 'activity' as type, b.activity_id as item_id, i.title as item_name
+          SELECT b.*, 'activity' as type, b.activity_id as item_id, i.title as item_name,
+            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
+            b.participant_count as participants
           FROM activity_bookings b
           INNER JOIN activities i ON b.activity_id = i.id
+          LEFT JOIN users u ON b.user_id = u.id
           $whereSql AND i.deleted_at IS NULL
           ORDER BY b.booked_at DESC, b.id DESC
           OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY

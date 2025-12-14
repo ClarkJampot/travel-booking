@@ -431,6 +431,14 @@
   align-items: stretch;
 }
 
+/* Transfers page: 4 selects (origin province, origin city, destination province, destination city) + swap + search */
+.transfers-search-fields {
+  display: grid;
+  grid-template-columns: 1fr 1fr auto 1fr 1fr auto;
+  gap: var(--spacing-base);
+  align-items: stretch;
+}
+
 .flight-field-wrapper {
   position: relative;
   display: flex;
@@ -476,6 +484,24 @@
 
 .flight-field-input::placeholder {
   color: var(--text-muted);
+}
+
+/* Select elements styled as flight-field-input */
+.flight-field-input-wrapper select.flight-field-input {
+  cursor: pointer;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  appearance: none;
+  background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 12 12'%3E%3Cpath fill='%23666' d='M6 9L1 4h10z'/%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right var(--spacing-xl) center;
+  padding-right: calc(var(--spacing-xl) + 20px);
+}
+
+.flight-field-input-wrapper select.flight-field-input:disabled {
+  color: var(--text-muted);
+  cursor: not-allowed;
+  opacity: 0.6;
 }
 
 .flight-swap-btn {
@@ -811,6 +837,11 @@
     grid-template-rows: auto auto auto;
   }
   
+  .transfers-search-fields {
+    grid-template-columns: 1fr 1fr;
+    grid-template-rows: auto auto auto auto;
+  }
+  
   .flight-swap-btn {
     grid-column: 1 / -1;
     justify-self: center;
@@ -847,5 +878,14 @@
     max-width: 90%;
     right: var(--spacing-md);
     left: var(--spacing-md);
+  }
+  
+  /* Hide image previews on mobile for profile page */
+  .list-group-item .flex-shrink-0 img {
+    display: none;
+  }
+  
+  .list-group-item .flex-shrink-0 {
+    display: none;
   }
 }

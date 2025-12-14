@@ -130,6 +130,72 @@ function findBookingById(PDO $pdo, int $bookingId, int $userId): ?array {
   return null;
 }
 
+/**
+ * Find booking by ID and verify item ownership for agency/owner
+ */
+function findBookingByIdForOwner(PDO $pdo, int $bookingId, int $ownerId): ?array {
+  $types = ['hotel', 'flight', 'activity', 'transfer'];
+  
+  foreach ($types as $type) {
+    $table = getBookingTable($type);
+    $itemIdColumn = getItemIdColumn($type);
+    
+    if ($type === 'hotel') {
+      $stmt = $pdo->prepare("
+        SELECT b.*, 'hotel' as type
+        FROM $table b
+        INNER JOIN hotels i ON b.$itemIdColumn = i.id
+        WHERE b.id = ? AND i.created_by = ? AND i.deleted_at IS NULL
+      ");
+      $stmt->execute([$bookingId, $ownerId]);
+    } else if ($type === 'flight') {
+      $stmt = $pdo->prepare("
+        SELECT DISTINCT b.*, 'flight' as type
+        FROM $table b
+        INNER JOIN flight_instances fi ON b.$itemIdColumn = fi.id
+        INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+        LEFT JOIN flight_routes fr ON fs.route_id = fr.id
+        LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
+        LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
+        LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
+        WHERE b.id = ? 
+          AND (fr.created_by = ? OR outbound.created_by = ? OR return_route.created_by = ?)
+          AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
+      ");
+      $stmt->execute([$bookingId, $ownerId, $ownerId, $ownerId]);
+    } else if ($type === 'transfer') {
+      $stmt = $pdo->prepare("
+        SELECT b.*, 'transfer' as type
+        FROM $table b
+        INNER JOIN transfer_instances ti ON b.$itemIdColumn = ti.id
+        INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
+        INNER JOIN transfer_routes tr ON ts.route_id = tr.id
+        WHERE b.id = ? AND tr.created_by = ? AND tr.deleted_at IS NULL
+      ");
+      $stmt->execute([$bookingId, $ownerId]);
+    } else {
+      $stmt = $pdo->prepare("
+        SELECT b.*, 'activity' as type
+        FROM $table b
+        INNER JOIN activities i ON b.$itemIdColumn = i.id
+        WHERE b.id = ? AND i.created_by = ? AND i.deleted_at IS NULL
+      ");
+      $stmt->execute([$bookingId, $ownerId]);
+    }
+    
+    $booking = $stmt->fetch();
+    
+    if ($booking) {
+      $itemId = (int)$booking[$itemIdColumn];
+      $booking['item_id'] = $itemId;
+      $booking['item_details'] = getItemDetails($pdo, $type, $itemId);
+      return $booking;
+    }
+  }
+  
+  return null;
+}
+
 // GET /api/bookings
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/bookings/?$#', $uri)) {
   requireAuth();
@@ -207,7 +273,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/bookings/?$#', $uri))
 
 // POST /api/bookings
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/bookings/?$#', $uri)) {
-  requireAuth();
+  requireCustomer();
   
   $user = get_authenticated_user();
   $input = json_decode(file_get_contents('php://input'), true);
@@ -308,10 +374,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/bookings/(\d+)/?$#', 
   
   $id = (int)$matches[1];
   $user = get_authenticated_user();
+  $userRole = $user['role'] ?? 'customer';
+  $userId = (int)$user['id'];
   $input = json_decode(file_get_contents('php://input'), true);
   
-  // Find booking
-  $booking = findBookingById($pdo, $id, (int)$user['id']);
+  // Find booking - for agency/owner, check item ownership; for customers, check booking ownership
+  $booking = null;
+  if ($userRole === 'owner' || $userRole === 'agency') {
+    $booking = findBookingByIdForOwner($pdo, $id, $userId);
+  } else {
+    $booking = findBookingById($pdo, $id, $userId);
+  }
+  
   if (!$booking) {
     json_error('Booking not found', 404);
   }
@@ -340,7 +414,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/bookings/(\d+)/?$#', 
   }
   
   // Get updated booking
-  $updatedBooking = findBookingById($pdo, $id, (int)$user['id']);
+  if ($userRole === 'owner' || $userRole === 'agency') {
+    $updatedBooking = findBookingByIdForOwner($pdo, $id, $userId);
+  } else {
+    $updatedBooking = findBookingById($pdo, $id, $userId);
+  }
   
   json_ok(['booking' => $updatedBooking]);
 }

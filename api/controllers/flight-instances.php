@@ -411,7 +411,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/instances/?$#
 
 // POST /api/flights/book (book a flight instance)
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/book/?$#', $uri)) {
-  requireAuth();
+  requireCustomer();
   
   $user = get_authenticated_user();
   $input = json_decode(file_get_contents('php://input'), true);
