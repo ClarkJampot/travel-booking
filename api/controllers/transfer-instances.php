@@ -5,6 +5,7 @@ declare(strict_types=1);
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ImageHelper.php';
 
 try {
   $pdo = db_pdo();
@@ -29,7 +30,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfer-instances/?$
   $stmt = $pdo->prepare('
     SELECT ti.*,
       ts.route_id, ts.departure_time,
-      tr.base_price, tr.discount_percent, tr.capacity,
+      tr.base_price, tr.discount_percent,
       tr.origin_city_id, tr.destination_city_id,
       oc.name as origin_city_name, dc.name as destination_city_name
     FROM transfer_instances ti
@@ -101,14 +102,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $stmt = $pdo->prepare('
       SELECT tr.*,
         oc.name as origin_city_name, op.name as origin_province_name,
-        dc.name as destination_city_name, dp.name as destination_province_name,
-        tt.name as transfer_type_name, tt.icon as transfer_type_icon
+        dc.name as destination_city_name, dp.name as destination_province_name
       FROM transfer_routes tr
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       WHERE tr.id = ? AND tr.deleted_at IS NULL
     ');
     $stmt->execute([$id]);
@@ -119,12 +118,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
       $route['images'] = [];
       $route['image_url'] = null;
       $route['price'] = $route['base_price'];
-      $route['service'] = ($route['transfer_type_name'] ?? 'Transfer') . ' - ' . ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
+      $route['service'] = ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
       $route['origin'] = $route['origin_specific'] ?? $route['origin_city_name'];
       $route['destination'] = $route['destination_specific'] ?? $route['destination_city_name'];
       
       // Get images
-      $images = get_entity_images($pdo, 'transfer_route', $id);
+      $images = ImageHelper::getEntityImages($pdo, 'transfer_route', $id);
       $route['images'] = $images;
       $route['image_url'] = $images[0] ?? null;
       
@@ -137,11 +136,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
       SELECT ti.*,
         ts.route_id, ts.departure_time, ts.days_of_week,
         tr.origin_city_id, tr.destination_city_id, tr.origin_specific, tr.destination_specific,
-        tr.transfer_type_id, tr.base_price, tr.duration_minutes, tr.distance_km, tr.capacity,
+        tr.base_price,
         tr.description as route_description, tr.ad, tr.discount_percent,
         oc.name as origin_city_name, op.name as origin_province_name,
-        dc.name as destination_city_name, dp.name as destination_province_name,
-        tt.name as transfer_type_name, tt.icon as transfer_type_icon
+        dc.name as destination_city_name, dp.name as destination_province_name
       FROM transfer_instances ti
       INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
       INNER JOIN transfer_routes tr ON ts.route_id = tr.id
@@ -149,7 +147,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       WHERE ti.id = ?
     ');
     $stmt->execute([$id]);
@@ -162,7 +159,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $instance['price'] = $instance['price'] ?? $instance['base_price'];
     
     // Get images from route
-    $images = get_entity_images($pdo, 'transfer_route', $instance['route_id']);
+    $images = ImageHelper::getEntityImages($pdo, 'transfer_route', $instance['route_id']);
     $instance['images'] = $images;
     $instance['image_url'] = $images[0] ?? null;
     
@@ -173,7 +170,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   // Search for routes or instances
   $origin_city_id = isset($_GET['origin_city_id']) ? (int)$_GET['origin_city_id'] : null;
   $destination_city_id = isset($_GET['destination_city_id']) ? (int)$_GET['destination_city_id'] : null;
-  $transfer_type_id = isset($_GET['transfer_type_id']) ? (int)$_GET['transfer_type_id'] : null;
   $date = $_GET['date'] ?? null;
   $passenger_count = isset($_GET['passenger_count']) ? (int)$_GET['passenger_count'] : 1;
   $page = max(1, (int)($_GET['page'] ?? 1));
@@ -192,10 +188,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     if ($destination_city_id !== null) {
       $where[] = 'tr.destination_city_id = ?';
       $params[] = $destination_city_id;
-    }
-    if ($transfer_type_id !== null) {
-      $where[] = 'tr.transfer_type_id = ?';
-      $params[] = $transfer_type_id;
     }
     
     // Price filtering
@@ -221,14 +213,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $promotedSql = "SELECT TOP 2 tr.*,
         oc.name as origin_city_name, op.name as origin_province_name,
         dc.name as destination_city_name, dp.name as destination_province_name,
-        tt.name as transfer_type_name,
         (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
       FROM transfer_routes tr
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       $promotedWhereSql
       ORDER BY NEWID()";
     
@@ -253,14 +243,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $sql = "SELECT tr.*,
         oc.name as origin_city_name, op.name as origin_province_name,
         dc.name as destination_city_name, dp.name as destination_province_name,
-        tt.name as transfer_type_name,
         (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
       FROM transfer_routes tr
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       $regularWhereSql
       ORDER BY tr.created_at DESC
       OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";
@@ -271,7 +259,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     
     // Format routes for display
     foreach ($promotedRoutes as &$route) {
-      $route['service'] = $route['transfer_type_name'] . ' - ' . ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
+      $route['service'] = ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
       $route['origin'] = $route['origin_specific'] ?? $route['origin_city_name'];
       $route['destination'] = $route['destination_specific'] ?? $route['destination_city_name'];
       $route['price'] = $route['base_price'];
@@ -280,7 +268,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
       }
     }
     foreach ($routes as &$route) {
-      $route['service'] = $route['transfer_type_name'] . ' - ' . ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
+      $route['service'] = ($route['origin_specific'] ?? $route['origin_city_name']) . ' to ' . ($route['destination_specific'] ?? $route['destination_city_name']);
       $route['origin'] = $route['origin_specific'] ?? $route['origin_city_name'];
       $route['destination'] = $route['destination_specific'] ?? $route['destination_city_name'];
       $route['price'] = $route['base_price'];
@@ -304,10 +292,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     $where[] = 'tr.destination_city_id = ?';
     $params[] = $destination_city_id;
   }
-  if ($transfer_type_id !== null) {
-    $where[] = 'tr.transfer_type_id = ?';
-    $params[] = $transfer_type_id;
-  }
   
   // Availability check
   $where[] = 'ti.seats_available >= ?';
@@ -326,16 +310,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
     
     $promotedSql = "SELECT TOP 2 ti.*,
         ts.route_id,
-        tr.base_price, tr.duration_minutes, tr.capacity,
+        tr.base_price,
         tr.ad, tr.discount_percent,
-        oc.name as origin_city_name, dc.name as destination_city_name,
-        tt.name as transfer_type_name
+        oc.name as origin_city_name, dc.name as destination_city_name
       FROM transfer_instances ti
       INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
       INNER JOIN transfer_routes tr ON ts.route_id = tr.id
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       $promotedWhereSql
       ORDER BY NEWID()";
     
@@ -364,16 +346,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/?$#', $uri)
   
   $sql = "SELECT ti.*,
       ts.route_id,
-      tr.base_price, tr.duration_minutes, tr.capacity,
+      tr.base_price,
       tr.ad, tr.discount_percent,
-      oc.name as origin_city_name, dc.name as destination_city_name,
-      tt.name as transfer_type_name
+      oc.name as origin_city_name, dc.name as destination_city_name
     FROM transfer_instances ti
     INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
     INNER JOIN transfer_routes tr ON ts.route_id = tr.id
     INNER JOIN cities oc ON tr.origin_city_id = oc.id
     INNER JOIN cities dc ON tr.destination_city_id = dc.id
-    INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
     $regularWhereSql
     ORDER BY ti.departure_datetime ASC
     OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY";

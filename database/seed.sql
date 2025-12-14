@@ -680,21 +680,21 @@ INSERT INTO dbo.hotels(name, destination_id, city_id, province_id, price_per_nig
 -- Agency 3 (user_id 6): Activities 6-8
 -- Agency 1 (user_id 4): Activity 9
 
-INSERT INTO dbo.activities(title, destination_id, city_id, date, price, description, created_by, ad, discount_percent) VALUES
+INSERT INTO dbo.activities(title, destination_id, city_id, price, description, created_by, ad, discount_percent) VALUES
 -- Agency 1 activities
-(N'Boracay Island Hopping Tour', 1, (SELECT id FROM dbo.cities WHERE name = N'Boracay'), '2024-06-15', 2500.00, N'Full-day island hopping tour to nearby islands with snorkeling and lunch.', 4, 1, 20.00),
-(N'Baguio Strawberry Farm Experience', 4, (SELECT id FROM dbo.cities WHERE name = N'Baguio'), '2024-06-25', 1200.00, N'Visit strawberry farms and enjoy fresh strawberry picking.', 4, 0, 10.00),
+(N'Boracay Island Hopping Tour', 1, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Boracay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Aklan')), 2500.00, N'Full-day island hopping tour to nearby islands with snorkeling and lunch.', 4, 1, 20.00),
+(N'Baguio Strawberry Farm Experience', 4, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Baguio' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Benguet')), 1200.00, N'Visit strawberry farms and enjoy fresh strawberry picking.', 4, 0, 10.00),
 
 -- Agency 2 activities
-(N'El Nido Island Hopping Tour A', 6, (SELECT id FROM dbo.cities WHERE name = N'El Nido'), '2024-07-10', 3200.00, N'Visit Secret Lagoon, Big Lagoon, and stunning beaches.', 5, 1, 25.00),
-(N'Siargao Surfing Lesson', 5, (SELECT id FROM dbo.cities WHERE name = N'General Luna'), '2024-07-20', 3500.00, N'Learn to surf at Cloud 9 with professional instructors.', 5, 1, 18.00),
-(N'Bohol Chocolate Hills Tour', 3, (SELECT id FROM dbo.cities WHERE name = N'Tagbilaran'), '2024-07-25', 2500.00, N'Visit the unique geological formation with over 1,200 cone-shaped hills. Includes viewing deck and optional ATV adventure.', 5, 1, 15.00),
+(N'El Nido Island Hopping Tour A', 6, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'El Nido' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Palawan')), 3200.00, N'Visit Secret Lagoon, Big Lagoon, and stunning beaches.', 5, 1, 25.00),
+(N'Siargao Surfing Lesson', 5, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'General Luna' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Surigao del Norte')), 3500.00, N'Learn to surf at Cloud 9 with professional instructors.', 5, 1, 18.00),
+(N'Bohol Chocolate Hills Tour', 3, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagbilaran' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Bohol')), 2500.00, N'Visit the unique geological formation with over 1,200 cone-shaped hills. Includes viewing deck and optional ATV adventure.', 5, 1, 15.00),
 
 -- Agency 3 activities
-(N'Vigan Heritage Walk', 8, (SELECT id FROM dbo.cities WHERE name = N'Vigan'), '2024-08-05', 1400.00, N'Stroll through cobblestone streets and visit ancestral houses.', 6, 0, 0.00),
-(N'Sagada Cave Connection', 9, (SELECT id FROM dbo.cities WHERE name = N'Sagada'), '2024-08-10', 2200.00, N'Adventure through connected caves with stunning rock formations.', 6, 1, 22.00),
-(N'Batanes North Tour', 10, (SELECT id FROM dbo.cities WHERE name = N'Basco'), '2024-08-15', 3500.00, N'Explore Basco, Mahatao, and Ivana with rolling hills and lighthouses.', 6, 0, 0.00),
-(N'Palawan Underground River Tour', 2, (SELECT id FROM dbo.cities WHERE name = N'Puerto Princesa'), '2024-09-01', 3800.00, N'UNESCO World Heritage Site featuring an underground river system. Boat tour through the spectacular cave system.', 4, 1, 20.00);
+(N'Vigan Heritage Walk', 8, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Vigan' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Ilocos Sur')), 1400.00, N'Stroll through cobblestone streets and visit ancestral houses.', 6, 0, 0.00),
+(N'Sagada Cave Connection', 9, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Sagada' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Mountain Province')), 2200.00, N'Adventure through connected caves with stunning rock formations.', 6, 1, 22.00),
+(N'Batanes North Tour', 10, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Basco' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batanes')), 3500.00, N'Explore Basco, Mahatao, and Ivana with rolling hills and lighthouses.', 6, 0, 0.00),
+(N'Palawan Underground River Tour', 2, (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Puerto Princesa' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Palawan')), 3800.00, N'UNESCO World Heritage Site featuring an underground river system. Boat tour through the spectacular cave system.', 4, 1, 20.00);
 
 -- ============================================================================
 -- TRANSFERS - Now using transfer_routes architecture (see NEW FLIGHTS AND TRANSFERS ARCHITECTURE section below)
@@ -972,21 +972,21 @@ INSERT INTO dbo.transfer_types(name, description, icon) VALUES
 -- Agency 2 (user_id 5): Routes 4-6
 -- Agency 3 (user_id 6): Routes 7-9
 
-INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent) VALUES
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, aircraft_type, created_by, ad, discount_percent) VALUES
 -- Agency 1 routes
-((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'MPH'), N'Philippine Airlines', 8500.00, 15000.00, 25000.00, 60, N'Airbus A320', 4, 1, 20.00),
-((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'CEB'), N'Cebu Pacific', 4500.00, 8000.00, NULL, 90, N'Airbus A320', 4, 0, 0.00),
-((SELECT id FROM dbo.airports WHERE code = N'CEB'), (SELECT id FROM dbo.airports WHERE code = N'TAG'), N'Cebu Pacific', 2500.00, NULL, NULL, 30, N'ATR 72', 4, 0, 10.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'MPH'), N'Philippine Airlines', 8500.00, 15000.00, 25000.00, N'Airbus A320', 4, 1, 20.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'CEB'), N'Cebu Pacific', 4500.00, 8000.00, NULL, N'Airbus A320', 4, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'CEB'), (SELECT id FROM dbo.airports WHERE code = N'TAG'), N'Cebu Pacific', 2500.00, NULL, NULL, N'ATR 72', 4, 0, 10.00),
 
 -- Agency 2 routes
-((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'PPS'), N'Philippine Airlines', 9200.00, 16500.00, 28000.00, 75, N'Airbus A320', 5, 1, 25.00),
-((SELECT id FROM dbo.airports WHERE code = N'PPS'), (SELECT id FROM dbo.airports WHERE code = N'USU'), N'SkyJet', 5500.00, NULL, NULL, 45, N'ATR 72', 5, 0, 0.00),
-((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'DVO'), N'Philippine Airlines', 12000.00, 22000.00, 35000.00, 120, N'Airbus A321', 5, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'PPS'), N'Philippine Airlines', 9200.00, 16500.00, 28000.00, N'Airbus A320', 5, 1, 25.00),
+((SELECT id FROM dbo.airports WHERE code = N'PPS'), (SELECT id FROM dbo.airports WHERE code = N'USU'), N'SkyJet', 5500.00, NULL, NULL, N'ATR 72', 5, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'DVO'), N'Philippine Airlines', 12000.00, 22000.00, 35000.00, N'Airbus A321', 5, 0, 0.00),
 
 -- Agency 3 routes
-((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'ILO'), N'Cebu Pacific', 4800.00, NULL, NULL, 70, N'Airbus A320', 6, 0, 0.00),
-((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'BSO'), N'Philippine Airlines', 15000.00, 28000.00, 45000.00, 150, N'Airbus A320', 6, 1, 18.00),
-((SELECT id FROM dbo.airports WHERE code = N'CEB'), (SELECT id FROM dbo.airports WHERE code = N'BCD'), N'Cebu Pacific', 3500.00, NULL, NULL, 50, N'ATR 72', 6, 0, 0.00);
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'ILO'), N'Cebu Pacific', 4800.00, NULL, NULL, N'Airbus A320', 6, 0, 0.00),
+((SELECT id FROM dbo.airports WHERE code = N'MNL'), (SELECT id FROM dbo.airports WHERE code = N'BSO'), N'Philippine Airlines', 15000.00, 28000.00, 45000.00, N'Airbus A320', 6, 1, 18.00),
+((SELECT id FROM dbo.airports WHERE code = N'CEB'), (SELECT id FROM dbo.airports WHERE code = N'BCD'), N'Cebu Pacific', 3500.00, NULL, NULL, N'ATR 72', 6, 0, 0.00);
 
 -- ============================================================================
 -- TRANSFER ROUTES
@@ -995,21 +995,21 @@ INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline
 -- Agency 2 (user_id 5): Routes 4-6
 -- Agency 3 (user_id 6): Routes 7-9
 
-INSERT INTO dbo.transfer_routes(origin_city_id, destination_city_id, origin_specific, destination_specific, transfer_type_id, base_price, duration_minutes, distance_km, capacity, description, created_by, ad, discount_percent) VALUES
+INSERT INTO dbo.transfer_routes(origin_city_id, destination_city_id, origin_specific, destination_specific, base_price, description, created_by, ad, discount_percent) VALUES
 -- Agency 1 transfers
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Boracay'), N'Manila Airport (MNL)', N'Boracay Port', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 3500.00, 480, 350.0, 12, N'Comfortable van transfer from Manila Airport to Boracay Port', 4, 1, 15.00),
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Cebu City'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagbilaran'), N'Cebu Airport (CEB)', N'Bohol Port', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 2800.00, 120, 90.0, 12, N'Van transfer from Cebu Airport to Bohol Port', 4, 0, 0.00),
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Baguio'), N'Manila Airport (MNL)', N'Baguio City', (SELECT id FROM dbo.transfer_types WHERE name = N'Bus'), 3200.00, 240, 250.0, 45, N'Bus transfer from Manila Airport to Baguio City', 4, 0, 10.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Boracay'), N'Manila Airport (MNL)', N'Boracay Port', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 3500.00, N'Comfortable van transfer from Manila Airport to Boracay Port', 4, 1, 15.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Cebu City'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagbilaran'), N'Cebu Airport (CEB)', N'Bohol Port', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 2800.00, N'Van transfer from Cebu Airport to Bohol Port', 4, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Baguio'), N'Manila Airport (MNL)', N'Baguio City', (SELECT id FROM dbo.transfer_types WHERE name = N'Bus'), 3200.00, N'Bus transfer from Manila Airport to Baguio City', 4, 0, 10.00),
 
 -- Agency 2 transfers
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Puerto Princesa'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'El Nido'), N'Puerto Princesa Airport (PPS)', N'El Nido', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 4200.00, 360, 240.0, 12, N'Van transfer from Puerto Princesa Airport to El Nido', 5, 1, 20.00),
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagaytay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batangas')), N'Manila Airport (MNL)', N'Tagaytay City', (SELECT id FROM dbo.transfer_types WHERE name = N'Private Car'), 2500.00, 90, 60.0, 4, N'Private car transfer from Manila Airport to Tagaytay City', 5, 0, 0.00),
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Davao City'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'General Santos'), N'Davao Airport (DVO)', N'General Santos City', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 1800.00, 120, 100.0, 12, N'Van transfer from Davao Airport to General Santos City', 5, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Puerto Princesa'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'El Nido'), N'Puerto Princesa Airport (PPS)', N'El Nido', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 4200.00, N'Van transfer from Puerto Princesa Airport to El Nido', 5, 1, 20.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Tagaytay' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Batangas')), N'Manila Airport (MNL)', N'Tagaytay City', (SELECT id FROM dbo.transfer_types WHERE name = N'Private Car'), 2500.00, N'Private car transfer from Manila Airport to Tagaytay City', 5, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Davao City'), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'General Santos'), N'Davao Airport (DVO)', N'General Santos City', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 1800.00, N'Van transfer from Davao Airport to General Santos City', 5, 0, 0.00),
 
 -- Agency 3 transfers
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Vigan'), N'Manila Airport (MNL)', N'Vigan City', (SELECT id FROM dbo.transfer_types WHERE name = N'Bus'), 4500.00, 420, 400.0, 45, N'Bus transfer from Manila Airport to Vigan City', 6, 0, 0.00),
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Sagada'), N'Manila Airport (MNL)', N'Sagada', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 5200.00, 480, 380.0, 12, N'Van transfer from Manila Airport to Sagada', 6, 1, 18.00),
-((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Basco'), N'Manila Airport (MNL)', N'Batanes (via Basco)', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 8500.00, 60, 0.0, 12, N'Van transfer from Manila Airport to Batanes via Basco', 6, 0, 0.00);
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Vigan'), N'Manila Airport (MNL)', N'Vigan City', (SELECT id FROM dbo.transfer_types WHERE name = N'Bus'), 4500.00, N'Bus transfer from Manila Airport to Vigan City', 6, 0, 0.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Sagada'), N'Manila Airport (MNL)', N'Sagada', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 5200.00, N'Van transfer from Manila Airport to Sagada', 6, 1, 18.00),
+((SELECT TOP 1 id FROM dbo.cities WHERE name = N'Manila' AND province_id = (SELECT id FROM dbo.provinces WHERE name = N'Metro Manila')), (SELECT TOP 1 id FROM dbo.cities WHERE name = N'Basco'), N'Manila Airport (MNL)', N'Batanes (via Basco)', (SELECT id FROM dbo.transfer_types WHERE name = N'Van'), 8500.00, N'Van transfer from Manila Airport to Batanes via Basco', 6, 0, 0.00);
 
 -- ============================================================================
 -- FLIGHT SCHEDULES
@@ -1054,36 +1054,36 @@ INSERT INTO dbo.flight_schedules(route_id, departure_time, days_of_week, is_acti
 -- ============================================================================
 -- Create return routes for round trip testing
 -- Return Route 1: MPH to MNL (reverse of Route 1)
-INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, aircraft_type, created_by, ad, discount_percent)
 SELECT 
   (SELECT id FROM dbo.airports WHERE code = N'MPH'),
   (SELECT id FROM dbo.airports WHERE code = N'MNL'),
   N'Philippine Airlines',
-  8500.00, 15000.00, 25000.00, 60, N'Airbus A320', 4, 0, 20.00;
+  8500.00, 15000.00, 25000.00, N'Airbus A320', 4, 0, 20.00;
 
 -- Return Route 2: CEB to MNL (reverse of Route 2)
-INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, aircraft_type, created_by, ad, discount_percent)
 SELECT 
   (SELECT id FROM dbo.airports WHERE code = N'CEB'),
   (SELECT id FROM dbo.airports WHERE code = N'MNL'),
   N'Cebu Pacific',
-  4500.00, 8000.00, NULL, 90, N'Airbus A320', 4, 0, 0.00;
+  4500.00, 8000.00, NULL, N'Airbus A320', 4, 0, 0.00;
 
 -- Return Route 3: TAG to CEB (reverse of Route 3)
-INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, aircraft_type, created_by, ad, discount_percent)
 SELECT 
   (SELECT id FROM dbo.airports WHERE code = N'TAG'),
   (SELECT id FROM dbo.airports WHERE code = N'CEB'),
   N'Cebu Pacific',
-  2500.00, NULL, NULL, 30, N'ATR 72', 4, 0, 10.00;
+  2500.00, NULL, NULL, N'ATR 72', 4, 0, 10.00;
 
 -- Return Route 4: PPS to MNL (reverse of Route 4)
-INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, created_by, ad, discount_percent)
+INSERT INTO dbo.flight_routes(origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, aircraft_type, created_by, ad, discount_percent)
 SELECT 
   (SELECT id FROM dbo.airports WHERE code = N'PPS'),
   (SELECT id FROM dbo.airports WHERE code = N'MNL'),
   N'Philippine Airlines',
-  9200.00, 16500.00, 28000.00, 75, N'Airbus A320', 5, 0, 25.00;
+  9200.00, 16500.00, 28000.00, N'Airbus A320', 5, 0, 25.00;
 
 -- Create round trip pairs
 -- Pair 1: MNL-MPH (Route 1) and MPH-MNL (Return Route 1)
@@ -1288,16 +1288,15 @@ DECLARE @transfer_departure_time TIME;
 DECLARE @transfer_departure_datetime DATETIME2;
 DECLARE @transfer_route_id INT;
 DECLARE @base_price DECIMAL(10,2);
-DECLARE @capacity INT;
 
 DECLARE transfer_schedule_cursor CURSOR FOR
-SELECT ts.id, ts.departure_time, tr.id, tr.base_price, tr.capacity
+SELECT ts.id, ts.departure_time, tr.id, tr.base_price
 FROM dbo.transfer_schedules ts
 INNER JOIN dbo.transfer_routes tr ON ts.route_id = tr.id
 WHERE ts.is_active = 1;
 
 OPEN transfer_schedule_cursor;
-FETCH NEXT FROM transfer_schedule_cursor INTO @transfer_schedule_id, @transfer_departure_time, @transfer_route_id, @base_price, @capacity;
+FETCH NEXT FROM transfer_schedule_cursor INTO @transfer_schedule_id, @transfer_departure_time, @transfer_route_id, @base_price;
 
 WHILE @@FETCH_STATUS = 0
 BEGIN
@@ -1309,7 +1308,7 @@ BEGIN
     
     DECLARE @vehicles_total INT = 3;
     DECLARE @vehicles_available INT = 3;
-    DECLARE @seats_available INT = @vehicles_available * @capacity;
+    DECLARE @seats_available INT = @vehicles_available * 12; -- Default 12 seats per vehicle
     
     INSERT INTO dbo.transfer_instances(schedule_id, departure_date, departure_datetime, price, vehicles_total, vehicles_available, seats_available, status)
     VALUES(@transfer_schedule_id, @departure_date, @transfer_departure_datetime, @base_price, @vehicles_total, @vehicles_available, @seats_available, 'scheduled');
@@ -1317,7 +1316,7 @@ BEGIN
     SET @transfer_day = @transfer_day + 1;
   END
   
-  FETCH NEXT FROM transfer_schedule_cursor INTO @transfer_schedule_id, @transfer_departure_time, @transfer_route_id, @base_price, @capacity;
+  FETCH NEXT FROM transfer_schedule_cursor INTO @transfer_schedule_id, @transfer_departure_time, @transfer_route_id, @base_price;
 END
 
 CLOSE transfer_schedule_cursor;

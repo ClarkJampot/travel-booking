@@ -193,12 +193,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$
         }
         $whereSql = 'WHERE ' . implode(' AND ', $where);
         $sql = "
-          SELECT b.*, 'transfer' as type, b.instance_id as item_id, tt.name as item_name
+          SELECT b.*, 'transfer' as type, b.instance_id as item_id,
+            (oc.name + ' to ' + dc.name) as item_name
           FROM transfer_bookings b
           INNER JOIN transfer_instances ti ON b.instance_id = ti.id
           INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
           INNER JOIN transfer_routes tr ON ts.route_id = tr.id
-          INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+          INNER JOIN cities oc ON tr.origin_city_id = oc.id
+          INNER JOIN cities dc ON tr.destination_city_id = dc.id
           $whereSql AND tr.deleted_at IS NULL
           ORDER BY b.booked_at DESC, b.id DESC
           OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
@@ -272,19 +274,45 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/items/?$#',
   
   foreach ($types as $type) {
     if ($type === 'hotel') {
-      $stmt = $pdo->prepare("SELECT * FROM hotels WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt = $pdo->prepare("SELECT h.*, CAST(h.ad AS INT) as ad, c.name as city_name, c.province_id, p.name as province_name 
+        FROM hotels h 
+        LEFT JOIN cities c ON h.city_id = c.id 
+        LEFT JOIN provinces p ON c.province_id = p.id 
+        WHERE h.created_by = ? AND h.deleted_at IS NULL ORDER BY h.id DESC");
       $stmt->execute([$userId]);
       $result['hotels'] = $stmt->fetchAll();
     } else if ($type === 'flight') {
-      $stmt = $pdo->prepare("SELECT * FROM flight_routes WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt = $pdo->prepare("SELECT fr.*, CAST(fr.ad AS INT) as ad,
+        oc.name as origin_city_name, oc.province_id as origin_province_id, op.name as origin_province_name,
+        dc.name as destination_city_name, dc.province_id as destination_province_id, dp.name as destination_province_name
+        FROM flight_routes fr
+        INNER JOIN airports oa ON fr.origin_airport_id = oa.id
+        INNER JOIN airports da ON fr.destination_airport_id = da.id
+        LEFT JOIN cities oc ON oa.city_id = oc.id
+        LEFT JOIN provinces op ON oc.province_id = op.id
+        LEFT JOIN cities dc ON da.city_id = dc.id
+        LEFT JOIN provinces dp ON dc.province_id = dp.id
+        WHERE fr.created_by = ? AND fr.deleted_at IS NULL ORDER BY fr.id DESC");
       $stmt->execute([$userId]);
       $result['flights'] = $stmt->fetchAll();
     } else if ($type === 'activity') {
-      $stmt = $pdo->prepare("SELECT * FROM activities WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt = $pdo->prepare("SELECT a.*, CAST(a.ad AS INT) as ad, c.name as city_name, c.province_id, p.name as province_name 
+        FROM activities a 
+        LEFT JOIN cities c ON a.city_id = c.id 
+        LEFT JOIN provinces p ON c.province_id = p.id 
+        WHERE a.created_by = ? AND a.deleted_at IS NULL ORDER BY a.id DESC");
       $stmt->execute([$userId]);
       $result['activities'] = $stmt->fetchAll();
     } else if ($type === 'transfer') {
-      $stmt = $pdo->prepare("SELECT * FROM transfer_routes WHERE created_by = ? AND deleted_at IS NULL ORDER BY id DESC");
+      $stmt = $pdo->prepare("SELECT tr.*, CAST(tr.ad AS INT) as ad,
+        oc.name as origin_city_name, oc.province_id as origin_province_id, op.name as origin_province_name,
+        dc.name as destination_city_name, dc.province_id as destination_province_id, dp.name as destination_province_name
+        FROM transfer_routes tr
+        INNER JOIN cities oc ON tr.origin_city_id = oc.id
+        INNER JOIN cities dc ON tr.destination_city_id = dc.id
+        LEFT JOIN provinces op ON oc.province_id = op.id
+        LEFT JOIN provinces dp ON dc.province_id = dp.id
+        WHERE tr.created_by = ? AND tr.deleted_at IS NULL ORDER BY tr.id DESC");
       $stmt->execute([$userId]);
       $result['transfers'] = $stmt->fetchAll();
     }

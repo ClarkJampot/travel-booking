@@ -444,11 +444,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
   
   // Activities - all
   try {
-    $orderBy = "a.date ASC, a.price ASC";
+    $orderBy = "a.price ASC, a.id ASC";
     try {
       $testStmt = $pdo->query("SELECT TOP 1 ad FROM activities");
       $testStmt->fetch();
-      $orderBy = "a.ad DESC, a.date ASC, a.price ASC";
+      $orderBy = "a.ad DESC, a.price ASC, a.id ASC";
     } catch (PDOException $e) {
       // Column doesn't exist, use default order
     }
@@ -485,20 +485,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     $stmt = $pdo->prepare("SELECT tr.*,
       oc.name as origin_city_name, op.name as origin_province_name,
       dc.name as destination_city_name, dp.name as destination_province_name,
-      tt.name as transfer_type_name,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
       FROM transfer_routes tr
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       WHERE tr.created_by = ? AND tr.ad = 1 $deletedFilter
       ORDER BY tr.base_price ASC");
     $stmt->execute([$userId]);
     $promotedTransfers = $stmt->fetchAll();
     foreach ($promotedTransfers as &$transfer) {
-      $transfer['service'] = $transfer['transfer_type_name'] . ' - ' . ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
+      $transfer['service'] = ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
       $transfer['origin'] = $transfer['origin_specific'] ?? $transfer['origin_city_name'];
       $transfer['destination'] = $transfer['destination_specific'] ?? $transfer['destination_city_name'];
       $transfer['price'] = $transfer['base_price'];
@@ -533,20 +531,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/profile/?$#', $uri)) 
     $stmt = $pdo->prepare("SELECT tr.*,
       oc.name as origin_city_name, op.name as origin_province_name,
       dc.name as destination_city_name, dp.name as destination_province_name,
-      tt.name as transfer_type_name,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
       FROM transfer_routes tr
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
       WHERE tr.created_by = ? $deletedFilter
       ORDER BY $orderBy");
     $stmt->execute([$userId]);
     $allTransfers = $stmt->fetchAll();
     foreach ($allTransfers as &$transfer) {
-      $transfer['service'] = $transfer['transfer_type_name'] . ' - ' . ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
+      $transfer['service'] = ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
       $transfer['origin'] = $transfer['origin_specific'] ?? $transfer['origin_city_name'];
       $transfer['destination'] = $transfer['destination_specific'] ?? $transfer['destination_city_name'];
       $transfer['price'] = $transfer['base_price'];

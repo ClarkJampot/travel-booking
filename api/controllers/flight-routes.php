@@ -14,9 +14,9 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
-// GET /api/flights/routes
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes/?$#', $uri)) {
-  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+// GET /api/flights/routes/:id or /api/flights/routes?id=X
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes(?:/(\d+))?/?$#', $uri, $matches)) {
+  $id = isset($matches[1]) ? (int)$matches[1] : (isset($_GET['id']) ? (int)$_GET['id'] : null);
   $origin_airport_id = isset($_GET['origin_airport_id']) ? (int)$_GET['origin_airport_id'] : null;
   $destination_airport_id = isset($_GET['destination_airport_id']) ? (int)$_GET['destination_airport_id'] : null;
   $airline = isset($_GET['airline']) ? trim($_GET['airline']) : null;
@@ -28,9 +28,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes/?$#', 
     $stmt = $pdo->prepare('
       SELECT fr.*,
         oa.code as origin_code, oa.name as origin_name, oa.city_id as origin_city_id,
-        oc.name as origin_city_name, op.name as origin_province_name,
+        oc.name as origin_city_name, oc.province_id as origin_province_id,
+        op.name as origin_province_name,
         da.code as destination_code, da.name as destination_name, da.city_id as destination_city_id,
-        dc.name as destination_city_name, dp.name as destination_province_name
+        dc.name as destination_city_name, dc.province_id as destination_province_id,
+        dp.name as destination_province_name,
+        fs.departure_time
       FROM flight_routes fr
       INNER JOIN airports oa ON fr.origin_airport_id = oa.id
       INNER JOIN airports da ON fr.destination_airport_id = da.id
@@ -38,6 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes/?$#', 
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN cities dc ON da.city_id = dc.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
+      LEFT JOIN flight_schedules fs ON fs.route_id = fr.id AND fs.is_active = 1
       WHERE fr.id = ?
     ');
     $stmt->execute([$id]);
@@ -46,10 +50,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes/?$#', 
       json_error('Route not found', 404);
     }
     
-    // Get images
-    $images = get_entity_images($pdo, 'flight_route', $id);
-    $route['images'] = $images;
-    $route['image_url'] = $images[0] ?? null;
+    // Flights don't have images
+    $route['images'] = [];
+    $route['image_url'] = null;
+    
+    // Format departure_time if present (TIME to HH:MM format)
+    if (isset($route['departure_time']) && $route['departure_time']) {
+      $timeStr = (string)$route['departure_time'];
+      // SQL Server TIME type returns as "HH:MM:SS" or "HH:MM:SS.mmm"
+      // Extract just HH:MM
+      if (preg_match('/^(\d{1,2}):(\d{2})/', $timeStr, $matches)) {
+        $route['departure_time'] = str_pad($matches[1], 2, '0', STR_PAD_LEFT) . ':' . $matches[2];
+      } else {
+        // Fallback: try to extract first 5 characters
+        $route['departure_time'] = substr($timeStr, 0, 5);
+      }
+    }
     
     json_ok(['route' => $route]);
   }
@@ -108,63 +124,167 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes/?$#', 
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#', $uri)) {
   requireRole(['agency', 'admin']);
   
+  require_once __DIR__ . '/../helpers/ValidationHelper.php';
+  
   $user = get_authenticated_user();
   $input = json_decode(file_get_contents('php://input'), true);
   
-  $origin_airport_id = isset($input['origin_airport_id']) ? (int)$input['origin_airport_id'] : null;
-  $destination_airport_id = isset($input['destination_airport_id']) ? (int)$input['destination_airport_id'] : null;
-  $airline = trim($input['airline'] ?? '');
-  $base_price_economy = isset($input['base_price_economy']) ? (float)$input['base_price_economy'] : null;
-  $base_price_business = isset($input['base_price_business']) ? (float)$input['base_price_business'] : null;
-  $base_price_first = isset($input['base_price_first']) ? (float)$input['base_price_first'] : null;
-  $duration_minutes = isset($input['duration_minutes']) ? (int)$input['duration_minutes'] : null;
-  $aircraft_type = trim($input['aircraft_type'] ?? '');
-  $description = trim($input['description'] ?? '');
-  $ad = isset($input['ad']) ? (bool)$input['ad'] : false;
-  $discount_percent = isset($input['discount_percent']) ? (float)$input['discount_percent'] : 0;
-  $images = $input['images'] ?? [];
+  try {
+    // Validate required integer fields
+    $origin_province_id = ValidationHelper::validateInt($input['origin_province_id'] ?? null, 'origin_province_id', true, 1);
+    $origin_city_id = ValidationHelper::validateInt($input['origin_city_id'] ?? null, 'origin_city_id', true, 1);
+    $destination_province_id = ValidationHelper::validateInt($input['destination_province_id'] ?? null, 'destination_province_id', true, 1);
+    $destination_city_id = ValidationHelper::validateInt($input['destination_city_id'] ?? null, 'destination_city_id', true, 1);
+    
+    // Validate prices
+    $base_price_economy = ValidationHelper::validateDecimal($input['base_price_economy'] ?? null, 'base_price_economy', true, 0.01);
+    $base_price_business = ValidationHelper::validateDecimal($input['base_price_business'] ?? null, 'base_price_business', false, 0.01);
+    $base_price_first = ValidationHelper::validateDecimal($input['base_price_first'] ?? null, 'base_price_first', false, 0.01);
+    
+    // Validate other fields
+    $aircraft_type = ValidationHelper::validateString($input['aircraft_type'] ?? null, 'aircraft_type', false, 100);
+    $departure_time = ValidationHelper::validateTime($input['departure_time'] ?? null, 'departure_time', true);
+    $days_of_week = '0,1,2,3,4,5,6'; // Daily by default
+    $ad = isset($input['ad']) && ($input['ad'] === true || $input['ad'] === 1 || $input['ad'] === '1');
+    $discount_percent = ValidationHelper::validateDecimal($input['discount_percent'] ?? 0, 'discount_percent', false, 0, 100);
+    
+    // Validate that origin and destination are different
+    if ($origin_city_id === $destination_city_id && $origin_province_id === $destination_province_id) {
+      throw new InvalidArgumentException('Origin and destination cannot be the same');
+    }
+  } catch (InvalidArgumentException $e) {
+    json_error($e->getMessage(), 400);
+  } catch (Exception $e) {
+    error_log('Validation error: ' . $e->getMessage());
+    json_error('Validation error: ' . $e->getMessage(), 400);
+  }
   
-  if (!$origin_airport_id || !$destination_airport_id || !$airline || $base_price_economy === null || $duration_minutes === null) {
-    json_error('Missing required fields: origin_airport_id, destination_airport_id, airline, base_price_economy, duration_minutes', 400);
+  // Find or create airports based on city-province pairs
+  // Get origin province code
+  $originProvinceStmt = $pdo->prepare('SELECT code, name FROM provinces WHERE id = ?');
+  $originProvinceStmt->execute([$origin_province_id]);
+  $originProvince = $originProvinceStmt->fetch();
+  $originAirportCode = $originProvince['code'] ?? 'ORG';
+  $originAirportName = ($originProvince['name'] ?? 'Origin') . ' Airport';
+  
+  // Get destination province code
+  $destProvinceStmt = $pdo->prepare('SELECT code, name FROM provinces WHERE id = ?');
+  $destProvinceStmt->execute([$destination_province_id]);
+  $destProvince = $destProvinceStmt->fetch();
+  $destAirportCode = $destProvince['code'] ?? 'DST';
+  $destAirportName = ($destProvince['name'] ?? 'Destination') . ' Airport';
+  
+  // Find or create origin airport
+  $airportStmt = $pdo->prepare('SELECT id FROM airports WHERE code = ?');
+  $airportStmt->execute([$originAirportCode]);
+  $originAirport = $airportStmt->fetch();
+  if (!$originAirport) {
+    $createAirportStmt = $pdo->prepare('INSERT INTO airports (code, name, city_id, is_international) VALUES (?, ?, ?, 0)');
+    $createAirportStmt->execute([$originAirportCode, $originAirportName, $origin_city_id]);
+    $origin_airport_id = (int)$pdo->lastInsertId();
+  } else {
+    $origin_airport_id = (int)$originAirport['id'];
+  }
+  
+  // Find or create destination airport
+  $airportStmt->execute([$destAirportCode]);
+  $destAirport = $airportStmt->fetch();
+  if (!$destAirport) {
+    $createAirportStmt = $pdo->prepare('INSERT INTO airports (code, name, city_id, is_international) VALUES (?, ?, ?, 0)');
+    $createAirportStmt->execute([$destAirportCode, $destAirportName, $destination_city_id]);
+    $destination_airport_id = (int)$pdo->lastInsertId();
+  } else {
+    $destination_airport_id = (int)$destAirport['id'];
   }
   
   if ($origin_airport_id === $destination_airport_id) {
     json_error('Origin and destination airports cannot be the same', 400);
   }
   
-  if ($base_price_economy < 0) {
-    json_error('Base price must be positive', 400);
-  }
-  
-  $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
+  $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? ValidationHelper::validateInt($input['created_by'], 'created_by', false, 1) : $user['id'];
   
   try {
     $stmt = $pdo->prepare('
-      INSERT INTO flight_routes (origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, duration_minutes, aircraft_type, description, ad, discount_percent, created_by)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO flight_routes (origin_airport_id, destination_airport_id, airline, base_price_economy, base_price_business, base_price_first, aircraft_type, ad, discount_percent, created_by)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     ');
     $stmt->execute([
       $origin_airport_id, $destination_airport_id, $airline,
       $base_price_economy, $base_price_business, $base_price_first,
-      $duration_minutes, $aircraft_type, $description,
+      $aircraft_type,
       $ad ? 1 : 0, $discount_percent, $createdBy
     ]);
     $routeId = (int)$pdo->lastInsertId();
   } catch (PDOException $e) {
+    error_log('Flight route creation error: ' . $e->getMessage());
     if (strpos($e->getMessage(), 'UQ_flight_routes_airline_route') !== false) {
       json_error('Route already exists for this airline', 400);
     }
-    throw $e;
+    json_error('Database error: ' . $e->getMessage(), 500);
+  } catch (Exception $e) {
+    error_log('Flight route creation error: ' . $e->getMessage());
+    json_error('Error creating flight route: ' . $e->getMessage(), 500);
   }
   
-  // Insert images
-  if (!empty($images) && is_array($images)) {
-    $imgStmt = $pdo->prepare('INSERT INTO entity_images (entity_type, entity_id, image_url, display_order) VALUES (?, ?, ?, ?)');
-    foreach ($images as $index => $imageUrl) {
-      if (!empty($imageUrl)) {
-        $imgStmt->execute(['flight_route', $routeId, trim($imageUrl), $index + 1]);
+  // Create schedule for this route
+  try {
+    $scheduleStmt = $pdo->prepare('
+      INSERT INTO flight_schedules (route_id, departure_time, days_of_week, is_active)
+      VALUES (?, ?, ?, 1)
+    ');
+    $scheduleStmt->execute([$routeId, $departure_time, $days_of_week]);
+    $scheduleId = (int)$pdo->lastInsertId();
+  } catch (PDOException $e) {
+    error_log('Flight schedule creation error: ' . $e->getMessage());
+    json_error('Error creating flight schedule: ' . $e->getMessage(), 500);
+  }
+  
+  // Generate instances for the next 30 days
+  try {
+    $instanceStmt = $pdo->prepare('
+      INSERT INTO flight_instances (schedule_id, departure_date, departure_datetime, price_economy, price_business, price_first, seats_economy_total, seats_economy_available, seats_business_total, seats_business_available, seats_first_total, seats_first_available, status)
+      VALUES (?, ?, ?, ?, ?, ?, 180, 180, 30, 30, 12, 12, ?)
+    ');
+    
+    $today = new DateTime();
+    $today->setTime(0, 0, 0);
+    
+    for ($day = 0; $day < 30; $day++) {
+      $departureDate = clone $today;
+      $departureDate->modify("+{$day} days");
+      
+      // Parse days_of_week (e.g., "1,2,3,4,5" for Mon-Fri)
+      $daysArray = array_map('trim', explode(',', $days_of_week));
+      $dayOfWeek = (int)$departureDate->format('w'); // 0 = Sunday, 1 = Monday, etc.
+      
+      // Check if this day matches the schedule
+      if (in_array((string)$dayOfWeek, $daysArray)) {
+        // Combine date and time
+        $timeParts = explode(':', $departure_time);
+        if (count($timeParts) < 2) {
+          error_log("Invalid departure_time format: {$departure_time}");
+          continue;
+        }
+        $departureDateTime = clone $departureDate;
+        $departureDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
+        
+        $instanceStmt->execute([
+          $scheduleId,
+          $departureDate->format('Y-m-d'),
+          $departureDateTime->format('Y-m-d H:i:s'),
+          $base_price_economy,
+          $base_price_business,
+          $base_price_first,
+          'scheduled'
+        ]);
       }
     }
+  } catch (PDOException $e) {
+    error_log('Flight instance creation error: ' . $e->getMessage());
+    json_error('Error creating flight instances: ' . $e->getMessage(), 500);
+  } catch (Exception $e) {
+    error_log('Flight instance creation error: ' . $e->getMessage());
+    json_error('Error creating flight instances: ' . $e->getMessage(), 500);
   }
   
   // Fetch created route
@@ -183,9 +303,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
   $stmt->execute([$routeId]);
   $route = $stmt->fetch();
   
-  $images = get_entity_images($pdo, 'flight_route', $routeId);
-  $route['images'] = $images;
-  $route['image_url'] = $images[0] ?? null;
+  // Flights don't have images
+  $route['images'] = [];
+  $route['image_url'] = null;
   
   json_ok(['route' => $route], 201);
 }
@@ -235,10 +355,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/flights/routes/(\d+)/
   if (isset($input['base_price_first'])) {
     $updates[] = 'base_price_first = ?';
     $params[] = (float)$input['base_price_first'];
-  }
-  if (isset($input['duration_minutes'])) {
-    $updates[] = 'duration_minutes = ?';
-    $params[] = (int)$input['duration_minutes'];
   }
   if (isset($input['aircraft_type'])) {
     $updates[] = 'aircraft_type = ?';
@@ -300,9 +416,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/flights/routes/(\d+)/
   $stmt->execute([$id]);
   $route = $stmt->fetch();
   
-  $images = get_entity_images($pdo, 'flight_route', $id);
-  $route['images'] = $images;
-  $route['image_url'] = $images[0] ?? null;
+  // Flights don't have images
+  $route['images'] = [];
+  $route['image_url'] = null;
   
   json_ok(['route' => $route]);
 }

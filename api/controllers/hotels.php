@@ -148,12 +148,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/hotels/?$#', $uri)) 
   $stmt->execute([$name, $destination_id, $city_id, $province_id, $price_per_night, $description, $createdBy]);
   $hotelId = (int)$pdo->lastInsertId();
   
-  // Save images using ImageHelper
+  // Save images using ImageHelper (moves files from temp to final location)
   if (!empty($images) && is_array($images)) {
     $normalizedImages = array_map(function($url) {
       return trim($url);
     }, array_filter($images));
     ImageHelper::saveEntityImages($pdo, 'hotel', $hotelId, $normalizedImages);
+    // Clean up old temp files after successful save
+    ImageHelper::cleanupTempFiles(24);
   }
   
   $stmt = $pdo->prepare('SELECT h.*, c.name as city_name, p.name as province_name, p.region 

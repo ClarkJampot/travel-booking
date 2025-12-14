@@ -108,7 +108,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
         fs.route_id, fs.route_pair_id, fs.departure_time, fs.days_of_week,
         fr.origin_airport_id, fr.destination_airport_id, fr.airline,
         fr.base_price_economy, fr.base_price_business, fr.base_price_first,
-        fr.duration_minutes, fr.aircraft_type,
+        fr.aircraft_type,
         fr.ad, fr.discount_percent,
         oa.code as origin_code, oa.name as origin_name,
         da.code as destination_code, da.name as destination_name,
@@ -200,7 +200,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
     
     $promotedSql = "SELECT TOP 2 fr.id, fr.origin_airport_id, fr.destination_airport_id, fr.airline, 
         fr.base_price_economy, fr.base_price_business, fr.base_price_first, 
-        fr.duration_minutes, fr.aircraft_type, fr.ad, fr.discount_percent, fr.created_by, fr.created_at,
+        fr.aircraft_type, fr.ad, fr.discount_percent, fr.created_by, fr.created_at,
         oa.code as origin_code, oa.name as origin_name,
         da.code as destination_code, da.name as destination_name,
         oc.name as origin_city_name, dc.name as destination_city_name,
@@ -236,7 +236,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/?$#', $uri)) 
   
   $sql = "SELECT fr.id, fr.origin_airport_id, fr.destination_airport_id, fr.airline, 
       fr.base_price_economy, fr.base_price_business, fr.base_price_first, 
-      fr.duration_minutes, fr.aircraft_type, fr.ad, fr.discount_percent, fr.created_by, fr.created_at,
+      fr.aircraft_type, fr.ad, fr.discount_percent, fr.created_by, fr.created_at,
       oa.code as origin_code, oa.name as origin_name,
       da.code as destination_code, da.name as destination_name,
       oc.name as origin_city_name, dc.name as destination_city_name,
@@ -298,23 +298,34 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/instances/?$#
   // Get available instances for the route and date
   $seatsAvailableColumn = 'seats_' . $class . '_available';
   
-  $stmt = $pdo->prepare("
-    SELECT fi.*,
-      fs.departure_time,
-      fr.base_price_economy, fr.base_price_business, fr.base_price_first,
-      fr.discount_percent,
-      fr.airline, fr.duration_minutes
-    FROM flight_instances fi
-    INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-    INNER JOIN flight_routes fr ON fs.route_id = fr.id
-    WHERE fs.route_id = ?
-      AND fi.departure_date = CAST(? AS DATE)
-      AND fi.status = 'scheduled'
-      AND fi.$seatsAvailableColumn >= ?
-    ORDER BY fi.departure_datetime ASC
-  ");
+  // Validate column name to prevent SQL injection
+  $validColumns = ['seats_economy_available', 'seats_business_available', 'seats_first_available'];
+  if (!in_array($seatsAvailableColumn, $validColumns)) {
+    json_error('Invalid class', 400);
+  }
   
-  $stmt->execute([$route_id, $departure_date, $passenger_count]);
+  try {
+    $stmt = $pdo->prepare("
+      SELECT fi.*,
+        fs.departure_time,
+        fr.base_price_economy, fr.base_price_business, fr.base_price_first,
+        fr.discount_percent,
+        fr.airline
+      FROM flight_instances fi
+      INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+      INNER JOIN flight_routes fr ON fs.route_id = fr.id
+      WHERE fs.route_id = ?
+        AND fi.departure_date = CAST(? AS DATE)
+        AND fi.status = 'scheduled'
+        AND fi.$seatsAvailableColumn >= ?
+      ORDER BY fi.departure_datetime ASC
+    ");
+    
+    $stmt->execute([$route_id, $departure_date, $passenger_count]);
+  } catch (PDOException $e) {
+    error_log('Flight instances query error: ' . $e->getMessage());
+    json_error('Error loading flight instances: ' . $e->getMessage(), 500);
+  }
   $instances = $stmt->fetchAll();
   
   // Calculate prices for each instance
@@ -349,23 +360,28 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/instances/?$#
       $returnRouteId = (int)$returnRoute['return_route_id'];
       
       // Get return instances
-      $returnStmt = $pdo->prepare("
-        SELECT fi.*,
-          fs.departure_time,
-          fr.base_price_economy, fr.base_price_business, fr.base_price_first,
-          fr.discount_percent,
-          fr.airline, fr.duration_minutes
-        FROM flight_instances fi
-        INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-        INNER JOIN flight_routes fr ON fs.route_id = fr.id
-        WHERE fs.route_id = ?
-          AND fi.departure_date = CAST(? AS DATE)
-          AND fi.status = 'scheduled'
-          AND fi.$seatsAvailableColumn >= ?
-        ORDER BY fi.departure_datetime ASC
-      ");
-      
-      $returnStmt->execute([$returnRouteId, $return_date, $passenger_count]);
+      try {
+        $returnStmt = $pdo->prepare("
+          SELECT fi.*,
+            fs.departure_time,
+            fr.base_price_economy, fr.base_price_business, fr.base_price_first,
+            fr.discount_percent,
+            fr.airline
+          FROM flight_instances fi
+          INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
+          INNER JOIN flight_routes fr ON fs.route_id = fr.id
+          WHERE fs.route_id = ?
+            AND fi.departure_date = CAST(? AS DATE)
+            AND fi.status = 'scheduled'
+            AND fi.$seatsAvailableColumn >= ?
+          ORDER BY fi.departure_datetime ASC
+        ");
+        
+        $returnStmt->execute([$returnRouteId, $return_date, $passenger_count]);
+      } catch (PDOException $e) {
+        error_log('Return flight instances query error: ' . $e->getMessage());
+        $returnInstances = [];
+      }
       $returnInstances = $returnStmt->fetchAll();
       
       // Calculate prices for return instances

@@ -44,14 +44,128 @@ class ImageHelper {
       // Delete existing images
       self::deleteEntityImages($pdo, $entityType, $entityId);
       
-      // Insert new images
-      $stmt = $pdo->prepare('INSERT INTO entity_images (entity_type, entity_id, image_url, display_order) VALUES (?, ?, ?, ?)');
+      // Move files from temp to correct location and update URLs
+      $finalUrls = [];
+      // Use same path calculation as upload.php: __DIR__ is api/helpers/, go up two levels to project root
+      $baseDir = dirname(dirname(__DIR__)) . '/public/uploads';
+      
+      // Map entity types to directory names (pluralize)
+      $dirMap = [
+        'hotel' => 'hotels',
+        'activity' => 'activities',
+        'flight_route' => 'flights',
+        'transfer_route' => 'transfers',
+        'destination' => 'destinations'
+      ];
+      $dirName = $dirMap[$entityType] ?? $entityType;
+      
+      error_log("ImageHelper::saveEntityImages called - entityType: {$entityType}, entityId: {$entityId}, dirName: {$dirName}, imageUrls: " . json_encode($imageUrls));
+      error_log("baseDir calculated: {$baseDir}");
+      
       foreach ($imageUrls as $index => $imageUrl) {
+        $finalUrl = $imageUrl;
+        
+        error_log("Processing imageUrl[{$index}]: {$imageUrl}");
+        
+        // If URL is in temp location, move it to entity/{id}/
+        // Handle both /uploads/temp/ and /travel-booking/uploads/temp/
+        if (strpos($imageUrl, '/travel-booking/uploads/temp/') === 0) {
+          error_log("Matched /travel-booking/uploads/temp/ pattern");
+          // Extract filename from URL
+          $filename = basename($imageUrl);
+          // Build target path: public/uploads/{entity}/{entity_id}/{filename}
+          $targetDir = $baseDir . '/' . $dirName . '/' . $entityId;
+          $targetPath = $targetDir . '/' . $filename;
+          // Build temp path: public/uploads/temp/{filename}
+          $tempPath = $baseDir . '/temp/' . $filename;
+          
+          error_log("tempPath: {$tempPath}, targetPath: {$targetPath}, baseDir: {$baseDir}");
+          
+          // Create target directory if it doesn't exist
+          if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+            error_log("Created target directory: {$targetDir}");
+          }
+          
+          // Move file from temp to target location
+          if (file_exists($tempPath)) {
+            error_log("Temp file exists, attempting move...");
+            if (rename($tempPath, $targetPath)) {
+              $finalUrl = '/travel-booking/uploads/' . $dirName . '/' . $entityId . '/' . $filename;
+              error_log("Successfully moved file from {$tempPath} to {$targetPath}");
+            } else {
+              $error = "Failed to move file from {$tempPath} to {$targetPath}";
+              error_log($error);
+              // Try copy as fallback
+              if (copy($tempPath, $targetPath)) {
+                unlink($tempPath);
+                $finalUrl = '/travel-booking/uploads/' . $dirName . '/' . $entityId . '/' . $filename;
+                error_log("Used copy+delete fallback for {$tempPath}");
+              } else {
+                error_log("Copy fallback also failed for {$tempPath}");
+              }
+            }
+          } else {
+            error_log("Temp file not found: {$tempPath}");
+          }
+        } elseif (strpos($imageUrl, '/uploads/temp/') === 0) {
+          error_log("Matched /uploads/temp/ pattern");
+          // Legacy format without /travel-booking prefix
+          $filename = basename($imageUrl);
+          // Build target path: public/uploads/{entity}/{entity_id}/{filename}
+          $targetDir = $baseDir . '/' . $dirName . '/' . $entityId;
+          $targetPath = $targetDir . '/' . $filename;
+          // Build temp path: public/uploads/temp/{filename}
+          $tempPath = $baseDir . '/temp/' . $filename;
+          
+          error_log("tempPath: {$tempPath}, targetPath: {$targetPath}, baseDir: {$baseDir}");
+          
+          // Create target directory if it doesn't exist
+          if (!is_dir($targetDir)) {
+            mkdir($targetDir, 0755, true);
+            error_log("Created target directory: {$targetDir}");
+          }
+          
+          // Move file from temp to target location
+          if (file_exists($tempPath)) {
+            error_log("Temp file exists, attempting move...");
+            if (rename($tempPath, $targetPath)) {
+              $finalUrl = '/travel-booking/uploads/' . $dirName . '/' . $entityId . '/' . $filename;
+              error_log("Successfully moved file from {$tempPath} to {$targetPath}");
+            } else {
+              $error = "Failed to move file from {$tempPath} to {$targetPath}";
+              error_log($error);
+              // Try copy as fallback
+              if (copy($tempPath, $targetPath)) {
+                unlink($tempPath);
+                $finalUrl = '/travel-booking/uploads/' . $dirName . '/' . $entityId . '/' . $filename;
+                error_log("Used copy+delete fallback for {$tempPath}");
+              } else {
+                error_log("Copy fallback also failed for {$tempPath}");
+              }
+            }
+          } else {
+            error_log("Temp file not found: {$tempPath}");
+          }
+        } else {
+          error_log("Image URL does not match temp pattern, keeping as-is: {$imageUrl}");
+        }
+        
+        $finalUrls[] = $finalUrl;
+        error_log("Final URL for image[{$index}]: {$finalUrl}");
+      }
+      
+      // Insert new images with updated URLs
+      $stmt = $pdo->prepare('INSERT INTO entity_images (entity_type, entity_id, image_url, display_order) VALUES (?, ?, ?, ?)');
+      foreach ($finalUrls as $index => $imageUrl) {
         $stmt->execute([$entityType, $entityId, $imageUrl, $index + 1]);
       }
       return true;
     } catch (PDOException $e) {
       error_log('Error saving entity images: ' . $e->getMessage());
+      return false;
+    } catch (Exception $e) {
+      error_log('Error moving entity images: ' . $e->getMessage());
       return false;
     }
   }
@@ -72,6 +186,41 @@ class ImageHelper {
       error_log('Error deleting entity images: ' . $e->getMessage());
       return false;
     }
+  }
+  
+  /**
+   * Clean up old files in temp directory
+   * Removes files older than specified hours (default 24 hours)
+   * @param int $maxAgeHours Maximum age in hours (default 24)
+   * @return array Statistics: ['deleted' => count, 'failed' => count, 'errors' => []]
+   */
+  public static function cleanupTempFiles(int $maxAgeHours = 24): array {
+    // Use same path calculation as upload.php
+    $baseDir = dirname(dirname(__DIR__)) . '/public/uploads/temp';
+    $stats = ['deleted' => 0, 'failed' => 0, 'errors' => []];
+    
+    if (!is_dir($baseDir)) {
+      return $stats;
+    }
+    
+    $maxAge = time() - ($maxAgeHours * 3600);
+    $files = glob($baseDir . '/*');
+    
+    foreach ($files as $file) {
+      if (is_file($file)) {
+        $fileAge = filemtime($file);
+        if ($fileAge < $maxAge) {
+          if (@unlink($file)) {
+            $stats['deleted']++;
+          } else {
+            $stats['failed']++;
+            $stats['errors'][] = "Failed to delete: {$file}";
+          }
+        }
+      }
+    }
+    
+    return $stats;
   }
   
   /**

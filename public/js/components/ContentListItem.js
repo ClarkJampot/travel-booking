@@ -54,7 +54,7 @@ function renderContentListItem(item, type) {
             <div>
               <h6 class="mb-1">
                 ${item[nameField] || 'Untitled'}
-                ${item.ad ? '<span class="badge bg-warning text-dark ms-2">Promoted</span>' : ''}
+                ${isPromoted(item.ad) ? '<span class="badge bg-warning text-dark ms-2">Promoted</span>' : ''}
               </h6>
               ${locationInfo ? `<p class="text-muted mb-1 small">${locationInfo}</p>` : ''}
               ${dateInfo ? `<p class="text-muted mb-1 small">${dateInfo}</p>` : ''}

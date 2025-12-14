@@ -19,9 +19,9 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
-// GET /api/activities
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities/?$#', $uri)) {
-  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+// GET /api/activities/:id or /api/activities?id=X
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?/?$#', $uri, $matches)) {
+  $id = isset($matches[1]) ? (int)$matches[1] : (isset($_GET['id']) ? (int)$_GET['id'] : null);
   
   // Get single activity
   if ($id) {
@@ -62,12 +62,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities/?$#', $uri
   $destination_id = isset($_GET['destination_id']) ? (int)$_GET['destination_id'] : null;
   if ($destination_id !== null) {
     $qb->where('a.destination_id = ?', $destination_id);
-  }
-  
-  // Add date filter (activities specific)
-  $date = $_GET['date'] ?? null;
-  if ($date) {
-    $qb->where('a.date >= ?', $date);
   }
   
   // Add search filter (uses joined tables c and p)
@@ -135,13 +129,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/activities/?$#', $ur
   $title = trim($input['title'] ?? '');
   $destination_id = isset($input['destination_id']) ? (int)$input['destination_id'] : null;
   $city_id = isset($input['city_id']) ? (int)$input['city_id'] : null;
-  $date = $input['date'] ?? '';
   $price = isset($input['price']) ? (float)$input['price'] : null;
   $description = trim($input['description'] ?? '');
   $images = $input['images'] ?? []; // Array of image URLs
   
-  if (!$title || $city_id === null || !$date || $price === null) {
-    ResponseHelper::error('Missing required fields: title, city_id, date, price', 400);
+  if (!$title || $city_id === null || $price === null) {
+    ResponseHelper::error('Missing required fields: title, city_id, price', 400);
   }
   
   if ($price < 0) {
@@ -150,16 +143,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/activities/?$#', $ur
   
   $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
   
-  $stmt = $pdo->prepare('INSERT INTO activities (title, destination_id, city_id, date, price, description, created_by) VALUES (?, ?, ?, ?, ?, ?, ?)');
-  $stmt->execute([$title, $destination_id, $city_id, $date, $price, $description, $createdBy]);
+  $stmt = $pdo->prepare('INSERT INTO activities (title, destination_id, city_id, price, description, created_by) VALUES (?, ?, ?, ?, ?, ?)');
+  $stmt->execute([$title, $destination_id, $city_id, $price, $description, $createdBy]);
   $activityId = (int)$pdo->lastInsertId();
   
-  // Save images using ImageHelper
+  // Save images using ImageHelper (moves files from temp to final location)
   if (!empty($images) && is_array($images)) {
     $normalizedImages = array_map(function($url) {
       return trim($url);
     }, array_filter($images));
     ImageHelper::saveEntityImages($pdo, 'activity', $activityId, $normalizedImages);
+    // Clean up old temp files after successful save
+    ImageHelper::cleanupTempFiles(24);
   }
   
   $stmt = $pdo->prepare('SELECT a.*, c.name as city_name, p.name as province_name, p.region 

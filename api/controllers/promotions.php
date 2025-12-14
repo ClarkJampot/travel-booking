@@ -97,19 +97,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/promotions/?$#', $uri
   
   try {
     // Get promoted transfers
-    $stmt = $pdo->prepare("SELECT TOP $limitInt tr.id, tt.name as service, tr.discount_percent, tr.created_by,
+    $stmt = $pdo->prepare("SELECT TOP $limitInt tr.id, 
+      oc.name as origin_city_name, dc.name as destination_city_name,
+      tr.origin_specific, tr.destination_specific,
+      tr.discount_percent, tr.created_by,
       (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'transfer_route' AND entity_id = tr.id ORDER BY display_order ASC, id ASC) as image_url
       FROM transfer_routes tr
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      INNER JOIN cities oc ON tr.origin_city_id = oc.id
+      INNER JOIN cities dc ON tr.destination_city_id = dc.id
       WHERE tr.ad = 1 AND tr.deleted_at IS NULL
       ORDER BY NEWID()");
     $stmt->execute([]);
     $transfers = $stmt->fetchAll();
     foreach ($transfers as $transfer) {
+      $serviceName = ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
       $results[] = [
         'id' => $transfer['id'],
         'type' => 'transfer',
-        'name' => $transfer['service'] ?? 'Transfer',
+        'name' => $serviceName ?: 'Transfer',
         'image_url' => $transfer['image_url'],
         'discount_percent' => isset($transfer['discount_percent']) ? (float)$transfer['discount_percent'] : 0,
         'created_by' => isset($transfer['created_by']) ? (int)$transfer['created_by'] : 0,

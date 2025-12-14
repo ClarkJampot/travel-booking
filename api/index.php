@@ -105,6 +105,12 @@ elseif (preg_match('#^/transfers/availability/?$#', $uri)) {
   exit;
 }
 
+// Route: /api/transfers/routes
+elseif (preg_match('#^/transfers/routes(?:/(\d+))?/?$#', $uri, $matches)) {
+  require __DIR__ . '/controllers/transfer-routes.php';
+  exit;
+}
+
 // Route: /api/transfers (routes listing and detail)
 elseif (preg_match('#^/transfers(?:/(\d+))?/?$#', $uri, $matches)) {
   require __DIR__ . '/controllers/transfer-instances.php';
@@ -132,6 +138,12 @@ elseif (preg_match('#^/ads(?:/(\d+))?/?$#', $uri, $matches)) {
 // Route: /api/upload
 elseif (preg_match('#^/upload/?$#', $uri)) {
   require __DIR__ . '/controllers/upload.php';
+  exit;
+}
+
+// Route: /api/cleanup/*
+elseif (preg_match('#^/cleanup/#', $uri)) {
+  require __DIR__ . '/controllers/cleanup.php';
   exit;
 }
 

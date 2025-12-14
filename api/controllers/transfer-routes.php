@@ -14,12 +14,11 @@ try {
 
 $uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
-// GET /api/transfers/routes
-if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes/?$#', $uri)) {
-  $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
+// GET /api/transfers/routes/:id or /api/transfers/routes?id=X
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes(?:/(\d+))?/?$#', $uri, $matches)) {
+  $id = isset($matches[1]) ? (int)$matches[1] : (isset($_GET['id']) ? (int)$_GET['id'] : null);
   $origin_city_id = isset($_GET['origin_city_id']) ? (int)$_GET['origin_city_id'] : null;
   $destination_city_id = isset($_GET['destination_city_id']) ? (int)$_GET['destination_city_id'] : null;
-  $transfer_type_id = isset($_GET['transfer_type_id']) ? (int)$_GET['transfer_type_id'] : null;
   $q = isset($_GET['q']) ? trim($_GET['q']) : null;
   $createdBy = isset($_GET['createdBy']) ? (int)$_GET['createdBy'] : null;
   
@@ -27,15 +26,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes/?$#'
   if ($id) {
     $stmt = $pdo->prepare('
       SELECT tr.*,
-        oc.name as origin_city_name, op.name as origin_province_name,
-        dc.name as destination_city_name, dp.name as destination_province_name,
-        tt.name as transfer_type_name, tt.icon as transfer_type_icon
+        oc.name as origin_city_name, oc.province_id as origin_province_id,
+        op.name as origin_province_name,
+        dc.name as destination_city_name, dc.province_id as destination_province_id,
+        dp.name as destination_province_name,
+        ts.departure_time
       FROM transfer_routes tr
       INNER JOIN cities oc ON tr.origin_city_id = oc.id
       INNER JOIN cities dc ON tr.destination_city_id = dc.id
       LEFT JOIN provinces op ON oc.province_id = op.id
       LEFT JOIN provinces dp ON dc.province_id = dp.id
-      INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
+      LEFT JOIN transfer_schedules ts ON ts.route_id = tr.id AND ts.is_active = 1
       WHERE tr.id = ?
     ');
     $stmt->execute([$id]);
@@ -44,10 +45,22 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes/?$#'
       json_error('Route not found', 404);
     }
     
-    // Get images
-    $images = get_entity_images($pdo, 'transfer_route', $id);
-    $route['images'] = $images;
-    $route['image_url'] = $images[0] ?? null;
+    // Transfers don't have images
+    $route['images'] = [];
+    $route['image_url'] = null;
+    
+    // Format departure_time if present (TIME to HH:MM format)
+    if (isset($route['departure_time']) && $route['departure_time']) {
+      $timeStr = (string)$route['departure_time'];
+      // SQL Server TIME type returns as "HH:MM:SS" or "HH:MM:SS.mmm"
+      // Extract just HH:MM
+      if (preg_match('/^(\d{1,2}):(\d{2})/', $timeStr, $matches)) {
+        $route['departure_time'] = str_pad($matches[1], 2, '0', STR_PAD_LEFT) . ':' . $matches[2];
+      } else {
+        // Fallback: try to extract first 5 characters
+        $route['departure_time'] = substr($timeStr, 0, 5);
+      }
+    }
     
     json_ok(['route' => $route]);
   }
@@ -63,10 +76,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes/?$#'
   if ($destination_city_id !== null) {
     $where[] = 'tr.destination_city_id = ?';
     $params[] = $destination_city_id;
-  }
-  if ($transfer_type_id !== null) {
-    $where[] = 'tr.transfer_type_id = ?';
-    $params[] = $transfer_type_id;
   }
   if ($q) {
     $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $q);
@@ -86,12 +95,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes/?$#'
   $whereSql = $where ? ('WHERE ' . implode(' AND ', $where)) : '';
   
   $sql = "SELECT tr.*,
-      oc.name as origin_city_name, dc.name as destination_city_name,
-      tt.name as transfer_type_name
+      oc.name as origin_city_name, dc.name as destination_city_name
     FROM transfer_routes tr
     INNER JOIN cities oc ON tr.origin_city_id = oc.id
     INNER JOIN cities dc ON tr.destination_city_id = dc.id
-    INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
     $whereSql
     ORDER BY tr.created_at DESC";
   
@@ -106,75 +113,117 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes/?$#'
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/routes/?$#', $uri)) {
   requireRole(['agency', 'admin']);
   
+  require_once __DIR__ . '/../helpers/ValidationHelper.php';
+  
   $user = get_authenticated_user();
   $input = json_decode(file_get_contents('php://input'), true);
   
-  $origin_city_id = isset($input['origin_city_id']) ? (int)$input['origin_city_id'] : null;
-  $destination_city_id = isset($input['destination_city_id']) ? (int)$input['destination_city_id'] : null;
-  $origin_specific = trim($input['origin_specific'] ?? '');
-  $destination_specific = trim($input['destination_specific'] ?? '');
-  $transfer_type_id = isset($input['transfer_type_id']) ? (int)$input['transfer_type_id'] : null;
-  $base_price = isset($input['base_price']) ? (float)$input['base_price'] : null;
-  $duration_minutes = isset($input['duration_minutes']) ? (int)$input['duration_minutes'] : null;
-  $distance_km = isset($input['distance_km']) ? (float)$input['distance_km'] : null;
-  $capacity = isset($input['capacity']) ? (int)$input['capacity'] : null;
-  $description = trim($input['description'] ?? '');
-  $ad = isset($input['ad']) ? (bool)$input['ad'] : false;
-  $discount_percent = isset($input['discount_percent']) ? (float)$input['discount_percent'] : 0;
-  $images = $input['images'] ?? [];
-  
-  if (!$origin_city_id || !$destination_city_id || !$transfer_type_id || $base_price === null || $duration_minutes === null || $capacity === null) {
-    json_error('Missing required fields: origin_city_id, destination_city_id, transfer_type_id, base_price, duration_minutes, capacity', 400);
-  }
-  
-  if ($origin_city_id === $destination_city_id && !$origin_specific && !$destination_specific) {
-    json_error('Origin and destination cities cannot be the same without specific locations', 400);
-  }
-  
-  if ($base_price < 0) {
-    json_error('Base price must be positive', 400);
+  try {
+    // Validate required integer fields
+    $origin_city_id = ValidationHelper::validateInt($input['origin_city_id'] ?? null, 'origin_city_id', true, 1);
+    $destination_city_id = ValidationHelper::validateInt($input['destination_city_id'] ?? null, 'destination_city_id', true, 1);
+    
+    // Validate prices
+    $base_price = ValidationHelper::validateDecimal($input['base_price'] ?? null, 'base_price', true, 0.01);
+    $discount_percent = ValidationHelper::validateDecimal($input['discount_percent'] ?? 0, 'discount_percent', false, 0, 100);
+    
+    // Validate strings
+    $origin_specific = ValidationHelper::validateString($input['origin_specific'] ?? null, 'origin_specific', false, 255);
+    $destination_specific = ValidationHelper::validateString($input['destination_specific'] ?? null, 'destination_specific', false, 255);
+    $description = ValidationHelper::validateString($input['description'] ?? null, 'description', false);
+    $departure_time = ValidationHelper::validateTime($input['departure_time'] ?? null, 'departure_time', true);
+    $days_of_week = '0,1,2,3,4,5,6'; // Daily by default
+    
+    $ad = isset($input['ad']) && ($input['ad'] === true || $input['ad'] === 1 || $input['ad'] === '1');
+    
+    // Validate that origin and destination are different (unless specific locations are provided)
+    if ($origin_city_id === $destination_city_id && (!$origin_specific || !$destination_specific)) {
+      throw new InvalidArgumentException('Origin and destination cities cannot be the same without specific locations');
+    }
+  } catch (InvalidArgumentException $e) {
+    json_error($e->getMessage(), 400);
+  } catch (Exception $e) {
+    error_log('Validation error: ' . $e->getMessage());
+    json_error('Validation error: ' . $e->getMessage(), 400);
   }
   
   $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
   
   $stmt = $pdo->prepare('
-    INSERT INTO transfer_routes (origin_city_id, destination_city_id, origin_specific, destination_specific, transfer_type_id, base_price, duration_minutes, distance_km, capacity, description, ad, discount_percent, created_by)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+    INSERT INTO transfer_routes (origin_city_id, destination_city_id, origin_specific, destination_specific, base_price, description, ad, discount_percent, created_by)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
   ');
   $stmt->execute([
     $origin_city_id, $destination_city_id, $origin_specific, $destination_specific,
-    $transfer_type_id, $base_price, $duration_minutes, $distance_km, $capacity,
+    $base_price,
     $description, $ad ? 1 : 0, $discount_percent, $createdBy
   ]);
   $routeId = (int)$pdo->lastInsertId();
   
-  // Insert images
-  if (!empty($images) && is_array($images)) {
-    $imgStmt = $pdo->prepare('INSERT INTO entity_images (entity_type, entity_id, image_url, display_order) VALUES (?, ?, ?, ?)');
-    foreach ($images as $index => $imageUrl) {
-      if (!empty($imageUrl)) {
-        $imgStmt->execute(['transfer_route', $routeId, trim($imageUrl), $index + 1]);
-      }
+  // Create schedule for this route
+  $scheduleStmt = $pdo->prepare('
+    INSERT INTO transfer_schedules (route_id, departure_time, days_of_week, is_active)
+    VALUES (?, ?, ?, 1)
+  ');
+  $scheduleStmt->execute([$routeId, $departure_time, $days_of_week]);
+  $scheduleId = (int)$pdo->lastInsertId();
+  
+  // Generate instances for the next 30 days
+  // Default: 3 vehicles, 12 seats per vehicle = 36 total seats
+  $vehiclesTotal = 3;
+  $seatsTotal = $vehiclesTotal * 12;
+  
+  $instanceStmt = $pdo->prepare('
+    INSERT INTO transfer_instances (schedule_id, departure_date, departure_datetime, price, vehicles_total, vehicles_available, seats_available, status)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  ');
+  
+  $today = new DateTime();
+  $today->setTime(0, 0, 0);
+  
+  for ($day = 0; $day < 30; $day++) {
+    $departureDate = clone $today;
+    $departureDate->modify("+{$day} days");
+    
+    // Parse days_of_week (e.g., "1,2,3,4,5" for Mon-Fri)
+    $daysArray = array_map('trim', explode(',', $days_of_week));
+    $dayOfWeek = (int)$departureDate->format('w'); // 0 = Sunday, 1 = Monday, etc.
+    
+    // Check if this day matches the schedule
+    if (in_array((string)$dayOfWeek, $daysArray)) {
+      // Combine date and time
+      $timeParts = explode(':', $departure_time);
+      $departureDateTime = clone $departureDate;
+      $departureDateTime->setTime((int)$timeParts[0], (int)$timeParts[1], 0);
+      
+      $instanceStmt->execute([
+        $scheduleId,
+        $departureDate->format('Y-m-d'),
+        $departureDateTime->format('Y-m-d H:i:s'),
+        $base_price,
+        $vehiclesTotal,
+        $vehiclesTotal,
+        $seatsTotal,
+        'scheduled'
+      ]);
     }
   }
   
   // Fetch created route
   $stmt = $pdo->prepare('
     SELECT tr.*,
-      oc.name as origin_city_name, dc.name as destination_city_name,
-      tt.name as transfer_type_name
+      oc.name as origin_city_name, dc.name as destination_city_name
     FROM transfer_routes tr
     INNER JOIN cities oc ON tr.origin_city_id = oc.id
     INNER JOIN cities dc ON tr.destination_city_id = dc.id
-    INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
     WHERE tr.id = ?
   ');
   $stmt->execute([$routeId]);
   $route = $stmt->fetch();
   
-  $images = get_entity_images($pdo, 'transfer_route', $routeId);
-  $route['images'] = $images;
-  $route['image_url'] = $images[0] ?? null;
+  // Transfers don't have images
+  $route['images'] = [];
+  $route['image_url'] = null;
   
   json_ok(['route' => $route], 201);
 }
@@ -217,25 +266,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/routes/(\d+
     $updates[] = 'destination_specific = ?';
     $params[] = trim($input['destination_specific']);
   }
-  if (isset($input['transfer_type_id'])) {
-    $updates[] = 'transfer_type_id = ?';
-    $params[] = (int)$input['transfer_type_id'];
-  }
   if (isset($input['base_price'])) {
     $updates[] = 'base_price = ?';
     $params[] = (float)$input['base_price'];
-  }
-  if (isset($input['duration_minutes'])) {
-    $updates[] = 'duration_minutes = ?';
-    $params[] = (int)$input['duration_minutes'];
-  }
-  if (isset($input['distance_km'])) {
-    $updates[] = 'distance_km = ?';
-    $params[] = (float)$input['distance_km'];
-  }
-  if (isset($input['capacity'])) {
-    $updates[] = 'capacity = ?';
-    $params[] = (int)$input['capacity'];
   }
   if (isset($input['description'])) {
     $updates[] = 'description = ?';
@@ -280,20 +313,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/routes/(\d+
   
   $stmt = $pdo->prepare('
     SELECT tr.*,
-      oc.name as origin_city_name, dc.name as destination_city_name,
-      tt.name as transfer_type_name
+      oc.name as origin_city_name, dc.name as destination_city_name
     FROM transfer_routes tr
     INNER JOIN cities oc ON tr.origin_city_id = oc.id
     INNER JOIN cities dc ON tr.destination_city_id = dc.id
-    INNER JOIN transfer_types tt ON tr.transfer_type_id = tt.id
     WHERE tr.id = ?
   ');
   $stmt->execute([$id]);
   $route = $stmt->fetch();
   
-  $images = get_entity_images($pdo, 'transfer_route', $id);
-  $route['images'] = $images;
-  $route['image_url'] = $images[0] ?? null;
+  // Transfers don't have images
+  $route['images'] = [];
+  $route['image_url'] = null;
   
   json_ok(['route' => $route]);
 }

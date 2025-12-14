@@ -114,7 +114,6 @@ CREATE TABLE dbo.activities (
   title NVARCHAR(255) NOT NULL,
   destination_id INT NULL,
   city_id INT NULL,
-  date DATE NOT NULL,
   price DECIMAL(10,2) NOT NULL,
   description NVARCHAR(MAX) NULL,
   booking_count INT DEFAULT 0,
@@ -217,7 +216,6 @@ CREATE INDEX IX_hotels_province_id ON dbo.hotels(province_id);
 CREATE INDEX IX_hotels_price ON dbo.hotels(price_per_night);
 CREATE INDEX IX_activities_destination_id ON dbo.activities(destination_id);
 CREATE INDEX IX_activities_city_id ON dbo.activities(city_id);
-CREATE INDEX IX_activities_date ON dbo.activities(date);
 CREATE INDEX IX_destinations_province_id ON dbo.destinations(province_id);
 CREATE INDEX IX_destinations_city_id ON dbo.destinations(city_id);
 CREATE INDEX IX_hotel_bookings_user_id ON dbo.hotel_bookings(user_id);
@@ -259,7 +257,6 @@ CREATE TABLE dbo.flight_routes (
   base_price_economy DECIMAL(10,2) NOT NULL,
   base_price_business DECIMAL(10,2) NULL,
   base_price_first DECIMAL(10,2) NULL,
-  duration_minutes INT NOT NULL,
   aircraft_type NVARCHAR(100) NULL,
   ad BIT DEFAULT 0,
   discount_percent DECIMAL(5,2) DEFAULT 0,
@@ -348,11 +345,7 @@ CREATE TABLE dbo.transfer_routes (
   destination_city_id INT NOT NULL,
   origin_specific NVARCHAR(255) NULL,
   destination_specific NVARCHAR(255) NULL,
-  transfer_type_id INT NOT NULL,
   base_price DECIMAL(10,2) NOT NULL,
-  duration_minutes INT NOT NULL,
-  distance_km DECIMAL(8,2) NULL,
-  capacity INT NOT NULL,
   description NVARCHAR(MAX) NULL,
   ad BIT DEFAULT 0,
   discount_percent DECIMAL(5,2) DEFAULT 0,
@@ -362,7 +355,6 @@ CREATE TABLE dbo.transfer_routes (
   deleted_at DATETIME2 NULL,
   CONSTRAINT FK_transfer_routes_origin_cities FOREIGN KEY (origin_city_id) REFERENCES dbo.cities(id),
   CONSTRAINT FK_transfer_routes_destination_cities FOREIGN KEY (destination_city_id) REFERENCES dbo.cities(id),
-  CONSTRAINT FK_transfer_routes_types FOREIGN KEY (transfer_type_id) REFERENCES dbo.transfer_types(id),
   CONSTRAINT FK_transfer_routes_users FOREIGN KEY (created_by) REFERENCES dbo.users(id)
 );
 
@@ -414,7 +406,6 @@ CREATE INDEX IX_flight_instances_status ON dbo.flight_instances(status);
 CREATE INDEX IX_transfer_types_name ON dbo.transfer_types(name);
 CREATE INDEX IX_transfer_routes_origin ON dbo.transfer_routes(origin_city_id);
 CREATE INDEX IX_transfer_routes_destination ON dbo.transfer_routes(destination_city_id);
-CREATE INDEX IX_transfer_routes_type ON dbo.transfer_routes(transfer_type_id);
 CREATE INDEX IX_transfer_schedules_route_id ON dbo.transfer_schedules(route_id);
 CREATE INDEX IX_transfer_schedules_active ON dbo.transfer_schedules(is_active);
 CREATE INDEX IX_transfer_instances_schedule_id ON dbo.transfer_instances(schedule_id);
