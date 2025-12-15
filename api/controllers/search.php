@@ -1,17 +1,17 @@
 <?php
-// Search controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
+require_once __DIR__ . '/../helpers/ErrorHandler.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/search
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
@@ -19,12 +19,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
     $query = trim($_GET['q'] ?? '');
     $type = isset($_GET['type']) ? trim($_GET['type']) : null; // hotels, flights, destinations, all
     
-    // #region agent log
-    file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'A', 'location' => 'search.php:19', 'message' => 'Search API called', 'data' => ['query' => $query, 'type' => $type], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-    // #endregion
-    
     if (!$query) {
-      json_error('Missing search query', 400);
+      ResponseHelper::error('Missing search query', 400);
     }
     
     $results = [];
@@ -60,9 +56,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       $stmt->execute($params);
       $destinations = $stmt->fetchAll();
       
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'C', 'location' => 'search.php:57', 'message' => 'Destinations search results', 'data' => ['count' => count($destinations), 'first_result' => $destinations[0] ?? null], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
       
       foreach ($destinations as &$dest) {
         $dest['type'] = 'destination';
@@ -70,29 +63,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       
       $results['destinations'] = $destinations;
     } catch (PDOException $e) {
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'C', 'location' => 'search.php:65', 'message' => 'Destinations search error', 'data' => ['error' => $e->getMessage()], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
+      ErrorHandler::logException($e);
       $results['destinations'] = [];
     }
   }
   
-  // Search hotels - EXACT COPY of hotels.php search logic
   if (!$type || $type === 'hotels' || $type === 'all') {
     try {
-      // EXACT same logic as hotels.php lines 76-85
-      $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $query);
-      $searchPattern = '%' . $searchTerm . '%';
+      require_once __DIR__ . '/../helpers/FilterHelper.php';
+      $searchQuery = FilterHelper::buildSearchQuery($query, ['h.name', 'c.name', 'p.name', 'h.description']);
       
-      $where = [];
-      $params = [];
-      $where[] = "(h.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR c.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR p.name COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ? OR h.description COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?)";
-      $params[] = $searchPattern;
-      $params[] = $searchPattern;
-      $params[] = $searchPattern;
-      $params[] = $searchPattern;
-      
-      $whereSql = 'WHERE ' . implode(' AND ', $where);
+      $whereSql = $searchQuery['where'] ? 'WHERE ' . $searchQuery['where'] : '';
+      $params = $searchQuery['params'];
       $offsetInt = 0;
       $limitInt = 50;
       
@@ -116,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       
       $results['hotels'] = $hotels;
     } catch (PDOException $e) {
-      error_log('Search hotels error: ' . $e->getMessage());
+      ErrorHandler::logException($e);
       $results['hotels'] = [];
     }
   }
@@ -127,17 +109,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $query);
       $searchPattern = '%' . $searchTerm . '%';
       
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'K', 'location' => 'search.php:127', 'message' => 'Flights search starting', 'data' => ['query' => $query, 'searchPattern' => $searchPattern], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
-      
-      // First, check if there are any flight routes at all
       $checkStmt = $pdo->query('SELECT COUNT(*) as total FROM flight_routes WHERE deleted_at IS NULL');
       $totalFlights = $checkStmt->fetch()['total'];
-      
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'K', 'location' => 'search.php:132', 'message' => 'Total flights in DB', 'data' => ['total' => $totalFlights], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
       
       $stmt = $pdo->prepare('SELECT TOP 50 fr.id, fr.airline, oa.code as origin, da.code as destination,
         oc.name as origin_city_name, op.name as origin_province_name,
@@ -156,15 +129,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
         ORDER BY fr.base_price_economy ASC');
       $stmt->execute([$searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern, $searchPattern]);
       $flights = $stmt->fetchAll();
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'B', 'location' => 'search.php:151', 'message' => 'Flights search results', 'data' => ['count' => count($flights), 'first_result' => $flights[0] ?? null, 'query' => $query], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
       $results['flights'] = $flights;
     } catch (PDOException $e) {
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'B', 'location' => 'search.php:148', 'message' => 'Flights search error', 'data' => ['error' => $e->getMessage(), 'query' => $query], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
-      error_log('Search flights error: ' . $e->getMessage());
+      ErrorHandler::logException($e);
       $results['flights'] = [];
     }
   }
@@ -196,14 +163,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
         $transfer['service'] = ($transfer['origin_specific'] ?? $transfer['origin_city_name']) . ' to ' . ($transfer['destination_specific'] ?? $transfer['destination_city_name']);
       }
       
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'D', 'location' => 'search.php:168', 'message' => 'Transfers search results', 'data' => ['count' => count($transfers), 'first_result' => $transfers[0] ?? null], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
       $results['transfers'] = $transfers;
     } catch (PDOException $e) {
-      // #region agent log
-      file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'D', 'location' => 'search.php:170', 'message' => 'Transfers search error', 'data' => ['error' => $e->getMessage()], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-      // #endregion
       error_log('Search transfers error: ' . $e->getMessage());
       $results['transfers'] = [];
     }
@@ -233,7 +194,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       
       $results['activities'] = $activities;
     } catch (PDOException $e) {
-      error_log('Search activities error: ' . $e->getMessage());
+      ErrorHandler::logException($e);
       $results['activities'] = [];
     }
   }
@@ -243,23 +204,18 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/search/?$#', $uri)) {
       // Validate type
       $validTypes = ['hotels', 'flights', 'destinations', 'transfers', 'activities'];
       if (!in_array($type, $validTypes)) {
-        json_error('Invalid search type. Valid types: ' . implode(', ', $validTypes) . ', all', 400);
+        ResponseHelper::error('Invalid search type. Valid types: ' . implode(', ', $validTypes) . ', all', 400);
       }
       if (!isset($results[$type])) {
         $results[$type] = [];
       }
     }
-    // #region agent log
-    file_put_contents(__DIR__ . '/../../.cursor/debug.log', json_encode(['sessionId' => 'debug-session', 'runId' => 'run1', 'hypothesisId' => 'E', 'location' => 'search.php:215', 'message' => 'Search API final results', 'data' => ['result_keys' => array_keys($results), 'result_counts' => array_map('count', $results), 'type_requested' => $type], 'timestamp' => time() * 1000]) . "\n", FILE_APPEND);
-    // #endregion
-    error_log('Search API returning results: ' . json_encode(array_keys($results)) . ', results structure: ' . json_encode($results));
-    json_ok(['query' => $query, 'results' => $results]);
+    ResponseHelper::successSimple(['query' => $query, 'results' => $results]);
   } catch (Throwable $e) {
-    error_log('Search controller error: ' . $e->getMessage() . ' in ' . $e->getFile() . ':' . $e->getLine());
-    error_log('Stack trace: ' . $e->getTraceAsString());
-    json_error('Search failed: ' . $e->getMessage(), 500);
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Search failed', 500);
   }
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);
 

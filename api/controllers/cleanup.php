@@ -6,7 +6,6 @@ require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../helpers/ImageHelper.php';
 require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // POST /api/cleanup/temp-files
 // Cleans up old files in temp directory

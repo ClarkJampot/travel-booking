@@ -46,11 +46,3 @@ Thumbs.db
 .vscode/
 .idea/
 *.swp
-
-public/uploads/*
-!public/uploads/.htaccess
-!public/uploads/hero-banner.jpg
-!public/uploads/hero-banner.*
-!public/uploads/placeholder.svg
-!public/uploads/placeholder.*
-

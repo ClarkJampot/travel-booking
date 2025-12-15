@@ -112,5 +112,27 @@ class FilterHelper {
     }
     return $pattern;
   }
+  
+  /**
+   * Build search WHERE clause and parameters for direct SQL queries
+   * Returns array with 'where' (SQL string) and 'params' (array of values)
+   */
+  public static function buildSearchQuery(string $query, array $searchColumns): array {
+    if (empty($query) || empty($searchColumns)) {
+      return ['where' => '', 'params' => []];
+    }
+    
+    $searchPattern = self::buildSearchPattern(trim($query));
+    
+    $conditions = [];
+    foreach ($searchColumns as $column) {
+      $conditions[] = "$column COLLATE SQL_Latin1_General_CP1_CI_AI LIKE ?";
+    }
+    
+    $whereClause = '(' . implode(' OR ', $conditions) . ')';
+    $params = array_fill(0, count($searchColumns), $searchPattern);
+    
+    return ['where' => $whereClause, 'params' => $params];
+  }
 }
 

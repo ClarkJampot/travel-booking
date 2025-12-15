@@ -1,17 +1,16 @@
 <?php
-// Locations controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/provinces
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/provinces/?$#', $uri)) {
@@ -23,9 +22,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/provinces/?$#', $uri)
     $stmt->execute([$id]);
     $province = $stmt->fetch();
     if (!$province) {
-      json_error('Province not found', 404);
+      ResponseHelper::error('Province not found', 404);
     }
-    json_ok(['province' => $province]);
+    ResponseHelper::successSimple(['province' => $province]);
   }
   
   // List all provinces
@@ -45,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/provinces/?$#', $uri)
   $stmt->execute($params);
   $provinces = $stmt->fetchAll();
   
-  json_ok(['results' => $provinces]);
+  ResponseHelper::successSimple(['results' => $provinces]);
 }
 
 // GET /api/provinces/:id
@@ -57,10 +56,10 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/provinces/(\d+)/?
   $province = $stmt->fetch();
   
   if (!$province) {
-    json_error('Province not found', 404);
+    ResponseHelper::error('Province not found', 404);
   }
   
-  json_ok(['province' => $province]);
+  ResponseHelper::successSimple(['province' => $province]);
 }
 
 // GET /api/cities
@@ -76,9 +75,9 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/cities/?$#', $uri
     $stmt->execute([$id]);
     $city = $stmt->fetch();
     if (!$city) {
-      json_error('City not found', 404);
+      ResponseHelper::error('City not found', 404);
     }
-    json_ok(['city' => $city]);
+    ResponseHelper::successSimple(['city' => $city]);
   }
   
   // List cities
@@ -102,7 +101,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/cities/?$#', $uri
   $stmt->execute($params);
   $cities = $stmt->fetchAll();
   
-  json_ok(['results' => $cities]);
+  ResponseHelper::successSimple(['results' => $cities]);
 }
 
 // GET /api/cities/:id
@@ -117,14 +116,14 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/cities/(\d+)/?$#'
   $city = $stmt->fetch();
   
   if (!$city) {
-    json_error('City not found', 404);
+    ResponseHelper::error('City not found', 404);
   }
   
-  json_ok(['city' => $city]);
+  ResponseHelper::successSimple(['city' => $city]);
 }
 
 else {
-  json_error('Not found', 404);
+  ResponseHelper::error('Not found', 404);
 }
 
 

@@ -1,7 +1,19 @@
-// Calendar Component
-// Displays a month view calendar with availability indicators
-
+/**
+ * Calendar Component - Displays a month view calendar with availability indicators
+ */
 class Calendar {
+  /**
+   * @param {object} options - Calendar options
+   * @param {string|HTMLElement} options.container - Container selector or element
+   * @param {function} options.onDateSelect - Callback when date is selected
+   * @param {function} options.onRangeSelect - Callback when date range is selected
+   * @param {string[]} options.availableDates - Array of available dates (YYYY-MM-DD)
+   * @param {string[]} options.returnAvailableDates - Array of return available dates
+   * @param {Date} options.minDate - Minimum selectable date
+   * @param {Date} options.maxDate - Maximum selectable date
+   * @param {Date} options.initialMonth - Initial month to display
+   * @param {boolean} options.rangeMode - Enable date range selection
+   */
   constructor(options = {}) {
     this.container = typeof options.container === 'string' 
       ? document.querySelector(options.container) 

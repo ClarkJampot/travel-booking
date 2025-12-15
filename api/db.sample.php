@@ -1,10 +1,7 @@
 <?php
-// Copy this file to db.php and fill in your SQL Server credentials
+declare(strict_types=1);
 
-const DB_SERVER = 'YOURPC\\SQLEXPRESS';
-const DB_DATABASE = 'booking-system';
-const DB_UID = 'your_sql_login';
-const DB_PWD = 'your_password';
+require_once __DIR__ . '/config.php';
 
 function db_pdo(): PDO {
   $dsn = 'sqlsrv:Server=' . DB_SERVER . ';Database=' . DB_DATABASE;

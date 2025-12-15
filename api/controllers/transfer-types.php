@@ -9,10 +9,9 @@ require_once __DIR__ . '/../middleware/auth.php';
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/transfers/types
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/types/?$#', $uri)) {
@@ -24,9 +23,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/types/?$#',
     $stmt->execute([$id]);
     $type = $stmt->fetch();
     if (!$type) {
-      json_error('Transfer type not found', 404);
+      ResponseHelper::error('Transfer type not found', 404);
     }
-    json_ok(['type' => $type]);
+    ResponseHelper::successSimple(['type' => $type]);
   }
   
   // List all types
@@ -34,7 +33,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/types/?$#',
   $stmt->execute();
   $types = $stmt->fetchAll();
   
-  json_ok(['results' => $types]);
+  ResponseHelper::successSimple(['results' => $types]);
 }
 
 // POST /api/transfers/types (admin only)
@@ -48,14 +47,14 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/types/?$#'
   $icon = trim($input['icon'] ?? '');
   
   if (!$name) {
-    json_error('Missing required field: name', 400);
+    ResponseHelper::error('Missing required field: name', 400);
   }
   
   // Check if name already exists
   $checkStmt = $pdo->prepare('SELECT id FROM transfer_types WHERE name = ?');
   $checkStmt->execute([$name]);
   if ($checkStmt->fetch()) {
-    json_error('Transfer type already exists', 400);
+    ResponseHelper::error('Transfer type already exists', 400);
   }
   
   $stmt = $pdo->prepare('INSERT INTO transfer_types (name, description, icon) VALUES (?, ?, ?)');
@@ -66,7 +65,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/types/?$#'
   $stmt->execute([$typeId]);
   $type = $stmt->fetch();
   
-  json_ok(['type' => $type], 201);
+  ResponseHelper::successSimple(['type' => $type], 201);
 }
 
 // PUT /api/transfers/types/:id (admin only)
@@ -79,7 +78,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/types/(\d+)
   $stmt = $pdo->prepare('SELECT id FROM transfer_types WHERE id = ?');
   $stmt->execute([$id]);
   if (!$stmt->fetch()) {
-    json_error('Transfer type not found', 404);
+    ResponseHelper::error('Transfer type not found', 404);
   }
   
   $updates = [];
@@ -99,7 +98,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/types/(\d+)
   }
   
   if (empty($updates)) {
-    json_error('No fields to update', 400);
+    ResponseHelper::error('No fields to update', 400);
   }
   
   $params[] = $id;
@@ -111,7 +110,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/types/(\d+)
   $stmt->execute([$id]);
   $type = $stmt->fetch();
   
-  json_ok(['type' => $type]);
+  ResponseHelper::successSimple(['type' => $type]);
 }
 
 // DELETE /api/transfers/types/:id (admin only)
@@ -123,7 +122,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/transfers/types/(\
   $stmt = $pdo->prepare('SELECT id FROM transfer_types WHERE id = ?');
   $stmt->execute([$id]);
   if (!$stmt->fetch()) {
-    json_error('Transfer type not found', 404);
+    ResponseHelper::error('Transfer type not found', 404);
   }
   
   // Check if type is used in routes
@@ -131,16 +130,17 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/transfers/types/(\
   $checkStmt->execute([$id]);
   $result = $checkStmt->fetch();
   if ($result['count'] > 0) {
-    json_error('Cannot delete transfer type: it is used in transfer routes', 400);
+    ResponseHelper::error('Cannot delete transfer type: it is used in transfer routes', 400);
   }
   
   $stmt = $pdo->prepare('DELETE FROM transfer_types WHERE id = ?');
   $stmt->execute([$id]);
   
-  json_ok(['message' => 'Transfer type deleted successfully']);
+  ResponseHelper::successSimple(['message' => 'Transfer type deleted successfully']);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);
+
 
 
 

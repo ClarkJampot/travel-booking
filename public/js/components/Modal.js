@@ -1,7 +1,19 @@
-// Modal Component
-// A reusable modal dialog component
-
+/**
+ * Modal Component - A reusable modal dialog component
+ */
 class Modal {
+  /**
+   * @param {object} options - Modal options
+   * @param {string} options.id - Modal ID
+   * @param {string} options.title - Modal title
+   * @param {string} options.message - Modal message
+   * @param {string} options.confirmText - Confirm button text
+   * @param {string} options.cancelText - Cancel button text
+   * @param {string} options.confirmClass - Confirm button class
+   * @param {function} options.onConfirm - Confirm callback
+   * @param {function} options.onCancel - Cancel callback
+   * @param {boolean} options.showCancel - Show cancel button
+   */
   constructor(options = {}) {
     this.id = options.id || `modal-${Date.now()}`;
     this.title = options.title || 'Confirm';
@@ -19,21 +31,20 @@ class Modal {
     const existing = document.getElementById(this.id);
     if (existing) existing.remove();
     
-    // Create modal HTML
     const modalHtml = `
-      <div class="modal fade" id="${this.id}" tabindex="-1" aria-labelledby="${this.id}Label" aria-hidden="true">
+      <div class="modal fade" id="${escapeHtml(this.id)}" tabindex="-1" aria-labelledby="${escapeHtml(this.id)}Label" aria-hidden="true">
         <div class="modal-dialog modal-dialog-centered">
           <div class="modal-content">
             <div class="modal-header">
-              <h5 class="modal-title" id="${this.id}Label">${this.title}</h5>
+              <h5 class="modal-title" id="${escapeHtml(this.id)}Label">${escapeHtml(this.title)}</h5>
               <button type="button" class="btn-close" data-bs-dismiss="modal" aria-label="Close"></button>
             </div>
             <div class="modal-body">
-              ${this.message}
+              ${escapeHtml(this.message)}
             </div>
             <div class="modal-footer">
-              ${this.showCancel ? `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${this.cancelText}</button>` : ''}
-              <button type="button" class="btn ${this.confirmClass}" id="${this.id}-confirm">${this.confirmText}</button>
+              ${this.showCancel ? `<button type="button" class="btn btn-secondary" data-bs-dismiss="modal">${escapeHtml(this.cancelText)}</button>` : ''}
+              <button type="button" class="btn ${escapeHtml(this.confirmClass)}" id="${escapeHtml(this.id)}-confirm">${escapeHtml(this.confirmText)}</button>
             </div>
           </div>
         </div>

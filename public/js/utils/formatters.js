@@ -1,7 +1,7 @@
-// Formatters - Standardized formatting functions
-
 /**
  * Format price as currency (PHP)
+ * @param {number|string|null} price - Price to format
+ * @returns {string} Formatted price string
  */
 function formatPrice(price) {
   if (price == null || price === '') return '₱0';
@@ -16,6 +16,8 @@ function formatPrice(price) {
 
 /**
  * Format percentage (removes trailing zeros)
+ * @param {number|string|null} value - Percentage value to format
+ * @returns {string} Formatted percentage string
  */
 function formatPercent(value) {
   if (value == null || value === '') return '0';
@@ -25,6 +27,8 @@ function formatPercent(value) {
 
 /**
  * Format date string to readable format
+ * @param {string|null|undefined} dateString - Date string to format
+ * @returns {string} Formatted date string
  */
 function formatDate(dateString) {
   if (!dateString) return '';
@@ -37,7 +41,9 @@ function formatDate(dateString) {
 }
 
 /**
- * Escape HTML to prevent XSS
+ * Escape HTML to prevent XSS attacks
+ * @param {string|null|undefined} text - Text to escape
+ * @returns {string} Escaped HTML-safe text
  */
 function escapeHtml(text) {
   if (text == null) return '';

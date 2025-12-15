@@ -1,17 +1,16 @@
 <?php
-// Promotions controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/promotions
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/promotions/?$#', $uri)) {
@@ -131,8 +130,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/promotions/?$#', $uri
   // Limit to top 15
   $results = array_slice($results, 0, 15);
   
-  json_ok(['results' => $results]);
+  ResponseHelper::successSimple(['results' => $results]);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);
 

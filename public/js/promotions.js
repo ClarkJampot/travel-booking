@@ -6,7 +6,7 @@ async function loadPromotionsCarousel() {
     
     if (!data.results || data.results.length === 0) {
       const message = data.message || 'No promotions available at this time.';
-      container.innerHTML = `<p class="text-muted">${message}</p>`;
+      container.innerHTML = `<p class="text-muted">${escapeHtml(message)}</p>`;
       if (data.message) {
         console.warn('Promotions API:', data.message);
       }
@@ -22,14 +22,14 @@ async function loadPromotionsCarousel() {
         <div class="carousel-container" id="carouselContainer">
           <div class="carousel-track" id="carouselTrack">
             ${data.results.map(item => `
-              <div class="promotion-card" onclick="window.location.href='${item.link_url}'">
+              <div class="promotion-card" onclick="window.location.href='${escapeHtml(item.link_url || '#')}'">
                 <div class="promotion-image-wrapper">
-                  <img src="${normalizeImageUrl(item.image_url)}" alt="${item.name}" loading="lazy">
-                  <div class="discount-badge">${formatPercent(item.discount_percent)}% OFF</div>
+                  <img src="${normalizeImageUrl(item.image_url)}" alt="${escapeHtml(item.name || item.title || item.service || 'Untitled')}" loading="lazy">
+                  <div class="discount-badge">${escapeHtml(formatPercent(item.discount_percent))}% OFF</div>
                 </div>
                 <div class="promotion-content">
-                  <h5 class="promotion-title">${item.name || item.title || item.service || 'Untitled'}</h5>
-                  <p class="promotion-type text-muted">${item.type.charAt(0).toUpperCase() + item.type.slice(1)}</p>
+                  <h5 class="promotion-title">${escapeHtml(item.name || item.title || item.service || 'Untitled')}</h5>
+                  <p class="promotion-type text-muted">${escapeHtml(item.type.charAt(0).toUpperCase() + item.type.slice(1))}</p>
                 </div>
               </div>
             `).join('')}

@@ -1,6 +1,9 @@
-// ContentListItem Component
-// Renders a content item in list format with edit/delete buttons
-
+/**
+ * Render a content item in list format with edit/delete buttons
+ * @param {object} item - Item data
+ * @param {string} type - Item type ('hotel', 'flight', 'activity', 'transfer')
+ * @returns {string} HTML string
+ */
 function renderContentListItem(item, type) {
   const detailPage = {
     'hotel': 'hotel-details.html',
@@ -46,7 +49,7 @@ function renderContentListItem(item, type) {
     ? `<div class="flex-shrink-0">
         <img src="${normalizeImageUrl(item.image_url)}" alt="${item[nameField]}" 
              class="rounded" style="width: 100px; height: 100px; object-fit: cover;" 
-             loading="lazy" onerror="this.src='${normalizeImageUrl('uploads/placeholder.svg')}'">
+             loading="lazy" onerror="const ph=typeof normalizeImageUrl==='function'?normalizeImageUrl('uploads/placeholder.svg'):(window.location.pathname.includes('/travel-booking')?'/travel-booking/uploads/placeholder.svg':'/uploads/placeholder.svg');if(this.src!==this.getAttribute('data-placeholder')){this.setAttribute('data-placeholder',ph);this.src=ph;}else{this.onerror=null;this.style.display='none';}">
       </div>`
     : '';
   

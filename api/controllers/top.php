@@ -1,17 +1,16 @@
 <?php
-// Top items controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/top/hotels
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/hotels/?$#', $uri)) {
@@ -22,15 +21,15 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/hotels/?$#', $uri
     ((h.booking_count * 0.6) + (DATEDIFF(day, h.created_at, GETDATE()) * -0.1 * 0.4)) as score,
     (SELECT TOP 1 image_url FROM entity_images WHERE entity_type = 'hotel' AND entity_id = h.id ORDER BY display_order ASC, id ASC) as image_url
     FROM hotels h 
+    WHERE h.deleted_at IS NULL
     ORDER BY score DESC, h.booking_count DESC";
   
   $stmt = $pdo->prepare($sql);
   $stmt->execute();
   $rows = $stmt->fetchAll();
-  json_ok(['results' => $rows]);
+  ResponseHelper::successSimple(['results' => $rows]);
 }
 
-// GET /api/top/flights
 elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/flights/?$#', $uri)) {
   $limit = min(10, max(1, (int)($_GET['limit'] ?? 4)));
   
@@ -56,7 +55,7 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/flights/?$#',
   $stmt = $pdo->prepare($sql);
   $stmt->execute();
   $rows = $stmt->fetchAll();
-  json_ok(['results' => $rows]);
+  ResponseHelper::successSimple(['results' => $rows]);
 }
 
 // GET /api/top/activities
@@ -76,9 +75,9 @@ elseif ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/top/activities/?$
   $stmt = $pdo->prepare($sql);
   $stmt->execute();
   $rows = $stmt->fetchAll();
-  json_ok(['results' => $rows]);
+  ResponseHelper::successSimple(['results' => $rows]);
 }
 
 else {
-  json_error('Not found', 404);
+  ResponseHelper::error('Not found', 404);
 }

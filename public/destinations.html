@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Destinations - Travel Booking</title>
+  <title>Destinations - TuklasPH</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="css/style.css">
 </head>
@@ -14,29 +14,7 @@
     <h1 class="mb-4">Destinations</h1>
     
     <!-- Filters -->
-    <div class="filter-section">
-      <div class="row">
-        <div class="col-md-3">
-          <label for="provinceFilter" class="form-label">Province</label>
-          <select class="form-control" id="provinceFilter">
-            <option value="">All Provinces</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="cityFilter" class="form-label">City</label>
-          <select class="form-control" id="cityFilter">
-            <option value="">All Cities</option>
-          </select>
-        </div>
-        <div class="col-md-3">
-          <label for="keywordFilter" class="form-label">Keyword Search</label>
-          <input type="text" class="form-control" id="keywordFilter" placeholder="Search destinations...">
-        </div>
-        <div class="col-md-3 d-flex align-items-end">
-          <button class="btn btn-primary btn-cta w-100" onclick="handleFilterClick()">Filter</button>
-        </div>
-      </div>
-    </div>
+    <div id="destinationsFilter"></div>
 
     <!-- Results -->
     <div id="status"></div>
@@ -45,21 +23,29 @@
     <div id="destinations" class="row g-4 reveal"></div>
   </div>
   
-  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;"></div>
+  <div id="loadingMore" class="container text-center mt-4 mb-5 loading-more-container"></div>
 
   <div id="footer"></div>
 
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Load utilities and components first -->
-  <script src="js/utils/formatters.js"></script>
-  <script src="js/utils/api.js"></script>
-  <script src="js/components/Image.js"></script>
-  <script src="js/components/Price.js"></script>
-  <script src="js/components/Badge.js"></script>
-  <script src="js/components/EmptyState.js"></script>
-  <script src="js/components/Card.js"></script>
-  <script src="js/main.js"></script>
-  <script src="js/auth.js"></script>
+    <script src="js/utils/formatters.js"></script>
+    <script src="js/utils/api.js"></script>
+    <script src="js/utils/urlHelpers.js"></script>
+    <script src="js/utils/componentLoader.js"></script>
+    <script src="js/utils/uiHelpers.js"></script>
+    <script src="js/utils/renderers.js"></script>
+    <script src="js/utils/authHelpers.js"></script>
+    <script src="js/utils/locationHelpers.js"></script>
+    <script src="js/utils/animations.js"></script>
+    <script src="js/components/Image.js"></script>
+    <script src="js/components/Price.js"></script>
+    <script src="js/components/Badge.js"></script>
+    <script src="js/components/EmptyState.js"></script>
+    <script src="js/components/Card.js"></script>
+    <script src="js/components/Filter.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
   <script>
     loadLayout();
     loadComponent('loadingMore', 'components/loading-more.html');
@@ -69,22 +55,19 @@
     let isLoading = false;
     let hasMore = true;
     
-    async function loadProvinces() {
-      try {
-        const data = await apiCall('/provinces');
-        const provinceSelect = document.getElementById('provinceFilter');
-        if (data.results && data.results.length > 0) {
-          data.results.forEach(province => {
-            const option = document.createElement('option');
-            option.value = province.id;
-            option.textContent = province.name;
-            provinceSelect.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading provinces:', error);
+
+    const filter = new Filter('destinationsFilter', {
+      keywordPlaceholder: 'Search destinations...',
+      showPriceRange: false,
+      onFilter: (values) => {
+        updateURLWithFilters();
+        loadDestinations(true);
+      },
+      onClear: () => {
+        updateURLWithFilters();
+        loadDestinations(true);
       }
-    }
+    });
 
     function getUrlParams() {
       const params = new URLSearchParams(window.location.search);
@@ -96,15 +79,11 @@
     }
 
     function updateURLWithFilters() {
+      const values = filter.getValues();
       const params = new URLSearchParams();
-      const provinceId = document.getElementById('provinceFilter').value;
-      const cityId = document.getElementById('cityFilter').value;
-      const keyword = document.getElementById('keywordFilter').value;
-      
-      if (provinceId) params.set('province_id', provinceId);
-      if (cityId) params.set('city_id', cityId);
-      if (keyword) params.set('q', keyword);
-      
+      if (values.province_id) params.set('province_id', values.province_id);
+      if (values.city_id) params.set('city_id', values.city_id);
+      if (values.q) params.set('q', values.q);
       const newURL = window.location.pathname + (params.toString() ? '?' + params.toString() : '');
       window.history.pushState({}, '', newURL);
     }
@@ -127,42 +106,49 @@
       
       clearStatus('status');
       const urlParams = getUrlParams();
+      const filterValues = filter.getValues();
+      
       if (urlParams.province_id) {
-        document.getElementById('provinceFilter').value = urlParams.province_id;
-        // Trigger city dropdown update
-        const provinceSelect = document.getElementById('provinceFilter');
-        const citySelect = document.getElementById('cityFilter');
-        if (provinceSelect.value) {
-          citySelect.disabled = false;
-          await loadCitiesForProvince(provinceSelect.value, citySelect);
+        const provinceSelect = document.getElementById('destinationsFilter-province');
+        if (provinceSelect) {
+          provinceSelect.value = urlParams.province_id;
+          const citySelect = document.getElementById('destinationsFilter-city');
+          if (citySelect && provinceSelect.value) {
+            citySelect.disabled = false;
+            await loadCitiesForProvince(provinceSelect.value, citySelect);
+          }
         }
       }
       if (urlParams.city_id) {
-        // If city_id is provided but no province_id, fetch city to get province
         if (!urlParams.province_id) {
           try {
             const cityData = await apiCall(`/cities?id=${urlParams.city_id}`);
             if (cityData.city && cityData.city.province_id) {
-              document.getElementById('provinceFilter').value = cityData.city.province_id;
-              const citySelect = document.getElementById('cityFilter');
-              citySelect.disabled = false;
-              await loadCitiesForProvince(cityData.city.province_id, citySelect);
+              const provinceSelect = document.getElementById('destinationsFilter-province');
+              if (provinceSelect) {
+                provinceSelect.value = cityData.city.province_id;
+                const citySelect = document.getElementById('destinationsFilter-city');
+                if (citySelect) {
+                  citySelect.disabled = false;
+                  await loadCitiesForProvince(cityData.city.province_id, citySelect);
+                }
+              }
             }
           } catch (e) {
             console.error('Error loading city:', e);
           }
         }
-        document.getElementById('cityFilter').value = urlParams.city_id;
+        const citySelect = document.getElementById('destinationsFilter-city');
+        if (citySelect) citySelect.value = urlParams.city_id;
       }
-      if (urlParams.q) {
-        document.getElementById('keywordFilter').value = urlParams.q;
-      }
+      const keywordEl = document.getElementById('destinationsFilter-keyword');
+      if (urlParams.q && keywordEl) keywordEl.value = urlParams.q;
       
       try {
         let url = `/destinations?limit=${limit}&page=${currentPage}`;
-        if (urlParams.province_id) url += `&province_id=${urlParams.province_id}`;
-        if (urlParams.city_id) url += `&city_id=${urlParams.city_id}`;
-        if (urlParams.q) url += `&q=${encodeURIComponent(urlParams.q)}`;
+        if (filterValues.province_id) url += `&province_id=${filterValues.province_id}`;
+        if (filterValues.city_id) url += `&city_id=${filterValues.city_id}`;
+        if (filterValues.q) url += `&q=${encodeURIComponent(filterValues.q)}`;
         
         const data = await apiCall(url);
         if (!data || !data.results || data.results.length === 0) {
@@ -215,18 +201,36 @@
       });
     }
 
-    function handleFilterClick() {
-      updateURLWithFilters();
-      loadDestinations(true);
-    }
-
     window.addEventListener('popstate', function() {
       loadDestinations(true);
     });
 
     document.addEventListener('DOMContentLoaded', async function() {
-      await loadProvinces();
-      initCascadingCityDropdown('provinceFilter', 'cityFilter');
+      filter.render();
+      
+      // Restore filter values from URL parameters
+      const urlParams = getUrlParams();
+      if (urlParams.city_id && !urlParams.province_id) {
+        // If city_id is provided without province_id, fetch province from city
+        try {
+          const cityData = await apiCall(`/cities?id=${urlParams.city_id}`);
+          if (cityData.city && cityData.city.province_id) {
+            urlParams.province_id = cityData.city.province_id;
+          }
+        } catch (e) {
+          console.error('Error loading city:', e);
+        }
+      }
+      
+      // Use setValues for consistent restoration
+      if (urlParams.province_id || urlParams.city_id || urlParams.q) {
+        filter.setValues({
+          province_id: urlParams.province_id,
+          city_id: urlParams.city_id,
+          q: urlParams.q
+        });
+      }
+      
       setupInfiniteScroll();
       loadDestinations(true);
     });

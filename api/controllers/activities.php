@@ -17,7 +17,6 @@ try {
   ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/activities/:id or /api/activities?id=X
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?/?$#', $uri, $matches)) {
@@ -52,6 +51,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?
   // Add joins first (needed for search and location filters)
   $qb->join('LEFT JOIN cities c ON a.city_id = c.id');
   $qb->join('LEFT JOIN provinces p ON c.province_id = p.id');
+  $qb->where('a.deleted_at IS NULL');
   
   // Add filters
   // Note: city_id and destination_id can use 'a' prefix, but province_id must use 'c' prefix
@@ -64,14 +64,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?
   if ($province_id !== null) {
     // Province is in the joined cities table, not activities table
     $qb->where('c.province_id = ?', $province_id);
-    // #region agent log
-    error_log(json_encode([
-      'location' => 'activities.php:62',
-      'message' => 'Province filter applied',
-      'data' => ['province_id' => $province_id],
-      'timestamp' => time()
-    ]));
-    // #endregion
   }
   
   FilterHelper::addPriceFilters($qb, 'a.price');
@@ -102,17 +94,6 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/activities(?:/(\d+))?
   
   try {
     $sql = $regularQb->buildSelect($selectClause, $fromClause);
-    // #region agent log
-    error_log(json_encode([
-      'location' => 'activities.php:104',
-      'message' => 'Executing activities query',
-      'data' => [
-        'sql' => $sql,
-        'params' => $regularQb->getParams()
-      ],
-      'timestamp' => time()
-    ]));
-    // #endregion
     $stmt = $pdo->prepare($sql);
     $stmt->execute($regularQb->getParams());
     $activities = $stmt->fetchAll();

@@ -1,18 +1,17 @@
 <?php
-// Airports controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/airports
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/airports/?$#', $uri)) {
@@ -32,9 +31,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/airports/?$#', $uri))
     $stmt->execute([$id]);
     $airport = $stmt->fetch();
     if (!$airport) {
-      json_error('Airport not found', 404);
+      ResponseHelper::error('Airport not found', 404);
     }
-    json_ok(['airport' => $airport]);
+    ResponseHelper::successSimple(['airport' => $airport]);
   }
   
   // List airports
@@ -67,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/airports/?$#', $uri))
   $stmt->execute($params);
   $airports = $stmt->fetchAll();
   
-  json_ok(['results' => $airports]);
+  ResponseHelper::successSimple(['results' => $airports]);
 }
 
 // POST /api/airports (admin only)
@@ -82,14 +81,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/airports/?$#', $uri)
   $is_international = isset($input['is_international']) ? (bool)$input['is_international'] : false;
   
   if (!$code || !$name || !$city_id) {
-    json_error('Missing required fields: code, name, city_id', 400);
+    ResponseHelper::error('Missing required fields: code, name, city_id', 400);
   }
   
-  // Check if code already exists
   $checkStmt = $pdo->prepare('SELECT id FROM airports WHERE code = ?');
   $checkStmt->execute([$code]);
   if ($checkStmt->fetch()) {
-    json_error('Airport code already exists', 400);
+    ResponseHelper::error('Airport code already exists', 400);
   }
   
   $stmt = $pdo->prepare('INSERT INTO airports (code, name, city_id, is_international) VALUES (?, ?, ?, ?)');
@@ -106,7 +104,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/airports/?$#', $uri)
   $stmt->execute([$airportId]);
   $airport = $stmt->fetch();
   
-  json_ok(['airport' => $airport], 201);
+  ResponseHelper::successSimple(['airport' => $airport], 201);
 }
 
 // PUT /api/airports/:id (admin only)
@@ -119,7 +117,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/airports/(\d+)/?$#', 
   $stmt = $pdo->prepare('SELECT id FROM airports WHERE id = ?');
   $stmt->execute([$id]);
   if (!$stmt->fetch()) {
-    json_error('Airport not found', 404);
+    ResponseHelper::error('Airport not found', 404);
   }
   
   $updates = [];
@@ -143,7 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/airports/(\d+)/?$#', 
   }
   
   if (empty($updates)) {
-    json_error('No fields to update', 400);
+    ResponseHelper::error('No fields to update', 400);
   }
   
   $params[] = $id;
@@ -161,10 +159,9 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/airports/(\d+)/?$#', 
   $stmt->execute([$id]);
   $airport = $stmt->fetch();
   
-  json_ok(['airport' => $airport]);
+  ResponseHelper::successSimple(['airport' => $airport]);
 }
 
-// DELETE /api/airports/:id (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/airports/(\d+)/?$#', $uri, $matches)) {
   requireRole(['admin']);
   
@@ -173,24 +170,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/airports/(\d+)/?$#
   $stmt = $pdo->prepare('SELECT id FROM airports WHERE id = ?');
   $stmt->execute([$id]);
   if (!$stmt->fetch()) {
-    json_error('Airport not found', 404);
+    ResponseHelper::error('Airport not found', 404);
   }
   
-  // Check if airport is used in routes
   $checkStmt = $pdo->prepare('SELECT COUNT(*) as count FROM flight_routes WHERE origin_airport_id = ? OR destination_airport_id = ?');
   $checkStmt->execute([$id, $id]);
   $result = $checkStmt->fetch();
   if ($result['count'] > 0) {
-    json_error('Cannot delete airport: it is used in flight routes', 400);
+    ResponseHelper::error('Cannot delete airport: it is used in flight routes', 400);
   }
   
   $stmt = $pdo->prepare('DELETE FROM airports WHERE id = ?');
   $stmt->execute([$id]);
   
-  json_ok(['message' => 'Airport deleted successfully']);
+  ResponseHelper::successSimple(['message' => 'Airport deleted successfully']);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);
+
 
 
 

@@ -1,29 +1,5 @@
 // Image Component - Standardized image handling
-
-/**
- * Normalize image URL
- * @param {string} url Image URL
- * @returns {string} Normalized URL
- */
-function normalizeImageUrl(url) {
-  if (!url) return '/uploads/placeholder.svg';
-  
-  // Remove leading/trailing whitespace
-  url = url.trim();
-  
-  // If it's already a full URL, return as is
-  if (url.startsWith('http://') || url.startsWith('https://')) {
-    return url;
-  }
-  
-  // If it starts with /, it's a relative path
-  if (url.startsWith('/')) {
-    return url;
-  }
-  
-  // Otherwise, assume it's a relative path and add /
-  return '/' + url;
-}
+// Uses normalizeImageUrl from urlHelpers.js (loaded first)
 
 /**
  * Render image with placeholder fallback
@@ -36,9 +12,11 @@ function normalizeImageUrl(url) {
  */
 function renderImage({ src, alt = '', className = '', lazy = true }) {
   const normalizedSrc = normalizeImageUrl(src);
+  const placeholderPath = normalizeImageUrl('uploads/placeholder.svg');
   const lazyAttr = lazy ? 'loading="lazy"' : '';
   const classAttr = className ? ` class="${className}"` : '';
+  const safePlaceholder = escapeHtml(placeholderPath);
   
-  return `<img src="${normalizedSrc}" alt="${escapeHtml(alt)}"${classAttr} ${lazyAttr} onerror="this.src='/uploads/placeholder.svg'">`;
+  return `<img src="${normalizedSrc}" alt="${escapeHtml(alt)}"${classAttr} ${lazyAttr} onerror="if(this.src!==this.getAttribute('data-placeholder')){this.setAttribute('data-placeholder','${safePlaceholder}');this.src='${safePlaceholder}';}else{this.onerror=null;this.style.display='none';}">`;
 }
 

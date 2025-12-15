@@ -14,9 +14,12 @@ let imageModalData = {};
  * @returns {string} HTML string for the carousel
  */
 function createImageCarousel(images, id, alt = '') {
+  const safeAlt = escapeHtml(alt || '');
+  const safeId = escapeHtml(id);
+  
   if (!images || images.length === 0) {
-    return `<div class="card-img-wrapper carousel-single-image" onclick="openImageModal('${id}', 0)">
-      <img src="${normalizeImageUrl('uploads/placeholder.svg')}" class="img-fluid w-100 h-100" alt="${alt}" loading="lazy">
+    return `<div class="card-img-wrapper carousel-single-image" onclick="openImageModal('${safeId}', 0)">
+      <img src="${normalizeImageUrl('uploads/placeholder.svg')}" class="img-fluid w-100 h-100" alt="${safeAlt}" loading="lazy">
     </div>`;
   }
 
@@ -24,15 +27,16 @@ function createImageCarousel(images, id, alt = '') {
   const normalizedImages = images.filter(img => img && img.trim()).map(img => normalizeImageUrl(img));
   
   // Store images for modal access
-  imageModalData[id] = {
+  imageModalData[safeId] = {
     images: normalizedImages,
-    alt: alt
+    alt: safeAlt
   };
 
   // If only one image, return simple image with click handler
   if (normalizedImages.length === 1) {
-    return `<div class="card-img-wrapper carousel-single-image" onclick="openImageModal('${id}', 0)">
-      <img src="${normalizedImages[0]}" class="img-fluid w-100 h-100" alt="${alt}" loading="lazy">
+    const placeholderPath = normalizeImageUrl('uploads/placeholder.svg');
+    return `<div class="card-img-wrapper carousel-single-image" onclick="openImageModal('${safeId}', 0)">
+      <img src="${normalizeImageUrl(normalizedImages[0])}" class="img-fluid w-100 h-100" alt="${safeAlt}" loading="lazy" onerror="if(this.src!==this.getAttribute('data-placeholder')){this.setAttribute('data-placeholder','${escapeHtml(placeholderPath)}');this.src='${escapeHtml(placeholderPath)}';}else{this.onerror=null;this.style.display='none';}">
       <div class="image-expand-hint">
         <span>⤢</span> Click to expand
       </div>
@@ -43,12 +47,14 @@ function createImageCarousel(images, id, alt = '') {
   let carouselItems = '';
   let carouselThumbnails = '';
   
+  const placeholderPath = normalizeImageUrl('uploads/placeholder.svg');
+  
   normalizedImages.forEach((img, index) => {
     const isActive = index === 0 ? 'active' : '';
     carouselItems += `
       <div class="carousel-item ${isActive}">
         <div class="card-img-wrapper carousel-image-wrapper" onclick="openImageModal('${id}', ${index})">
-          <img src="${img}" class="d-block w-100 h-100" alt="${alt} - Image ${index + 1}" loading="${index === 0 ? 'eager' : 'lazy'}">
+          <img src="${img}" class="d-block w-100 h-100" alt="${alt} - Image ${index + 1}" loading="${index === 0 ? 'eager' : 'lazy'}" onerror="if(this.src!==this.getAttribute('data-placeholder')){this.setAttribute('data-placeholder','${escapeHtml(placeholderPath)}');this.src='${escapeHtml(placeholderPath)}';}else{this.onerror=null;this.style.display='none';}">
           <div class="image-expand-hint">
             <span>⤢</span> Click to expand
           </div>
@@ -56,12 +62,12 @@ function createImageCarousel(images, id, alt = '') {
       </div>`;
     carouselThumbnails += `
       <div class="carousel-thumbnail ${isActive}" data-thumbnail-index="${index}" onclick="navigateCarouselTo('${id}', ${index})" role="button" tabindex="0">
-        <img src="${img}" alt="${alt} - Thumbnail ${index + 1}" loading="lazy">
+        <img src="${img}" alt="${alt} - Thumbnail ${index + 1}" loading="lazy" onerror="if(this.src!==this.getAttribute('data-placeholder')){this.setAttribute('data-placeholder','${escapeHtml(placeholderPath)}');this.src='${escapeHtml(placeholderPath)}';}else{this.onerror=null;this.style.display='none';}">
       </div>`;
   });
 
   const carouselHtml = `
-    <div id="${id}" class="carousel slide" data-bs-ride="false" data-bs-interval="false">
+    <div id="${safeId}" class="carousel slide" data-bs-ride="false" data-bs-interval="false">
       <div class="carousel-inner">
         ${carouselItems}
       </div>
@@ -151,9 +157,11 @@ function openImageModal(carouselId, startIndex = 0) {
     const isActive = index === startIndex ? 'active' : '';
     const item = document.createElement('div');
     item.className = `carousel-item ${isActive}`;
+    const safeImg = escapeHtml(img);
+    const safeAlt = escapeHtml(data.alt || '');
     item.innerHTML = `
       <div class="modal-image-wrapper">
-        <img src="${img}" alt="${data.alt} - Image ${index + 1}">
+        <img src="${safeImg}" alt="${safeAlt} - Image ${index + 1}">
       </div>
     `;
     modalInner.appendChild(item);
@@ -164,7 +172,7 @@ function openImageModal(carouselId, startIndex = 0) {
       thumb.className = `carousel-thumbnail ${isActive}`;
       thumb.setAttribute('data-thumbnail-index', index);
       thumb.innerHTML = `
-        <img src="${img}" alt="${data.alt} - Thumbnail ${index + 1}" loading="lazy">
+        <img src="${safeImg}" alt="${safeAlt} - Thumbnail ${index + 1}" loading="lazy">
       `;
       thumb.addEventListener('click', (e) => {
         e.preventDefault();

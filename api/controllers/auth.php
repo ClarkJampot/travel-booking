@@ -1,150 +1,88 @@
 <?php
-// Authentication controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../jwt.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
+require_once __DIR__ . '/../services/AuthService.php';
+require_once __DIR__ . '/../helpers/ErrorHandler.php';
 
 try {
   $pdo = db_pdo();
+  $authService = new AuthService($pdo);
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
-// POST /api/auth/register
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/register/?$#', $uri)) {
   $input = json_decode(file_get_contents('php://input'), true);
   
-  $email = trim($input['email'] ?? '');
-  $password = $input['password'] ?? '';
-  $firstName = trim($input['first_name'] ?? '');
-  $lastName = trim($input['last_name'] ?? '');
-  $role = $input['role'] ?? 'customer';
-  
-  // Validation
-  if (!$email || !$password || !$firstName) {
-    json_error('Missing required fields: email, password, first_name', 400);
+  try {
+    $result = $authService->register($input);
+    ResponseHelper::successSimple($result, 201);
+  } catch (InvalidArgumentException $e) {
+    ResponseHelper::error($e->getMessage(), 400);
+  } catch (RuntimeException $e) {
+    $code = (int)($e->getCode() ?: 400);
+    ResponseHelper::error($e->getMessage(), $code);
+  } catch (Throwable $e) {
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Registration failed', 500);
   }
-  
-  if (!filter_var($email, FILTER_VALIDATE_EMAIL)) {
-    json_error('Invalid email format', 400);
-  }
-  
-  if (strlen($password) < 6) {
-    json_error('Password must be at least 6 characters', 400);
-  }
-  
-  // Check if email exists
-  $stmt = $pdo->prepare('SELECT id FROM users WHERE email = ?');
-  $stmt->execute([$email]);
-  if ($stmt->fetch()) {
-    json_error('Email already registered', 409);
-  }
-  
-  // Get role_id
-  $stmt = $pdo->prepare('SELECT id FROM roles WHERE name = ?');
-  $stmt->execute([$role]);
-  $roleRow = $stmt->fetch();
-  if (!$roleRow) {
-    json_error('Invalid role', 400);
-  }
-  
-  // Create user
-  $hash = password_hash($password, PASSWORD_DEFAULT);
-  $stmt = $pdo->prepare('INSERT INTO users (email, password_hash, first_name, last_name, role_id) VALUES (?, ?, ?, ?, ?)');
-  $stmt->execute([$email, $hash, $firstName, $lastName ?: null, $roleRow['id']]);
-  $userId = (int)$pdo->lastInsertId();
-  
-  // Get user with role
-  $stmt = $pdo->prepare('SELECT u.id, u.email, u.first_name, u.last_name, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.id = ?');
-  $stmt->execute([$userId]);
-  $user = $stmt->fetch();
-  
-  // Generate JWT token
-  $token = jwt_generate(['user_id' => $userId, 'email' => $email, 'role' => $user['role']]);
-  jwt_store($userId, $token);
-  
-  json_ok([
-    'user' => $user,
-    'token' => $token
-  ], 201);
 }
 
-// POST /api/auth/login
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/login/?$#', $uri)) {
   $input = json_decode(file_get_contents('php://input'), true);
   
-  $email = trim($input['email'] ?? '');
-  $password = $input['password'] ?? '';
-  
-  if (!$email || !$password) {
-    json_error('Missing email or password', 400);
+  try {
+    $result = $authService->login(trim($input['email'] ?? ''), $input['password'] ?? '');
+    ResponseHelper::successSimple($result);
+  } catch (InvalidArgumentException $e) {
+    ResponseHelper::error($e->getMessage(), 400);
+  } catch (RuntimeException $e) {
+    $code = (int)($e->getCode() ?: 401);
+    ResponseHelper::error($e->getMessage(), $code);
+  } catch (Throwable $e) {
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Login failed', 500);
   }
-  
-  // Get user with role
-  $stmt = $pdo->prepare('SELECT u.id, u.email, u.password_hash, u.first_name, u.last_name, r.name as role FROM users u JOIN roles r ON r.id = u.role_id WHERE u.email = ?');
-  $stmt->execute([$email]);
-  $user = $stmt->fetch();
-  
-  if (!$user || !password_verify($password, $user['password_hash'])) {
-    json_error('Invalid credentials', 401);
-  }
-  
-  // Generate JWT token
-  $userId = (int)$user['id']; // Cast to int for jwt_store
-  $token = jwt_generate(['user_id' => $userId, 'email' => $user['email'], 'role' => $user['role']]);
-  jwt_store($userId, $token);
-  
-  unset($user['password_hash']);
-  
-  json_ok([
-    'user' => $user,
-    'token' => $token
-  ]);
 }
 
-// POST /api/auth/logout
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/logout/?$#', $uri)) {
   $token = get_auth_token();
   if ($token) {
     jwt_revoke($token);
   }
-  json_ok(['message' => 'Logged out successfully']);
+  ResponseHelper::successSimple(['message' => 'Logged out successfully']);
 }
 
-// GET /api/auth/me
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/auth/me/?$#', $uri)) {
   $user = get_authenticated_user();
   if (!$user) {
-    json_error('Unauthorized', 401);
+    ResponseHelper::error('Unauthorized', 401);
   }
-  json_ok(['user' => $user]);
+  ResponseHelper::successSimple(['user' => $user]);
 }
 
-// POST /api/auth/refresh
 if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/auth/refresh/?$#', $uri)) {
   $token = get_auth_token();
   if (!$token) {
-    json_error('No token provided', 401);
+    ResponseHelper::error('No token provided', 401);
   }
   
-  $payload = jwt_validate($token);
-  if (!$payload || !isset($payload['user_id'])) {
-    json_error('Invalid token', 401);
+  try {
+    $newToken = $authService->refreshToken($token);
+    ResponseHelper::successSimple(['token' => $newToken]);
+  } catch (RuntimeException $e) {
+    $code = (int)($e->getCode() ?: 401);
+    ResponseHelper::error($e->getMessage(), $code);
+  } catch (Throwable $e) {
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Token refresh failed', 500);
   }
-  
-  // Revoke old token
-  jwt_revoke($token);
-  
-  // Generate new token
-  $newToken = jwt_generate(['user_id' => $payload['user_id'], 'email' => $payload['email'], 'role' => $payload['role']]);
-  jwt_store($payload['user_id'], $newToken);
-  
-  json_ok(['token' => $newToken]);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);

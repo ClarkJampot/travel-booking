@@ -1,18 +1,17 @@
 <?php
-// Ads controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/ads
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/ads/?$#', $uri)) {
@@ -45,7 +44,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/ads/?$#', $uri)) {
   $stmt->execute($params);
   $ads = $stmt->fetchAll();
   
-  json_ok(['page' => $page, 'limit' => $limit, 'results' => $ads]);
+  ResponseHelper::successSimple(['page' => $page, 'limit' => $limit, 'results' => $ads]);
 }
 
 // POST /api/ads (admin only)
@@ -63,11 +62,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/ads/?$#', $uri)) {
   $createdBy = isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
   
   if (!$placement || !$title) {
-    json_error('Missing required fields: placement, title', 400);
+    ResponseHelper::error('Missing required fields: placement, title', 400);
   }
   
   if (!in_array($placement, ['home', 'listing', 'sidebar'])) {
-    json_error('Invalid placement', 400);
+    ResponseHelper::error('Invalid placement', 400);
   }
   
   $stmt = $pdo->prepare('INSERT INTO ads (placement, title, image_url, link_url, active, created_by) VALUES (?, ?, ?, ?, ?, ?)');
@@ -78,7 +77,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/ads/?$#', $uri)) {
   $stmt->execute([$adId]);
   $ad = $stmt->fetch();
   
-  json_ok(['ad' => $ad], 201);
+  ResponseHelper::successSimple(['ad' => $ad], 201);
 }
 
 // PUT /api/ads/:id (admin only)
@@ -92,7 +91,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/ads/(\d+)/?$#', $uri,
   $stmt = $pdo->prepare('SELECT id FROM ads WHERE id = ?');
   $stmt->execute([$id]);
   if (!$stmt->fetch()) {
-    json_error('Ad not found', 404);
+    ResponseHelper::error('Ad not found', 404);
   }
   
   $updates = [];
@@ -120,7 +119,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/ads/(\d+)/?$#', $uri,
   }
   
   if (empty($updates)) {
-    json_error('No fields to update', 400);
+    ResponseHelper::error('No fields to update', 400);
   }
   
   $params[] = $id;
@@ -132,26 +131,24 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/ads/(\d+)/?$#', $uri,
   $stmt->execute([$id]);
   $ad = $stmt->fetch();
   
-  json_ok(['ad' => $ad]);
+  ResponseHelper::successSimple(['ad' => $ad]);
 }
 
-// DELETE /api/ads/:id (admin only)
 if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/ads/(\d+)/?$#', $uri, $matches)) {
   requireRole(['admin']);
   
   $id = (int)$matches[1];
   
-  // Check if ad exists
   $stmt = $pdo->prepare('SELECT id FROM ads WHERE id = ?');
   $stmt->execute([$id]);
   if (!$stmt->fetch()) {
-    json_error('Ad not found', 404);
+    ResponseHelper::error('Ad not found', 404);
   }
   
   $stmt = $pdo->prepare('DELETE FROM ads WHERE id = ?');
   $stmt->execute([$id]);
   
-  json_ok(['message' => 'Ad deleted successfully']);
+  ResponseHelper::successSimple(['message' => 'Ad deleted successfully']);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);

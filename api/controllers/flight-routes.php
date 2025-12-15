@@ -1,18 +1,17 @@
 <?php
-// Flight Routes controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/flights/routes/:id or /api/flights/routes?id=X
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes(?:/(\d+))?/?$#', $uri, $matches)) {
@@ -47,7 +46,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes(?:/(\d
     $stmt->execute([$id]);
     $route = $stmt->fetch();
     if (!$route) {
-      json_error('Route not found', 404);
+      ResponseHelper::error('Route not found', 404);
     }
     
     // Flights don't have images
@@ -67,7 +66,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes(?:/(\d
       }
     }
     
-    json_ok(['route' => $route]);
+    ResponseHelper::successSimple(['route' => $route]);
   }
   
   // List routes
@@ -117,7 +116,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/flights/routes(?:/(\d
   $stmt->execute($params);
   $routes = $stmt->fetchAll();
   
-  json_ok(['results' => $routes]);
+  ResponseHelper::successSimple(['results' => $routes]);
 }
 
 // POST /api/flights/routes (agency/admin only)
@@ -153,10 +152,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
       throw new InvalidArgumentException('Origin and destination cannot be the same');
     }
   } catch (InvalidArgumentException $e) {
-    json_error($e->getMessage(), 400);
+    ResponseHelper::error($e->getMessage(), 400);
   } catch (Exception $e) {
     error_log('Validation error: ' . $e->getMessage());
-    json_error('Validation error: ' . $e->getMessage(), 400);
+    ResponseHelper::error('Validation error: ' . $e->getMessage(), 400);
   }
   
   // Find or create airports based on city-province pairs
@@ -198,7 +197,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
   }
   
   if ($origin_airport_id === $destination_airport_id) {
-    json_error('Origin and destination airports cannot be the same', 400);
+    ResponseHelper::error('Origin and destination airports cannot be the same', 400);
   }
   
   $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? ValidationHelper::validateInt($input['created_by'], 'created_by', false, 1) : $user['id'];
@@ -218,12 +217,12 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
   } catch (PDOException $e) {
     error_log('Flight route creation error: ' . $e->getMessage());
     if (strpos($e->getMessage(), 'UQ_flight_routes_airline_route') !== false) {
-      json_error('Route already exists for this airline', 400);
+      ResponseHelper::error('Route already exists for this airline', 400);
     }
-    json_error('Database error: ' . $e->getMessage(), 500);
+    ResponseHelper::error('Database error: ' . $e->getMessage(), 500);
   } catch (Exception $e) {
     error_log('Flight route creation error: ' . $e->getMessage());
-    json_error('Error creating flight route: ' . $e->getMessage(), 500);
+    ResponseHelper::error('Error creating flight route: ' . $e->getMessage(), 500);
   }
   
   // Create schedule for this route
@@ -236,7 +235,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
     $scheduleId = (int)$pdo->lastInsertId();
   } catch (PDOException $e) {
     error_log('Flight schedule creation error: ' . $e->getMessage());
-    json_error('Error creating flight schedule: ' . $e->getMessage(), 500);
+    ResponseHelper::error('Error creating flight schedule: ' . $e->getMessage(), 500);
   }
   
   // Generate instances for the next 30 days
@@ -281,10 +280,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
     }
   } catch (PDOException $e) {
     error_log('Flight instance creation error: ' . $e->getMessage());
-    json_error('Error creating flight instances: ' . $e->getMessage(), 500);
+    ResponseHelper::error('Error creating flight instances: ' . $e->getMessage(), 500);
   } catch (Exception $e) {
     error_log('Flight instance creation error: ' . $e->getMessage());
-    json_error('Error creating flight instances: ' . $e->getMessage(), 500);
+    ResponseHelper::error('Error creating flight instances: ' . $e->getMessage(), 500);
   }
   
   // Fetch created route
@@ -307,7 +306,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
   $route['images'] = [];
   $route['image_url'] = null;
   
-  json_ok(['route' => $route], 201);
+  ResponseHelper::successSimple(['route' => $route], 201);
 }
 
 // PUT /api/flights/routes/:id (agency/admin only)
@@ -322,11 +321,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/flights/routes/(\d+)/
   $stmt->execute([$id]);
   $route = $stmt->fetch();
   if (!$route) {
-    json_error('Route not found', 404);
+    ResponseHelper::error('Route not found', 404);
   }
   
   if ($user['role'] !== 'admin' && $route['created_by'] != $user['id']) {
-    json_error('Forbidden', 403);
+    ResponseHelper::error('Forbidden', 403);
   }
   
   $updates = [];
@@ -376,7 +375,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/flights/routes/(\d+)/
   $images = $input['images'] ?? null;
   
   if (empty($updates) && $images === null) {
-    json_error('No fields to update', 400);
+    ResponseHelper::error('No fields to update', 400);
   }
   
   if (!empty($updates)) {
@@ -420,7 +419,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/flights/routes/(\d+)/
   $route['images'] = [];
   $route['image_url'] = null;
   
-  json_ok(['route' => $route]);
+  ResponseHelper::successSimple(['route' => $route]);
 }
 
 // DELETE /api/flights/routes/:id (agency/admin only)
@@ -434,11 +433,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/flights/routes/(\d
   $stmt->execute([$id]);
   $route = $stmt->fetch();
   if (!$route) {
-    json_error('Route not found', 404);
+    ResponseHelper::error('Route not found', 404);
   }
   
   if ($user['role'] !== 'admin' && $route['created_by'] != $user['id']) {
-    json_error('Forbidden', 403);
+    ResponseHelper::error('Forbidden', 403);
   }
   
   // Check if route has schedules/instances
@@ -446,16 +445,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/flights/routes/(\d
   $checkStmt->execute([$id]);
   $result = $checkStmt->fetch();
   if ($result['count'] > 0) {
-    json_error('Cannot delete route: it has associated schedules', 400);
+    ResponseHelper::error('Cannot delete route: it has associated schedules', 400);
   }
   
   $stmt = $pdo->prepare('DELETE FROM flight_routes WHERE id = ?');
   $stmt->execute([$id]);
   
-  json_ok(['message' => 'Route deleted successfully']);
+  ResponseHelper::successSimple(['message' => 'Route deleted successfully']);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);
 
 
 

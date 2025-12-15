@@ -1,5 +1,4 @@
 <?php
-// Authentication middleware functions
 declare(strict_types=1);
 
 require_once __DIR__ . '/../jwt.php';

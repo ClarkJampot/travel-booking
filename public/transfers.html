@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Transfers - Travel Booking</title>
+  <title>Transfers - TuklasPH</title>
   <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.0/font/bootstrap-icons.css">
   <link rel="stylesheet" href="css/style.css">
@@ -101,7 +101,7 @@
     <div id="status"></div>
     
     <!-- Promoted Transfers Section -->
-    <div id="promotedTransfers" class="promoted-section mb-4" style="display: none;">
+    <div id="promotedTransfers" class="promoted-section mb-4">
       <div id="promotedTransfersHeader"></div>
       <div id="promotedTransfersList" class="list-group mb-4">
         <!-- Loaded dynamically -->
@@ -112,19 +112,26 @@
     <div id="transfers" class="list-group reveal"></div>
   </div>
   
-  <div id="loadingMore" class="container text-center mt-4 mb-5" style="display: none;"></div>
+  <div id="loadingMore" class="container text-center mt-4 mb-5 loading-more-container"></div>
   <div id="footer"></div>
   <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
   <!-- Load utilities and components first -->
-  <script src="js/utils/formatters.js"></script>
-  <script src="js/utils/api.js"></script>
-  <script src="js/components/Image.js"></script>
-  <script src="js/components/Price.js"></script>
-  <script src="js/components/Badge.js"></script>
-  <script src="js/components/EmptyState.js"></script>
-  <script src="js/components/Card.js"></script>
-  <script src="js/main.js"></script>
-  <script src="js/auth.js"></script>
+    <script src="js/utils/formatters.js"></script>
+    <script src="js/utils/api.js"></script>
+    <script src="js/utils/urlHelpers.js"></script>
+    <script src="js/utils/componentLoader.js"></script>
+    <script src="js/utils/uiHelpers.js"></script>
+    <script src="js/utils/renderers.js"></script>
+    <script src="js/utils/authHelpers.js"></script>
+    <script src="js/utils/locationHelpers.js"></script>
+    <script src="js/utils/animations.js"></script>
+    <script src="js/components/Image.js"></script>
+    <script src="js/components/Price.js"></script>
+    <script src="js/components/Badge.js"></script>
+    <script src="js/components/EmptyState.js"></script>
+    <script src="js/components/Card.js"></script>
+    <script src="js/main.js"></script>
+    <script src="js/auth.js"></script>
   <script>
     loadLayout();
     loadComponent('loadingMore', 'components/loading-more.html');
@@ -135,7 +142,7 @@
     let hasMore = true;
     
     // Load provinces
-    async function loadProvinces() {
+    async function loadProvincesForTransfers() {
       try {
         const data = await apiCall('/provinces');
         const provinces = data.results || [];
@@ -158,67 +165,20 @@
       }
     }
     
-    // Load cities for a specific province
-    async function loadCitiesForProvince(provinceId, citySelect) {
-      try {
-        const cities = await apiCall(`/cities?province_id=${provinceId}`);
-        citySelect.disabled = false;
-        citySelect.innerHTML = '<option value="">Select City</option>';
-        if (cities.results && cities.results.length > 0) {
-          cities.results.forEach(city => {
-            const option = document.createElement('option');
-            option.value = city.id;
-            option.textContent = city.name;
-            citySelect.appendChild(option);
-          });
-        }
-      } catch (error) {
-        console.error('Error loading cities:', error);
-      }
-    }
+    // loadCitiesForProvince is now in utils/locationHelpers.js
     
     // Initialize cascading dropdown for origin
     function initOriginCascading() {
-      const provinceSelect = document.getElementById('originProvinceSelect');
-      const citySelect = document.getElementById('originCitySelect');
-      
-      provinceSelect.addEventListener('change', async function() {
-        const provinceId = this.value;
-        citySelect.innerHTML = '<option value="">Select City</option>';
-        
-        if (!provinceId) {
-          citySelect.disabled = true;
-          citySelect.innerHTML = '<option value="">Select Province First</option>';
-          return;
-        }
-        
-        citySelect.disabled = false;
-        await loadCitiesForProvince(provinceId, citySelect);
-      });
+      initCascadingCityDropdown('originProvinceSelect', 'originCitySelect');
     }
     
     // Initialize cascading dropdown for destination
     function initDestinationCascading() {
-      const provinceSelect = document.getElementById('destinationProvinceSelect');
-      const citySelect = document.getElementById('destinationCitySelect');
-      
-      provinceSelect.addEventListener('change', async function() {
-        const provinceId = this.value;
-        citySelect.innerHTML = '<option value="">Select City</option>';
-        
-        if (!provinceId) {
-          citySelect.disabled = true;
-          citySelect.innerHTML = '<option value="">Select Province First</option>';
-          return;
-        }
-        
-        citySelect.disabled = false;
-        await loadCitiesForProvince(provinceId, citySelect);
-      });
+      initCascadingCityDropdown('destinationProvinceSelect', 'destinationCitySelect');
     }
     
     // Swap cities (both province and city)
-    function swapCities() {
+    async function swapCities() {
       const originProvince = document.getElementById('originProvinceSelect');
       const originCity = document.getElementById('originCitySelect');
       const destinationProvince = document.getElementById('destinationProvinceSelect');
@@ -234,7 +194,7 @@
       
       // Reload cities if provinces changed
       if (originProvince.value) {
-        loadCitiesForProvince(originProvince.value, originCity);
+        await loadCitiesForProvince(originProvince.value, originCity);
         // Try to restore city selection if it exists
         if (tempCity) {
           setTimeout(() => {
@@ -247,7 +207,7 @@
       }
       
       if (destinationProvince.value) {
-        loadCitiesForProvince(destinationProvince.value, destinationCity);
+        await loadCitiesForProvince(destinationProvince.value, destinationCity);
         // Try to restore city selection if it exists
         if (tempCity) {
           setTimeout(() => {
@@ -466,7 +426,7 @@
 
     document.addEventListener('DOMContentLoaded', async function() {
       setupInfiniteScroll();
-      await loadProvinces();
+      await loadProvincesForTransfers();
       enforceIntegerInput('minPrice');
       enforceIntegerInput('maxPrice');
       

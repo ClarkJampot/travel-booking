@@ -1,387 +1,73 @@
 <?php
-// Dashboard controller for owners/agencies
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
+require_once __DIR__ . '/../helpers/ErrorHandler.php';
+require_once __DIR__ . '/../services/DashboardService.php';
 
 try {
   $pdo = db_pdo();
+  $dashboardService = new DashboardService($pdo);
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
-
-// GET /api/dashboard
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/?$#', $uri)) {
   requireAuth();
   requireRole(['owner', 'agency']);
   
   $user = get_authenticated_user();
-  $userId = (int)$user['id'];
   
-  // Get overview stats
-  $stats = [
-    'total_bookings' => 0,
-    'total_revenue' => 0,
-    'confirmed_bookings' => 0,
-    'cancelled_bookings' => 0,
-    'completed_bookings' => 0,
-    'total_items' => 0,
-    'hotels_count' => 0,
-    'flights_count' => 0,
-    'activities_count' => 0,
-    'transfers_count' => 0
-  ];
-  
-  // Count items created by user
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM hotels WHERE created_by = ?');
-  $stmt->execute([$userId]);
-  $stats['hotels_count'] = (int)$stmt->fetch()['count'];
-  
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM flight_routes WHERE created_by = ? AND deleted_at IS NULL');
-  $stmt->execute([$userId]);
-  $stats['flights_count'] = (int)$stmt->fetch()['count'];
-  
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM activities WHERE created_by = ? AND deleted_at IS NULL');
-  $stmt->execute([$userId]);
-  $stats['activities_count'] = (int)$stmt->fetch()['count'];
-  
-  $stmt = $pdo->prepare('SELECT COUNT(*) as count FROM transfer_routes WHERE created_by = ? AND deleted_at IS NULL');
-  $stmt->execute([$userId]);
-  $stats['transfers_count'] = (int)$stmt->fetch()['count'];
-  
-  $stats['total_items'] = $stats['hotels_count'] + $stats['flights_count'] + $stats['activities_count'] + $stats['transfers_count'];
-  
-  // Get bookings for user's items
-  foreach (['hotel', 'flight', 'activity', 'transfer'] as $type) {
-    try {
-      if ($type === 'hotel') {
-        $stmt = $pdo->prepare("
-          SELECT b.*, 'hotel' as type, b.hotel_id as item_id
-          FROM hotel_bookings b
-          INNER JOIN hotels i ON b.hotel_id = i.id
-          WHERE i.created_by = ? AND i.deleted_at IS NULL
-        ");
-        $stmt->execute([$userId]);
-      } else if ($type === 'flight') {
-        $stmt = $pdo->prepare("
-          SELECT DISTINCT b.*, 'flight' as type, b.instance_id as item_id
-          FROM flight_bookings b
-          INNER JOIN flight_instances fi ON b.instance_id = fi.id
-          INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-          LEFT JOIN flight_routes fr ON fs.route_id = fr.id
-          LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
-          LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
-          LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
-          WHERE (fr.created_by = ? OR outbound.created_by = ? OR return_route.created_by = ?)
-            AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
-        ");
-        $stmt->execute([$userId, $userId, $userId]);
-      } else if ($type === 'transfer') {
-        $stmt = $pdo->prepare("
-          SELECT b.*, 'transfer' as type, b.instance_id as item_id
-          FROM transfer_bookings b
-          INNER JOIN transfer_instances ti ON b.instance_id = ti.id
-          INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
-          INNER JOIN transfer_routes tr ON ts.route_id = tr.id
-          WHERE tr.created_by = ? AND tr.deleted_at IS NULL
-        ");
-        $stmt->execute([$userId]);
-      } else {
-        $stmt = $pdo->prepare("
-          SELECT b.*, 'activity' as type, b.activity_id as item_id
-          FROM activity_bookings b
-          INNER JOIN activities i ON b.activity_id = i.id
-          WHERE i.created_by = ? AND i.deleted_at IS NULL
-        ");
-        $stmt->execute([$userId]);
-      }
-      $bookings = $stmt->fetchAll();
-      
-      foreach ($bookings as $booking) {
-        $stats['total_bookings']++;
-        
-        // Calculate total revenue (only confirmed and completed bookings, exclude cancelled)
-        if (in_array($booking['status'] ?? '', ['confirmed', 'completed'])) {
-          $stats['total_revenue'] += (float)($booking['total_price'] ?? 0);
-        }
-        
-        if ($booking['status'] === 'confirmed') {
-          $stats['confirmed_bookings']++;
-        } elseif ($booking['status'] === 'cancelled') {
-          $stats['cancelled_bookings']++;
-        } elseif ($booking['status'] === 'completed') {
-          $stats['completed_bookings']++;
-        }
-      }
-    } catch (Exception $e) {
-      error_log("Dashboard stats error for $type: " . $e->getMessage());
-    }
+  try {
+    $stats = $dashboardService->getStats((int)$user['id']);
+    ResponseHelper::successSimple(['stats' => $stats]);
+  } catch (Throwable $e) {
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Failed to fetch dashboard stats', 500);
   }
-  
-  json_ok(['stats' => $stats]);
+  exit;
 }
 
-// GET /api/dashboard/bookings
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/bookings/?$#', $uri)) {
   requireAuth();
   requireRole(['owner', 'agency']);
   
   $user = get_authenticated_user();
-  $userId = (int)$user['id'];
-  
   $itemType = $_GET['item_type'] ?? null;
   $status = $_GET['status'] ?? null;
   $customerName = $_GET['customer_name'] ?? null;
   $keyword = $_GET['keyword'] ?? null;
   $page = max(1, (int)($_GET['page'] ?? 1));
   $limit = min(50, max(1, (int)($_GET['limit'] ?? 20)));
-  $offset = ($page - 1) * $limit;
   
-  $types = $itemType ? [$itemType] : ['hotel', 'flight', 'activity', 'transfer'];
-  $allBookings = [];
-  
-  foreach ($types as $type) {
-    try {
-      $where = [];
-      $params = [];
-      $offsetInt = (int)$offset;
-      $limitInt = (int)$limit;
-      
-      if ($type === 'hotel') {
-        $where[] = "i.created_by = ?";
-        $params[] = $userId;
-        if ($status) {
-          $where[] = 'b.status = ?';
-          $params[] = $status;
-        }
-        if ($customerName) {
-          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
-          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
-        }
-        if ($keyword) {
-          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
-          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR i.name LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-        }
-        $whereSql = 'WHERE ' . implode(' AND ', $where);
-        $sql = "
-          SELECT b.*, 'hotel' as type, b.hotel_id as item_id, i.name as item_name,
-            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
-            b.guests as participants
-          FROM hotel_bookings b
-          INNER JOIN hotels i ON b.hotel_id = i.id
-          LEFT JOIN users u ON b.user_id = u.id
-          $whereSql AND i.deleted_at IS NULL
-          ORDER BY b.booked_at DESC, b.id DESC
-          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
-        ";
-      } else if ($type === 'flight') {
-        $where[] = "(fr.created_by = ? OR outbound.created_by = ? OR return_route.created_by = ?)";
-        $params[] = $userId;
-        $params[] = $userId;
-        $params[] = $userId;
-        if ($status) {
-          $where[] = 'b.status = ?';
-          $params[] = $status;
-        }
-        if ($customerName) {
-          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
-          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
-        }
-        if ($keyword) {
-          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
-          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR fr.airline LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-        }
-        $whereSql = 'WHERE ' . implode(' AND ', $where);
-        $sql = "
-          SELECT DISTINCT b.*, 'flight' as type, b.instance_id as item_id, fr.airline as item_name,
-            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
-            b.passenger_count as participants
-          FROM flight_bookings b
-          INNER JOIN flight_instances fi ON b.instance_id = fi.id
-          INNER JOIN flight_schedules fs ON fi.schedule_id = fs.id
-          LEFT JOIN flight_routes fr ON fs.route_id = fr.id
-          LEFT JOIN flight_route_pairs frp ON fs.route_pair_id = frp.id
-          LEFT JOIN flight_routes outbound ON frp.outbound_route_id = outbound.id
-          LEFT JOIN flight_routes return_route ON frp.return_route_id = return_route.id
-          LEFT JOIN users u ON b.user_id = u.id
-          $whereSql AND (fr.deleted_at IS NULL OR outbound.deleted_at IS NULL OR return_route.deleted_at IS NULL)
-          ORDER BY b.booked_at DESC, b.id DESC
-          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
-        ";
-      } else if ($type === 'transfer') {
-        $where[] = "tr.created_by = ?";
-        $params[] = $userId;
-        if ($status) {
-          $where[] = 'b.status = ?';
-          $params[] = $status;
-        }
-        if ($customerName) {
-          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
-          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
-        }
-        if ($keyword) {
-          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
-          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR (oc.name + ' to ' + dc.name) LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-        }
-        $whereSql = 'WHERE ' . implode(' AND ', $where);
-        $sql = "
-          SELECT b.*, 'transfer' as type, b.instance_id as item_id,
-            (oc.name + ' to ' + dc.name) as item_name,
-            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
-            b.passenger_count as participants
-          FROM transfer_bookings b
-          INNER JOIN transfer_instances ti ON b.instance_id = ti.id
-          INNER JOIN transfer_schedules ts ON ti.schedule_id = ts.id
-          INNER JOIN transfer_routes tr ON ts.route_id = tr.id
-          INNER JOIN cities oc ON tr.origin_city_id = oc.id
-          INNER JOIN cities dc ON tr.destination_city_id = dc.id
-          LEFT JOIN users u ON b.user_id = u.id
-          $whereSql AND tr.deleted_at IS NULL
-          ORDER BY b.booked_at DESC, b.id DESC
-          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
-        ";
-      } else {
-        $where[] = "i.created_by = ?";
-        $params[] = $userId;
-        if ($status) {
-          $where[] = 'b.status = ?';
-          $params[] = $status;
-        }
-        if ($customerName) {
-          $where[] = "(u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?";
-          $params[] = '%' . str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $customerName) . '%';
-        }
-        if ($keyword) {
-          $searchTerm = str_replace(['%', '_', '[', ']'], ['[%]', '[_]', '[[]', '[]]'], $keyword);
-          $where[] = "(CAST(b.id AS NVARCHAR) LIKE ? OR i.title LIKE ? OR (u.first_name + ' ' + COALESCE(u.last_name, '')) LIKE ?)";
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-          $params[] = '%' . $searchTerm . '%';
-        }
-        $whereSql = 'WHERE ' . implode(' AND ', $where);
-        $sql = "
-          SELECT b.*, 'activity' as type, b.activity_id as item_id, i.title as item_name,
-            (u.first_name + ' ' + COALESCE(u.last_name, '')) as customer_name,
-            b.participant_count as participants
-          FROM activity_bookings b
-          INNER JOIN activities i ON b.activity_id = i.id
-          LEFT JOIN users u ON b.user_id = u.id
-          $whereSql AND i.deleted_at IS NULL
-          ORDER BY b.booked_at DESC, b.id DESC
-          OFFSET $offsetInt ROWS FETCH NEXT $limitInt ROWS ONLY
-        ";
-      }
-      
-      $stmt = $pdo->prepare($sql);
-      $stmt->execute($params);
-      $bookings = $stmt->fetchAll();
-      
-      foreach ($bookings as $booking) {
-        $booking['item_id'] = (int)$booking['item_id'];
-        $allBookings[] = $booking;
-      }
-    } catch (Exception $e) {
-      error_log("Dashboard bookings error for $type: " . $e->getMessage());
-    }
+  try {
+    $result = $dashboardService->getBookings((int)$user['id'], $itemType, $status, $customerName, $keyword, $page, $limit);
+    ResponseHelper::successSimple($result);
+  } catch (Throwable $e) {
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Failed to fetch dashboard bookings', 500);
   }
-  
-  // Sort all bookings by booked_at DESC
-  usort($allBookings, function($a, $b) {
-    return strtotime($b['booked_at']) - strtotime($a['booked_at']);
-  });
-  
-  // Apply pagination
-  $total = count($allBookings);
-  $paginatedBookings = array_slice($allBookings, $offset, $limit);
-  
-  json_ok([
-    'page' => $page,
-    'limit' => $limit,
-    'total' => $total,
-    'results' => $paginatedBookings
-  ]);
+  exit;
 }
 
-// GET /api/dashboard/items
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/dashboard/items/?$#', $uri)) {
   requireAuth();
   requireRole(['owner', 'agency']);
   
   $user = get_authenticated_user();
-  $userId = (int)$user['id'];
-  
   $itemType = $_GET['item_type'] ?? null;
   
-  $result = [
-    'hotels' => [],
-    'flights' => [],
-    'activities' => [],
-    'transfers' => []
-  ];
-  
-  $types = $itemType ? [$itemType] : ['hotel', 'flight', 'activity', 'transfer'];
-  
-  foreach ($types as $type) {
-    if ($type === 'hotel') {
-      $stmt = $pdo->prepare("SELECT h.*, CAST(h.ad AS INT) as ad, c.name as city_name, c.province_id, p.name as province_name 
-        FROM hotels h 
-        LEFT JOIN cities c ON h.city_id = c.id 
-        LEFT JOIN provinces p ON c.province_id = p.id 
-        WHERE h.created_by = ? AND h.deleted_at IS NULL ORDER BY h.id DESC");
-      $stmt->execute([$userId]);
-      $result['hotels'] = $stmt->fetchAll();
-    } else if ($type === 'flight') {
-      $stmt = $pdo->prepare("SELECT fr.*, CAST(fr.ad AS INT) as ad,
-        oc.name as origin_city_name, oc.province_id as origin_province_id, op.name as origin_province_name,
-        dc.name as destination_city_name, dc.province_id as destination_province_id, dp.name as destination_province_name
-        FROM flight_routes fr
-        INNER JOIN airports oa ON fr.origin_airport_id = oa.id
-        INNER JOIN airports da ON fr.destination_airport_id = da.id
-        LEFT JOIN cities oc ON oa.city_id = oc.id
-        LEFT JOIN provinces op ON oc.province_id = op.id
-        LEFT JOIN cities dc ON da.city_id = dc.id
-        LEFT JOIN provinces dp ON dc.province_id = dp.id
-        WHERE fr.created_by = ? AND fr.deleted_at IS NULL ORDER BY fr.id DESC");
-      $stmt->execute([$userId]);
-      $result['flights'] = $stmt->fetchAll();
-    } else if ($type === 'activity') {
-      $stmt = $pdo->prepare("SELECT a.*, CAST(a.ad AS INT) as ad, c.name as city_name, c.province_id, p.name as province_name 
-        FROM activities a 
-        LEFT JOIN cities c ON a.city_id = c.id 
-        LEFT JOIN provinces p ON c.province_id = p.id 
-        WHERE a.created_by = ? AND a.deleted_at IS NULL ORDER BY a.id DESC");
-      $stmt->execute([$userId]);
-      $result['activities'] = $stmt->fetchAll();
-    } else if ($type === 'transfer') {
-      $stmt = $pdo->prepare("SELECT tr.*, CAST(tr.ad AS INT) as ad,
-        oc.name as origin_city_name, oc.province_id as origin_province_id, op.name as origin_province_name,
-        dc.name as destination_city_name, dc.province_id as destination_province_id, dp.name as destination_province_name
-        FROM transfer_routes tr
-        INNER JOIN cities oc ON tr.origin_city_id = oc.id
-        INNER JOIN cities dc ON tr.destination_city_id = dc.id
-        LEFT JOIN provinces op ON oc.province_id = op.id
-        LEFT JOIN provinces dp ON dc.province_id = dp.id
-        WHERE tr.created_by = ? AND tr.deleted_at IS NULL ORDER BY tr.id DESC");
-      $stmt->execute([$userId]);
-      $result['transfers'] = $stmt->fetchAll();
-    }
+  try {
+    $result = $dashboardService->getItems((int)$user['id'], $itemType);
+    ResponseHelper::successSimple($result);
+  } catch (Throwable $e) {
+    ErrorHandler::logException($e);
+    ResponseHelper::error('Failed to fetch dashboard items', 500);
   }
-  
-  json_ok($result);
+  exit;
 }
 
-json_error('Not found', 404);
-
+ResponseHelper::error('Not found', 404);

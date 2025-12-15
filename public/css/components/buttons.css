@@ -70,3 +70,14 @@
   padding: 0.35rem 0.75rem;
 }
 
+/* Filter button styles */
+.filter-button {
+  height: 38px;
+  white-space: nowrap;
+}
+
+/* Hidden label for alignment */
+.filter-label-hidden {
+  visibility: hidden;
+}
+

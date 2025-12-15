@@ -71,7 +71,7 @@ function renderHotelCardInternal(hotel, columnsClass, detailUrl) {
           <div class="card-body">
             ${promotedBadge}
             <h5 class="card-title">${escapeHtml(hotel.name || 'Hotel')}</h5>
-            <p class="card-text text-muted">${escapeHtml((hotel.city_name || '') + (hotel.province_name ? ', ' + hotel.province_name : ''))}</p>
+            <p class="card-text text-muted">${escapeHtml(typeof formatItemLocation === 'function' ? formatItemLocation(hotel) : ((hotel.city_name || '') + (hotel.province_name ? ', ' + hotel.province_name : '')))}</p>
             ${priceHtml}
           </div>
         </a>
@@ -125,7 +125,7 @@ function renderFlightCardInternal(flight, columnsClass, detailUrl) {
           </div>
           <div class="card-body">
             ${promotedBadge}
-            <h5 class="card-title">${escapeHtml(originDisplay)} → ${escapeHtml(destinationDisplay)}</h5>
+            <h5 class="card-title">${escapeHtml(typeof formatItemRoute === 'function' ? formatItemRoute(flight) : `${originDisplay} → ${destinationDisplay}`)}</h5>
             <p class="card-text text-muted">${flight.depart_date ? formatDate(flight.depart_date) : ''}</p>
             ${priceHtml}
           </div>
@@ -183,13 +183,17 @@ function renderTransferCardInternal(transfer, columnsClass, detailUrl) {
     discountPercent: transfer.discount_percent || 0
   });
   
-  const originDisplay = transfer.origin_city_name
-    ? `${transfer.origin_city_name}${transfer.origin_province_name ? ', ' + transfer.origin_province_name : ''}`
-    : (transfer.origin || '');
+  const originDisplay = typeof formatLocation === 'function'
+    ? formatLocation({ cityName: transfer.origin_city_name || '', provinceName: transfer.origin_province_name || '' }) || transfer.origin || ''
+    : (transfer.origin_city_name
+      ? `${transfer.origin_city_name}${transfer.origin_province_name ? ', ' + transfer.origin_province_name : ''}`
+      : (transfer.origin || ''));
   
-  const destinationDisplay = transfer.destination_city_name
-    ? `${transfer.destination_city_name}${transfer.destination_province_name ? ', ' + transfer.destination_province_name : ''}`
-    : (transfer.destination || '');
+  const destinationDisplay = typeof formatLocation === 'function'
+    ? formatLocation({ cityName: transfer.destination_city_name || '', provinceName: transfer.destination_province_name || '' }) || transfer.destination || ''
+    : (transfer.destination_city_name
+      ? `${transfer.destination_city_name}${transfer.destination_province_name ? ', ' + transfer.destination_province_name : ''}`
+      : (transfer.destination || ''));
   
   const discountBadge = transfer.discount_percent > 0 
     ? renderDiscountBadge(transfer.discount_percent) 
@@ -251,7 +255,7 @@ function renderActivityCardInternal(activity, columnsClass, detailUrl) {
           <div class="card-body">
             ${promotedBadge}
             <h5 class="card-title">${escapeHtml(activity.title || 'Activity')}</h5>
-            <p class="card-text text-muted">${escapeHtml((activity.city_name || '') + (activity.province_name ? ', ' + activity.province_name : ''))}</p>
+            <p class="card-text text-muted">${escapeHtml(typeof formatItemLocation === 'function' ? formatItemLocation(activity) : ((activity.city_name || '') + (activity.province_name ? ', ' + activity.province_name : '')))}</p>
             ${activity.date ? `<p class="card-text text-muted small">${formatDate(activity.date)}</p>` : ''}
             ${priceHtml}
           </div>

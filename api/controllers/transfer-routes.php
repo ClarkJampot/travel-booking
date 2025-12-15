@@ -1,18 +1,17 @@
 <?php
-// Transfer Routes controller
 declare(strict_types=1);
 
 require_once __DIR__ . '/../bootstrap.php';
 require_once __DIR__ . '/../db.php';
 require_once __DIR__ . '/../middleware/auth.php';
+require_once __DIR__ . '/../helpers/ResponseHelper.php';
 
 try {
   $pdo = db_pdo();
 } catch (Throwable $e) {
-  json_error('Database connection failed', 500);
+  ResponseHelper::error('Database connection failed', 500);
 }
 
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 
 // GET /api/transfers/routes/:id or /api/transfers/routes?id=X
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes(?:/(\d+))?/?$#', $uri, $matches)) {
@@ -42,7 +41,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes(?:/(
     $stmt->execute([$id]);
     $route = $stmt->fetch();
     if (!$route) {
-      json_error('Route not found', 404);
+      ResponseHelper::error('Route not found', 404);
     }
     
     // Transfers don't have images
@@ -62,7 +61,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes(?:/(
       }
     }
     
-    json_ok(['route' => $route]);
+    ResponseHelper::successSimple(['route' => $route]);
   }
   
   // List routes
@@ -106,7 +105,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/transfers/routes(?:/(
   $stmt->execute($params);
   $routes = $stmt->fetchAll();
   
-  json_ok(['results' => $routes]);
+  ResponseHelper::successSimple(['results' => $routes]);
 }
 
 // POST /api/transfers/routes (agency/admin only)
@@ -141,10 +140,10 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/routes/?$#
       throw new InvalidArgumentException('Origin and destination cities cannot be the same without specific locations');
     }
   } catch (InvalidArgumentException $e) {
-    json_error($e->getMessage(), 400);
+    ResponseHelper::error($e->getMessage(), 400);
   } catch (Exception $e) {
     error_log('Validation error: ' . $e->getMessage());
-    json_error('Validation error: ' . $e->getMessage(), 400);
+    ResponseHelper::error('Validation error: ' . $e->getMessage(), 400);
   }
   
   $createdBy = $user['role'] === 'admin' && isset($input['created_by']) ? (int)$input['created_by'] : $user['id'];
@@ -225,7 +224,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/transfers/routes/?$#
   $route['images'] = [];
   $route['image_url'] = null;
   
-  json_ok(['route' => $route], 201);
+  ResponseHelper::successSimple(['route' => $route], 201);
 }
 
 // PUT /api/transfers/routes/:id (agency/admin only)
@@ -240,11 +239,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/routes/(\d+
   $stmt->execute([$id]);
   $route = $stmt->fetch();
   if (!$route) {
-    json_error('Route not found', 404);
+    ResponseHelper::error('Route not found', 404);
   }
   
   if ($user['role'] !== 'admin' && $route['created_by'] != $user['id']) {
-    json_error('Forbidden', 403);
+    ResponseHelper::error('Forbidden', 403);
   }
   
   $updates = [];
@@ -286,7 +285,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/routes/(\d+
   $images = $input['images'] ?? null;
   
   if (empty($updates) && $images === null) {
-    json_error('No fields to update', 400);
+    ResponseHelper::error('No fields to update', 400);
   }
   
   if (!empty($updates)) {
@@ -326,7 +325,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'PUT' && preg_match('#^/transfers/routes/(\d+
   $route['images'] = [];
   $route['image_url'] = null;
   
-  json_ok(['route' => $route]);
+  ResponseHelper::successSimple(['route' => $route]);
 }
 
 // DELETE /api/transfers/routes/:id (agency/admin only)
@@ -340,11 +339,11 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/transfers/routes/(
   $stmt->execute([$id]);
   $route = $stmt->fetch();
   if (!$route) {
-    json_error('Route not found', 404);
+    ResponseHelper::error('Route not found', 404);
   }
   
   if ($user['role'] !== 'admin' && $route['created_by'] != $user['id']) {
-    json_error('Forbidden', 403);
+    ResponseHelper::error('Forbidden', 403);
   }
   
   // Check if route has schedules/instances
@@ -352,16 +351,16 @@ if ($_SERVER['REQUEST_METHOD'] === 'DELETE' && preg_match('#^/transfers/routes/(
   $checkStmt->execute([$id]);
   $result = $checkStmt->fetch();
   if ($result['count'] > 0) {
-    json_error('Cannot delete route: it has associated schedules', 400);
+    ResponseHelper::error('Cannot delete route: it has associated schedules', 400);
   }
   
   $stmt = $pdo->prepare('DELETE FROM transfer_routes WHERE id = ?');
   $stmt->execute([$id]);
   
-  json_ok(['message' => 'Route deleted successfully']);
+  ResponseHelper::successSimple(['message' => 'Route deleted successfully']);
 }
 
-json_error('Not found', 404);
+ResponseHelper::error('Not found', 404);
 
 
 

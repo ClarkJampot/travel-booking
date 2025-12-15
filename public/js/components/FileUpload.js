@@ -1,7 +1,15 @@
-// FileUpload Component
-// Handles multiple image file uploads with preview
-
+/**
+ * FileUpload Component - Handles multiple image file uploads with preview
+ */
 class FileUpload {
+  /**
+   * @param {string} containerId - Container element ID
+   * @param {object} options - Upload options
+   * @param {number} options.maxFiles - Maximum number of files
+   * @param {string} options.category - Upload category
+   * @param {string[]} options.initialUrls - Initial uploaded URLs
+   * @param {function} options.onChange - Callback when files change
+   */
   constructor(containerId, options = {}) {
     this.containerId = containerId;
     this.maxFiles = options.maxFiles || 10;
@@ -11,9 +19,6 @@ class FileUpload {
   }
   
   render() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:13',message:'render called',data:{containerId:this.containerId,uploadedUrlsCount:this.uploadedUrls.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const container = document.getElementById(this.containerId);
     if (!container) return;
     
@@ -43,9 +48,6 @@ class FileUpload {
     
     fileInput.addEventListener('change', (e) => this.handleFileSelect(e));
     
-    // Store instance reference for removeImage
-    window[`fileUpload_${this.containerId}`] = this;
-    
     // Load initial previews if any
     if (this.uploadedUrls.length > 0) {
       this.updatePreviews();
@@ -58,12 +60,12 @@ class FileUpload {
     }
     
     return this.uploadedUrls.map((url, index) => `
-      <div class="position-relative" style="width: 120px; height: 120px;">
+      <div class="position-relative" style="width: 120px; height: 120px;" data-image-index="${index}">
         <img src="${normalizeImageUrl(url)}" alt="Preview ${index + 1}" 
              class="img-thumbnail w-100 h-100" style="object-fit: cover;"
-             onerror="this.src='${normalizeImageUrl('/uploads/placeholder.svg')}'">
-        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1" 
-                onclick="window['fileUpload_${this.containerId}'].removeImage(${index})" 
+             onerror="const ph=typeof normalizeImageUrl==='function'?normalizeImageUrl('uploads/placeholder.svg'):(window.location.pathname.includes('/travel-booking')?'/travel-booking/uploads/placeholder.svg':'/uploads/placeholder.svg');if(this.src!==this.getAttribute('data-placeholder')){this.setAttribute('data-placeholder',ph);this.src=ph;}else{this.onerror=null;this.style.display='none';}">
+        <button type="button" class="btn btn-sm btn-danger position-absolute top-0 end-0 m-1 file-upload-remove-btn" 
+                data-image-index="${index}"
                 style="width: 24px; height: 24px; padding: 0; line-height: 1;">
           <svg width="12" height="12" fill="currentColor" viewBox="0 0 16 16">
             <path d="M2.146 2.854a.5.5 0 1 1 .708-.708L8 7.293l5.146-5.147a.5.5 0 0 1 .708.708L8.707 8l5.147 5.146a.5.5 0 0 1-.708.708L8 8.707l-5.146 5.147a.5.5 0 0 1-.708-.708L7.293 8 2.146 2.854Z"/>
@@ -74,12 +76,17 @@ class FileUpload {
   }
   
   updatePreviews() {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:61',message:'updatePreviews called',data:{uploadedUrlsCount:this.uploadedUrls.length,uploadedUrls:this.uploadedUrls,previewContainerExists:!!document.getElementById(`${this.containerId}-preview`)},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'B'})}).catch(()=>{});
-    // #endregion
     const previewContainer = document.getElementById(`${this.containerId}-preview`);
     if (previewContainer) {
       previewContainer.innerHTML = this.renderPreviews();
+      
+      // Attach event listeners to remove buttons
+      previewContainer.querySelectorAll('.file-upload-remove-btn').forEach(btn => {
+        btn.addEventListener('click', (e) => {
+          const index = parseInt(btn.getAttribute('data-image-index'), 10);
+          this.removeImage(index);
+        });
+      });
     }
     
     // Update status text
@@ -98,9 +105,6 @@ class FileUpload {
   }
   
   async handleFileSelect(event) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:65',message:'handleFileSelect called',data:{filesCount:event.target.files?.length||0,fileNames:Array.from(event.target.files||[]).map(f=>f.name),inputValue:event.target.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     const files = Array.from(event.target.files);
     
     if (files.length === 0) return;
@@ -132,28 +136,25 @@ class FileUpload {
       allowedTypes.includes(file.type) && file.size <= maxSize
     );
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:97',message:'Before upload loop',data:{validFilesCount:validFiles.length,uploadedUrlsCount:this.uploadedUrls.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     for (const file of validFiles) {
       await this.uploadFile(file);
     }
     
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:102',message:'Before clearing input',data:{inputValue:event.target.value,uploadedUrlsCount:this.uploadedUrls.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
     // Clear input
     event.target.value = '';
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:105',message:'After clearing input',data:{inputValue:event.target.value},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-    // #endregion
   }
   
   async uploadFile(file) {
     try {
       const formData = new FormData();
       formData.append('image', file);
-      formData.append('category', this.category);
+      // Map category to singular form for upload endpoint: 'hotels' -> 'hotel', 'activities' -> 'activity'
+      const uploadCategory = this.category === 'hotels' ? 'hotel' : 
+                            (this.category === 'activities' ? 'activity' : 
+                            (this.category === 'flights' ? 'flight' : 
+                            (this.category === 'transfers' ? 'transfer' : 
+                            (this.category === 'destinations' ? 'destination' : this.category))));
+      formData.append('category', uploadCategory);
       // Upload to temp location first (entity_id will be null for new entities)
       // Map category to entity_type: 'hotels' -> 'hotel', 'activities' -> 'activity'
       const entityType = this.category === 'hotels' ? 'hotel' : (this.category === 'activities' ? 'activity' : this.category.slice(0, -1));
@@ -170,19 +171,13 @@ class FileUpload {
       
       if (!response.ok) {
         const error = await response.json();
-        throw new Error(error.message || 'Upload failed');
+        throw new Error(error.error || error.message || 'Upload failed');
       }
       
       const data = await response.json();
       const imageUrl = data.url || data.data?.url || data.data;
-      // #region agent log
-      fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:143',message:'Upload response received',data:{hasUrl:!!imageUrl,imageUrl:imageUrl,responseData:data,uploadedUrlsBefore:this.uploadedUrls.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-      // #endregion
       if (imageUrl) {
         this.uploadedUrls.push(imageUrl);
-        // #region agent log
-        fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:148',message:'After push to uploadedUrls',data:{uploadedUrlsAfter:this.uploadedUrls.length,uploadedUrls:this.uploadedUrls},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'A'})}).catch(()=>{});
-        // #endregion
         this.updatePreviews();
         
         if (this.onChange) {
@@ -213,9 +208,6 @@ class FileUpload {
   }
   
   setUrls(urls) {
-    // #region agent log
-    fetch('http://127.0.0.1:7242/ingest/a19a3953-2389-4767-8ef4-ccc15e5cb6bc',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({location:'FileUpload.js:157',message:'setUrls called',data:{newUrlsCount:Array.isArray(urls)?urls.length:0,oldUrlsCount:this.uploadedUrls.length},timestamp:Date.now(),sessionId:'debug-session',runId:'run1',hypothesisId:'C'})}).catch(()=>{});
-    // #endregion
     this.uploadedUrls = Array.isArray(urls) ? urls : [];
     this.updatePreviews();
   }

@@ -1,11 +1,7 @@
 <?php
-// ResponseHelper for standardized API responses
 declare(strict_types=1);
 
 class ResponseHelper {
-  /**
-   * Format success response with pagination
-   */
   public static function success(array $data, int $page = 1, int $limit = 10, ?int $total = null): void {
     $response = [
       'success' => true,
@@ -22,32 +18,15 @@ class ResponseHelper {
     json_ok($response);
   }
   
-  /**
-   * Format success response without pagination
-   */
-  public static function successSimple(array $data): void {
-    json_ok($data);
+  public static function successSimple(array $data, int $code = 200): void {
+    http_response_code($code);
+    json_ok($data, $code);
   }
   
-  /**
-   * Format error response
-   */
   public static function error(string $message, int $code = 400, array $errors = []): void {
-    $response = [
-      'success' => false,
-      'error' => $message
-    ];
-    
-    if (!empty($errors)) {
-      $response['errors'] = $errors;
-    }
-    
-    json_error($message, $code);
+    json_error($message, $code, $errors);
   }
   
-  /**
-   * Format pagination metadata
-   */
   public static function paginationMeta(int $page, int $limit, int $total): array {
     return [
       'page' => $page,

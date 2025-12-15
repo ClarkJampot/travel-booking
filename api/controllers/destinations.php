@@ -18,7 +18,6 @@ try {
 }
 
 // GET /api/destinations
-$uri = $GLOBALS['API_URI'] ?? $_SERVER['REQUEST_URI'];
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && preg_match('#^/destinations/?$#', $uri)) {
   $id = isset($_GET['id']) ? (int)$_GET['id'] : null;
   

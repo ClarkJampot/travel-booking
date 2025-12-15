@@ -1,4 +1,4 @@
-/* Travel Booking Website - Main Stylesheet */
+/* TuklasPH Website - Main Stylesheet */
 /* This file imports all modular CSS files and contains page-specific styles */
 
 /* Import CSS Variables */
@@ -29,8 +29,9 @@
    Page-Specific Styles
    ============================================ */
 
-/* Filters */
-.filter-section {
+/* Filters - Standardized styling for all filter/search forms */
+.filter-section,
+.flight-search-form {
   background: var(--white);
   border: 1px solid var(--border);
   border-radius: var(--radius-lg);
@@ -40,8 +41,48 @@
   transition: all var(--transition-base);
 }
 
-.filter-section:hover {
+.filter-section:hover,
+.flight-search-form:hover {
   box-shadow: var(--shadow-md);
+}
+
+/* Filter row - flexbox layout for proper spacing */
+.filter-row {
+  display: flex;
+  gap: 1rem;
+  align-items: flex-end;
+  flex-wrap: wrap;
+}
+
+.filter-field {
+  flex: 0 0 auto;
+  min-width: 150px;
+}
+
+.filter-field.filter-keyword-field {
+  flex: 1 1 auto;
+  min-width: 200px;
+}
+
+.filter-buttons {
+  flex: 0 0 auto;
+}
+
+@media (max-width: 767.98px) {
+  .filter-row {
+    flex-direction: column;
+  }
+  
+  .filter-field,
+  .filter-field.filter-keyword-field {
+    flex: 1 1 100%;
+    min-width: 100%;
+  }
+  
+  .filter-buttons {
+    flex: 1 1 100%;
+    width: 100%;
+  }
 }
 
 .filter-toggle {
@@ -58,6 +99,16 @@
   width: 3rem;
   height: 3rem;
   border-width: 0.3em;
+}
+
+/* Loading more container */
+.loading-more-container {
+  display: none;
+}
+
+/* Promoted section */
+.promoted-section {
+  display: none;
 }
 
 /* Alerts */
@@ -384,14 +435,7 @@
   }
 }
 
-/* Flight Search Form Styles */
-.flight-search-form {
-  background: var(--white);
-  border-radius: var(--spacing-xl);
-  padding: var(--spacing-3xl);
-  box-shadow: 0 4px 20px var(--black-rgba-3);
-  margin-bottom: var(--spacing-5xl);
-}
+/* Flight Search Form Styles - Now inherits from .filter-section above */
 
 .trip-type-selector {
   display: flex;
