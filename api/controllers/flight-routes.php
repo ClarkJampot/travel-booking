@@ -141,6 +141,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST' && preg_match('#^/flights/routes/?$#',
     $base_price_first = ValidationHelper::validateDecimal($input['base_price_first'] ?? null, 'base_price_first', false, 0.01);
     
     // Validate other fields
+    $airline = ValidationHelper::validateString($input['airline'] ?? null, 'airline', true, 100);
     $aircraft_type = ValidationHelper::validateString($input['aircraft_type'] ?? null, 'aircraft_type', false, 100);
     $departure_time = ValidationHelper::validateTime($input['departure_time'] ?? null, 'departure_time', true);
     $days_of_week = '0,1,2,3,4,5,6'; // Daily by default

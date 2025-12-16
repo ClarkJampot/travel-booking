@@ -13,6 +13,9 @@ function validatePostingFormData(data, type) {
   const errors = [];
   
   if (type === 'flight') {
+    if (!data.airline || data.airline.trim() === '') {
+      errors.push('Airline is required');
+    }
     if (!data.origin_province_id || !data.origin_city_id) {
       errors.push('Origin province and city are required');
     }

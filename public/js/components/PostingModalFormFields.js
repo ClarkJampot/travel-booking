@@ -22,6 +22,7 @@ function getPostingFormFields(type) {
       { name: 'discount_percent', label: 'Discount %', type: 'number', required: false, min: 0, max: 100, step: 0.01 }
     ],
     flight: [
+      { name: 'airline', label: 'Airline', type: 'text', required: true },
       { name: 'origin_province_id', label: 'Origin Province', type: 'select', required: true, options: 'provinces', onChange: 'loadCities' },
       { name: 'origin_city_id', label: 'Origin City', type: 'select', required: true, options: 'cities', dependsOn: 'origin_province_id' },
       { name: 'destination_province_id', label: 'Destination Province', type: 'select', required: true, options: 'provinces', onChange: 'loadCities' },

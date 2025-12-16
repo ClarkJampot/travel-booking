@@ -153,6 +153,7 @@ class PostingModal {
     // Collect form data - handle different types differently
     if (this.type === 'flight') {
       // Flight: use /flights/routes endpoint
+      const airline = formData.get('airline');
       const originProvinceId = formData.get('origin_province_id');
       const originCityId = formData.get('origin_city_id');
       const destProvinceId = formData.get('destination_province_id');
@@ -162,6 +163,7 @@ class PostingModal {
       const firstPrice = formData.get('base_price_first');
       const discount = formData.get('discount_percent');
       
+      data.airline = airline ? airline.trim() : null;
       data.origin_province_id = originProvinceId ? parseInt(originProvinceId) : null;
       data.origin_city_id = originCityId ? parseInt(originCityId) : null;
       data.destination_province_id = destProvinceId ? parseInt(destProvinceId) : null;

@@ -179,11 +179,21 @@ function renderBookingCard(booking, index = 0) {
     const origin = escapeHtml(itemDetails.origin || '');
     const destination = escapeHtml(itemDetails.destination || '');
     const bookingClass = escapeHtml(booking.class || '');
+    const isRoundtrip = itemDetails.is_roundtrip || booking.related_booking;
+    const returnOrigin = itemDetails.return_origin || (booking.related_booking?.item_details?.origin);
+    const returnDestination = itemDetails.return_destination || (booking.related_booking?.item_details?.destination);
+    const departureDate = itemDetails.departure_date || booking.related_booking?.departure_date;
+    const returnDate = itemDetails.return_date || (booking.related_booking?.item_details?.departure_date);
+    
     detailsHtml = `
       <p class="card-text"><strong>Flight:</strong> ${itemName}</p>
       ${bookingClass ? `<p class="card-text"><strong>Class:</strong> ${bookingClass.charAt(0).toUpperCase() + bookingClass.slice(1)}</p>` : ''}
       ${booking.passenger_count ? `<p class="card-text"><strong>Passengers:</strong> ${escapeHtml(String(booking.passenger_count))}</p>` : ''}
-      ${origin && destination ? `<p class="card-text text-muted">${origin} → ${destination}</p>` : ''}
+      ${isRoundtrip ? `<p class="card-text"><strong>Type:</strong> Round Trip</p>` : ''}
+      ${origin && destination ? `<p class="card-text"><strong>Departure:</strong> <span class="text-muted">${origin} → ${destination}</span></p>` : ''}
+      ${departureDate ? `<p class="card-text"><strong>Departure Date:</strong> <span class="text-muted">${escapeHtml(formatDate(departureDate))}</span></p>` : ''}
+      ${isRoundtrip && returnOrigin && returnDestination ? `<p class="card-text"><strong>Return:</strong> <span class="text-muted">${escapeHtml(returnOrigin)} → ${escapeHtml(returnDestination)}</span></p>` : ''}
+      ${isRoundtrip && returnDate ? `<p class="card-text"><strong>Return Date:</strong> <span class="text-muted">${escapeHtml(formatDate(returnDate))}</span></p>` : ''}
     `;
   } else if (type === 'activity') {
     const cityName = escapeHtml(itemDetails.city_name || '');

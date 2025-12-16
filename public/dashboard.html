@@ -109,16 +109,36 @@
     
     // Show/hide item type filter based on user role
     // Owners only handle hotels, so hide the filter
-    // Agencies handle flights, activities, transfers, so show the filter
-    if (user && user.role === 'agency') {
-      document.getElementById('itemTypeFilterContainer').style.display = 'block';
-    } else {
-      // For owners, hide the filter and clear any item_type from URL
-      document.getElementById('itemTypeFilterContainer').style.display = 'none';
-      const url = new URL(window.location);
-      url.searchParams.delete('item_type');
-      window.history.replaceState({}, '', url);
+    // Agencies handle flights, activities, transfers (not hotels), so show the filter
+    function setupItemTypeFilter() {
+      const itemTypeFilter = document.getElementById('itemTypeFilter');
+      if (!itemTypeFilter) return;
+      
+      if (user && user.role === 'agency') {
+        document.getElementById('itemTypeFilterContainer').style.display = 'block';
+        // Rebuild options without hotel for agencies
+        itemTypeFilter.innerHTML = `
+          <option value="">All Types</option>
+          <option value="flight">Flights</option>
+          <option value="activity">Activities</option>
+          <option value="transfer">Transfers</option>
+        `;
+        // If hotel is selected in URL, remove it
+        const url = new URL(window.location);
+        if (url.searchParams.get('item_type') === 'hotel') {
+          url.searchParams.delete('item_type');
+          window.history.replaceState({}, '', url);
+        }
+      } else {
+        // For owners, hide the filter and clear any item_type from URL
+        document.getElementById('itemTypeFilterContainer').style.display = 'none';
+        const url = new URL(window.location);
+        url.searchParams.delete('item_type');
+        window.history.replaceState({}, '', url);
+      }
     }
+    
+    setupItemTypeFilter();
 
     async function loadDashboard() {
       showLoading('statsSection');
@@ -403,6 +423,9 @@
     }
 
     document.addEventListener('DOMContentLoaded', function() {
+      // Ensure filter is set up correctly
+      setupItemTypeFilter();
+      
       loadDashboard();
       
       // Load filter values from URL on page load
@@ -410,7 +433,10 @@
       if (params.customer_name) document.getElementById('customerFilter').value = params.customer_name;
       // Only set item_type filter for agencies (owners don't have this filter)
       if (params.item_type && user && user.role === 'agency') {
-        document.getElementById('itemTypeFilter').value = params.item_type;
+        const itemTypeFilter = document.getElementById('itemTypeFilter');
+        if (itemTypeFilter && itemTypeFilter.querySelector(`option[value="${params.item_type}"]`)) {
+          itemTypeFilter.value = params.item_type;
+        }
       }
       if (params.status) document.getElementById('statusFilter').value = params.status;
       if (params.keyword) document.getElementById('keywordFilter').value = params.keyword;

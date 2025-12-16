@@ -229,7 +229,7 @@
                     </button>
                   </div>
                   
-                  ${data.all?.hotels && data.all.hotels.length > 0 ? `
+                  ${userRole === 'owner' && data.all?.hotels && data.all.hotels.length > 0 ? `
                     <div class="mb-4">
                       <h5 class="mb-3">Hotels</h5>
                       <div class="list-group">
@@ -265,7 +265,7 @@
                     </div>
                   ` : ''}
                   
-                  ${(!data.all?.hotels || data.all.hotels.length === 0) && 
+                  ${(userRole === 'owner' ? (!data.all?.hotels || data.all.hotels.length === 0) : true) && 
                     (!data.all?.flights || data.all.flights.length === 0) &&
                     (!data.all?.activities || data.all.activities.length === 0) &&
                     (!data.all?.transfers || data.all.transfers.length === 0)
